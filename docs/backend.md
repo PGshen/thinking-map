@@ -511,6 +511,7 @@ CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     node_id UUID NOT NULL,
     role VARCHAR(20) NOT NULL, -- user, assistant, system
+    message_type VARCHAR(20) NOT NULL, -- text, rag, notice
     content TEXT NOT NULL,
     parent_id UUID,
     version INTEGER NOT NULL DEFAULT 1, -- 消息版本号，用于回滚
@@ -524,6 +525,23 @@ CREATE INDEX idx_messages_node_id ON messages(node_id);
 CREATE INDEX idx_messages_parent_id ON messages(parent_id);
 CREATE INDEX idx_messages_version ON messages(version);
 CREATE INDEX idx_messages_metadata ON messages USING GIN(metadata);
+```
+
+#### 5.1.6 RAG检索记录表 (rag_retrievals)
+```sql
+CREATE TABLE rag_retrievals (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    node_id UUID NOT NULL,
+    query TEXT NOT NULL,
+    context TEXT,
+    retrieved_docs JSONB DEFAULT '[]',
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX idx_rag_retrievals_node_id ON rag_retrievals(node_id);
 ```
 
 ### 5.3 JSONB 字段设计
@@ -576,18 +594,7 @@ CREATE INDEX idx_messages_metadata ON messages USING GIN(metadata);
 }
 
 {
-  "rag": [
-    {
-      "doc_type": "",
-      "doc_id": ""
-    }
-  ],
-  "message": [
-    {
-      "type": "system",
-      "message_id"
-    }
-  ]
+  "message": ["message_id"]
 }
 ```
 
