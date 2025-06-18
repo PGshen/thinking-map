@@ -485,6 +485,25 @@ CREATE INDEX idx_thinking_nodes_position ON thinking_nodes USING GIN(position);
 CREATE INDEX idx_thinking_nodes_metadata ON thinking_nodes USING GIN(metadata);
 CREATE INDEX idx_thinking_nodes_dependencies ON thinking_nodes USING GIN(dependencies);
 ```
+> position 字段结构
+```json
+{
+  "x": 100,
+  "y": 200,
+  "width": 300,
+  "height": 150
+}
+```
+> dependencies 字段结构
+```json
+[
+  {
+    "node_id": "uuid",
+    "dependency_type": "prerequisite",
+    "required": true
+  }
+]
+```
 
 #### 5.1.4 节点详情表 (node_details)
 ```sql
@@ -504,6 +523,52 @@ CREATE INDEX idx_node_details_node_id ON node_details(node_id);
 CREATE INDEX idx_node_details_tab_type ON node_details(tab_type);
 CREATE INDEX idx_node_details_metadata ON node_details USING GIN(metadata);
 ```
+> tab_content 字段结构
+// info tab
+```json
+{
+  "context": [
+    {
+      "type": "父节点问题",
+      "question": "",
+      "target": "",
+      "conclusion": ""
+    },{
+      "type": "子节点问题",
+      "question": "",
+      "target": "",
+      "conclusion": ""
+    },
+  ],
+  "question": "",
+  "target": ""
+}
+```
+// decompose tab
+```json
+{
+  "message": [
+    [1,2,3],
+    [4]
+  ],
+  "decompose_result": [
+    {
+      "question": "",
+      "target": ""
+    }
+  ]
+}
+```
+// conclusion tab
+```json
+{
+  "message": [
+    [1,2,3],
+    [4]
+  ],
+  "conclusion": ""
+}
+```
 
 #### 5.1.5 消息表 (messages)
 ```sql
@@ -512,7 +577,7 @@ CREATE TABLE messages (
     node_id UUID NOT NULL,
     role VARCHAR(20) NOT NULL, -- user, assistant, system
     message_type VARCHAR(20) NOT NULL, -- text, rag, notice
-    content TEXT NOT NULL,
+    content JSONB DEFAULT '{}',
     parent_id UUID,
     version INTEGER NOT NULL DEFAULT 1, -- 消息版本号，用于回滚
     metadata JSONB DEFAULT '{}',
@@ -526,6 +591,18 @@ CREATE INDEX idx_messages_parent_id ON messages(parent_id);
 CREATE INDEX idx_messages_version ON messages(version);
 CREATE INDEX idx_messages_metadata ON messages USING GIN(metadata);
 ```
+> content 字段结构
+```json
+{
+  "text": "",
+  "rag": ["rag_id"],
+  "notice": [
+    {
+      "type": "",
+      "content": ""
+    }
+  ]
+}
 
 #### 5.1.6 RAG检索记录表 (rag_retrievals)
 ```sql
@@ -542,60 +619,6 @@ CREATE TABLE rag_retrievals (
 );
 
 CREATE INDEX idx_rag_retrievals_node_id ON rag_retrievals(node_id);
-```
-
-### 5.3 JSONB 字段设计
-#### 5.3.1 position 字段结构
-```json
-{
-  "x": 100,
-  "y": 200,
-  "width": 300,
-  "height": 150
-}
-```
-
-#### 5.3.2 metadata 字段结构
-```json
-{
-  "tags": ["research", "analysis"],
-  "priority": 1,
-  "estimated_time": 30,
-  "complexity": "medium",
-  "ai_model": "gpt-4",
-  "custom_fields": {}
-}
-```
-
-#### 5.3.3 dependencies 字段结构
-```json
-[
-  {
-    "node_id": "uuid",
-    "dependency_type": "prerequisite",
-    "required": true
-  }
-]
-```
-
-#### 5.3.4 tab_content 字段结构
-```json
-{
-  "context": [
-    {
-      "type": "上文",
-      "question": "",
-      "target": "",
-      "conclusion": ""
-    }
-  ],
-  "question": "",
-  "target": ""
-}
-
-{
-  "message": ["message_id"]
-}
 ```
 
 ## 6. API设计
