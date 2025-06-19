@@ -324,7 +324,7 @@ Result Storage → SSE Event → Web Client ← User Feedback
 
 ## 4. 项目目录结构
 ```plain
-thinkingmap-backend/
+server/
 ├── cmd/
 │   └── server/
 │       └── main.go                 # 应用入口
@@ -355,7 +355,6 @@ thinkingmap-backend/
 │   │   ├── interfaces.go          # 仓储接口定义
 │   │   ├── node.go                # 节点数据访问
 │   │   ├── user.go                # 用户数据访问
-│   │   └── session.go             # 会话数据访问
 │   ├── model/
 │   │   ├── node.go                # 节点数据模型
 │   │   ├── user.go                # 用户数据模型
@@ -603,10 +602,10 @@ CREATE INDEX idx_messages_metadata ON messages USING GIN(metadata);
     }
   ]
 }
-
-#### 5.1.6 RAG检索记录表 (rag_retrievals)
+```
+#### 5.1.6 RAG检索记录表 (rag_record)
 ```sql
-CREATE TABLE rag_retrievals (
+CREATE TABLE rag_record (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     node_id UUID NOT NULL,
     query TEXT NOT NULL,
@@ -618,7 +617,7 @@ CREATE TABLE rag_retrievals (
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_rag_retrievals_node_id ON rag_retrievals(node_id);
+CREATE INDEX idx_rag_record_node_id ON rag_record(node_id);
 ```
 
 ## 6. API设计
@@ -760,7 +759,7 @@ Response 200 OK:
 }
 ```
 
-#### 6.3.2 思维导图接口
+#### 6.3.2 思考图接口
 ```yaml
 # 创建思维导图
 POST /api/v1/maps

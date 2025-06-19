@@ -1,0 +1,25 @@
+server:
+  port: 8080
+  mode: debug
+
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  username: postgres
+  password: postgres
+  dbname: thinking_map
+  sslmode: disable
+
+jwt:
+  secret: your-secret-key
+  expire: 24h
+
+log:
+  level: info
+  filename: logs/app.log
+  maxSize: 100
+  maxBackups: 10
+  maxAge: 30
+  compress: true
+  console: true 
