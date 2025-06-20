@@ -1,11 +1,10 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 	"time"
 
-	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/thinking-map/server/internal/model/dto"
 )
@@ -19,9 +18,9 @@ func NewThinkingHandler() *ThinkingHandler {
 }
 
 // Analyze handles starting problem analysis
-func (h *ThinkingHandler) Analyze(ctx context.Context, c *app.RequestContext) {
+func (h *ThinkingHandler) Analyze(c *gin.Context) {
 	var req dto.AnalyzeRequest
-	if err := c.BindAndValidate(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
 			Message:   "invalid request parameters",
@@ -49,9 +48,9 @@ func (h *ThinkingHandler) Analyze(ctx context.Context, c *app.RequestContext) {
 }
 
 // Decompose handles starting problem decomposition
-func (h *ThinkingHandler) Decompose(c *app.RequestContext) {
+func (h *ThinkingHandler) Decompose(c *gin.Context) {
 	var req dto.DecomposeRequest
-	if err := c.BindAndValidate(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
 			Message:   "invalid request parameters",
@@ -79,9 +78,9 @@ func (h *ThinkingHandler) Decompose(c *app.RequestContext) {
 }
 
 // Conclude handles generating conclusions
-func (h *ThinkingHandler) Conclude(c *app.RequestContext) {
+func (h *ThinkingHandler) Conclude(c *gin.Context) {
 	var req dto.ConcludeRequest
-	if err := c.BindAndValidate(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
 			Message:   "invalid request parameters",
@@ -109,9 +108,9 @@ func (h *ThinkingHandler) Conclude(c *app.RequestContext) {
 }
 
 // Chat handles chat interaction
-func (h *ThinkingHandler) Chat(c *app.RequestContext) {
+func (h *ThinkingHandler) Chat(c *gin.Context) {
 	var req dto.ChatRequest
-	if err := c.BindAndValidate(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
 			Message:   "invalid request parameters",

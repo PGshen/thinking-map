@@ -64,9 +64,27 @@ func Init(cfg *Config) error {
 
 	// 文件输出
 	if cfg.Filename != "" {
-		// 创建日志目录
-		if err := os.MkdirAll(cfg.Filename, 0755); err != nil {
-			return err
+		// 获取日志文件的父目录
+		dir := cfg.Filename
+		if fi, err := os.Stat(cfg.Filename); err == nil && fi.Mode().IsRegular() {
+			// 如果日志路径本身是一个已存在的文件，则直接复用，不创建目录
+			// 什么都不做
+		} else {
+			// 如果不是文件，则尝试创建父目录
+			parentDir := dir
+			if idx := len(dir) - 1; idx >= 0 {
+				for i := len(dir) - 1; i >= 0; i-- {
+					if dir[i] == '/' || dir[i] == '\\' {
+						parentDir = dir[:i]
+						break
+					}
+				}
+			}
+			if parentDir != "" {
+				if err := os.MkdirAll(parentDir, 0755); err != nil && !os.IsExist(err) {
+					return err
+				}
+			}
 		}
 
 		// 创建文件输出

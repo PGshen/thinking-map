@@ -7,11 +7,11 @@
 package middleware
 
 import (
-	"context"
+	"net/http"
 	"sync"
 	"time"
 
-	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
 )
 
@@ -73,18 +73,20 @@ func (rl *RateLimiter) getLimiter(ip string) *rate.Limiter {
 }
 
 // RateLimit 限流中间件
-func RateLimit(r rate.Limit, b int, ttl time.Duration) app.HandlerFunc {
+func RateLimit(r rate.Limit, b int, ttl time.Duration) gin.HandlerFunc {
 	limiter := NewRateLimiter(r, b, ttl)
-	return func(ctx context.Context, c *app.RequestContext) {
+
+	return func(c *gin.Context) {
 		ip := c.ClientIP()
 		if !limiter.getLimiter(ip).Allow() {
-			c.JSON(429, map[string]interface{}{
+			c.JSON(http.StatusTooManyRequests, gin.H{
 				"code":    429,
 				"message": "请求过于频繁，请稍后再试",
 			})
 			c.Abort()
 			return
 		}
-		c.Next(ctx)
+
+		c.Next()
 	}
 }

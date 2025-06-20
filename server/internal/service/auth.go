@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/redis/go-redis/v9"
 	"github.com/thinking-map/server/internal/model"
 	"github.com/thinking-map/server/internal/model/dto"
 	"golang.org/x/crypto/bcrypt"
@@ -31,15 +32,8 @@ type AuthService interface {
 // authService implements the AuthService interface
 type authService struct {
 	db    *gorm.DB
-	redis RedisClient
+	redis *redis.Client
 	jwt   JWTConfig
-}
-
-// RedisClient defines the interface for Redis operations
-type RedisClient interface {
-	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
-	Get(ctx context.Context, key string, dest interface{}) error
-	Del(ctx context.Context, keys ...string) error
 }
 
 // JWTConfig holds the JWT configuration
@@ -51,7 +45,7 @@ type JWTConfig struct {
 }
 
 // NewAuthService creates a new instance of AuthService
-func NewAuthService(db *gorm.DB, redis RedisClient, jwtConfig JWTConfig) AuthService {
+func NewAuthService(db *gorm.DB, redis *redis.Client, jwtConfig JWTConfig) AuthService {
 	return &authService{
 		db:    db,
 		redis: redis,
@@ -100,7 +94,7 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 		ExpiresAt:   time.Now().Add(s.jwt.AccessTokenTTL),
 	}
 
-	if err := s.redis.Set(ctx, "token:"+accessToken, tokenInfo, s.jwt.AccessTokenTTL); err != nil {
+	if err := s.redis.Set(ctx, "token:"+accessToken, tokenInfo, s.jwt.AccessTokenTTL).Err(); err != nil {
 		return nil, err
 	}
 
@@ -144,7 +138,7 @@ func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Au
 		ExpiresAt:   time.Now().Add(s.jwt.AccessTokenTTL),
 	}
 
-	if err := s.redis.Set(ctx, "token:"+accessToken, tokenInfo, s.jwt.AccessTokenTTL); err != nil {
+	if err := s.redis.Set(ctx, "token:"+accessToken, tokenInfo, s.jwt.AccessTokenTTL).Err(); err != nil {
 		return nil, err
 	}
 
@@ -196,7 +190,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		ExpiresAt:   time.Now().Add(s.jwt.AccessTokenTTL),
 	}
 
-	if err := s.redis.Set(ctx, "token:"+accessToken, tokenInfo, s.jwt.AccessTokenTTL); err != nil {
+	if err := s.redis.Set(ctx, "token:"+accessToken, tokenInfo, s.jwt.AccessTokenTTL).Err(); err != nil {
 		return nil, err
 	}
 
@@ -211,13 +205,14 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 
 // Logout implements user logout
 func (s *authService) Logout(ctx context.Context, accessToken string) error {
-	return s.redis.Del(ctx, "token:"+accessToken)
+	return s.redis.Del(ctx, "token:"+accessToken).Err()
 }
 
 // ValidateToken validates the access token
 func (s *authService) ValidateToken(ctx context.Context, token string) (*model.TokenInfo, error) {
 	var tokenInfo model.TokenInfo
-	if err := s.redis.Get(ctx, "token:"+token, &tokenInfo); err != nil {
+	cmd := s.redis.Get(ctx, "token:"+token)
+	if err := cmd.Scan(&tokenInfo); err != nil {
 		return nil, ErrInvalidToken
 	}
 

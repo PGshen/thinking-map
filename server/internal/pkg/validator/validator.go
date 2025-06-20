@@ -4,35 +4,35 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 )
 
 // RegisterValidators 注册自定义验证器
 func RegisterValidators() error {
-	v := validatorv10.GetValidator()
-	if v == nil {
-		return nil
-	}
-	if err := v.RegisterValidation("username", validateUsername); err != nil {
-		return err
-	}
-	if err := v.RegisterValidation("password", validatePassword); err != nil {
-		return err
-	}
-	if err := v.RegisterValidation("node_type", validateNodeType); err != nil {
-		return err
-	}
-	if err := v.RegisterValidation("tab_type", validateTabType); err != nil {
-		return err
-	}
-	if err := v.RegisterValidation("message_type", validateMessageType); err != nil {
-		return err
-	}
-	if err := v.RegisterValidation("role", validateRole); err != nil {
-		return err
-	}
-	if err := v.RegisterValidation("status", validateStatus); err != nil {
-		return err
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		// 注册自定义验证标签
+		if err := v.RegisterValidation("username", validateUsername); err != nil {
+			return err
+		}
+		if err := v.RegisterValidation("password", validatePassword); err != nil {
+			return err
+		}
+		if err := v.RegisterValidation("node_type", validateNodeType); err != nil {
+			return err
+		}
+		if err := v.RegisterValidation("tab_type", validateTabType); err != nil {
+			return err
+		}
+		if err := v.RegisterValidation("message_type", validateMessageType); err != nil {
+			return err
+		}
+		if err := v.RegisterValidation("role", validateRole); err != nil {
+			return err
+		}
+		if err := v.RegisterValidation("status", validateStatus); err != nil {
+			return err
+		}
 	}
 	return nil
 }

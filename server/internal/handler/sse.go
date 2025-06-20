@@ -1,15 +1,10 @@
-/*
- * @Date: 2025-06-19 00:10:27
- * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-19 09:48:34
- * @FilePath: /thinking-map/server/internal/handler/sse.go
- */
 package handler
 
 import (
-	"context"
+	"io"
+	"net/http"
 
-	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/gin-gonic/gin"
 	"github.com/thinking-map/server/internal/pkg/sse"
 )
 
@@ -24,28 +19,36 @@ func NewSSEHandler(eventManager *sse.EventManager) *SSEHandler {
 }
 
 // Connect handles SSE connection requests
-func (h *SSEHandler) Connect(ctx context.Context, c *app.RequestContext) {
+func (h *SSEHandler) Connect(c *gin.Context) {
 	mapID := c.Param("mapId")
 	if mapID == "" {
-		c.JSON(400, map[string]string{"error": "map ID is required"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "map ID is required",
+		})
 		return
 	}
-	c.Response.Header.Set("Content-Type", "text/event-stream")
-	c.Response.Header.Set("Cache-Control", "no-cache")
-	c.Response.Header.Set("Connection", "keep-alive")
-	c.Response.Header.Set("Access-Control-Allow-Origin", "*")
+
+	// Set headers for SSE
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+
+	// Create SSE connection
 	connectionID, eventChan := h.eventManager.Connect(mapID)
-	for {
+
+	// Clean up connection when client disconnects
+	c.Stream(func(w io.Writer) bool {
 		select {
 		case msg, ok := <-eventChan:
 			if !ok {
-				return
+				return false
 			}
-			c.Write([]byte("event: message\ndata: " + string(msg) + "\n\n"))
-			c.Flush()
-		case <-ctx.Done():
+			c.SSEvent("message", string(msg))
+			return true
+		case <-c.Request.Context().Done():
 			h.eventManager.Disconnect(mapID, connectionID)
-			return
+			return false
 		}
-	}
+	})
 }

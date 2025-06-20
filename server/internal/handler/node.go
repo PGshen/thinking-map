@@ -1,25 +1,26 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 	"time"
 
-	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/thinking-map/server/internal/model/dto"
+	"github.com/thinking-map/server/internal/service"
 )
 
+// NodeHandler 节点相关接口
 type NodeHandler struct {
-	// TODO: Add service dependencies here
+	NodeService *service.NodeService
 }
 
-func NewNodeHandler() *NodeHandler {
-	return &NodeHandler{}
+func NewNodeHandler(nodeService *service.NodeService) *NodeHandler {
+	return &NodeHandler{NodeService: nodeService}
 }
 
 // ListNodes handles retrieving all nodes in a map
-func (h *NodeHandler) ListNodes(ctx context.Context, c *app.RequestContext) {
+func (h *NodeHandler) ListNodes(c *gin.Context) {
 	mapID := c.Param("mapId")
 	if mapID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
@@ -31,36 +32,29 @@ func (h *NodeHandler) ListNodes(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
-
-	// TODO: Call service layer to get nodes
-	// For now, return mock response
+	// 调用service层获取节点列表
+	nodes, err := h.NodeService.ListNodes(c.Request.Context(), mapID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, dto.Response{
-		Code:    http.StatusOK,
-		Message: "success",
-		Data: dto.NodeListResponse{
-			Nodes: []dto.NodeResponse{
-				{
-					ID:        uuid.New().String(),
-					MapID:     mapID,
-					ParentID:  uuid.New().String(),
-					NodeType:  "analysis",
-					Question:  "Sample Question",
-					Target:    "Sample Target",
-					Context:   "Sample Context",
-					Status:    0,
-					Position:  dto.Position{X: 100, Y: 200},
-					CreatedAt: time.Now(),
-					UpdatedAt: time.Now(),
-				},
-			},
-		},
+		Code:      http.StatusOK,
+		Message:   "success",
+		Data:      dto.NodeListResponse{Nodes: nodes},
 		Timestamp: time.Now(),
 		RequestID: uuid.New().String(),
 	})
 }
 
 // CreateNode handles creating a new node
-func (h *NodeHandler) CreateNode(c *app.RequestContext) {
+func (h *NodeHandler) CreateNode(c *gin.Context) {
 	mapID := c.Param("mapId")
 	if mapID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
@@ -72,9 +66,8 @@ func (h *NodeHandler) CreateNode(c *app.RequestContext) {
 		})
 		return
 	}
-
 	var req dto.CreateNodeRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
 			Message:   "invalid request parameters",
@@ -84,32 +77,30 @@ func (h *NodeHandler) CreateNode(c *app.RequestContext) {
 		})
 		return
 	}
-
-	// TODO: Call service layer to create node
-	// For now, return mock response
+	// TODO: 获取userID，暂用uuid.Nil
+	userID := uuid.Nil
+	resp, err := h.NodeService.CreateNode(c.Request.Context(), mapID, req, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, dto.Response{
-		Code:    http.StatusOK,
-		Message: "success",
-		Data: dto.NodeResponse{
-			ID:        uuid.New().String(),
-			MapID:     mapID,
-			ParentID:  req.ParentID,
-			NodeType:  req.NodeType,
-			Question:  req.Question,
-			Target:    req.Target,
-			Context:   req.Context,
-			Status:    0,
-			Position:  req.Position,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		},
+		Code:      http.StatusOK,
+		Message:   "success",
+		Data:      resp,
 		Timestamp: time.Now(),
 		RequestID: uuid.New().String(),
 	})
 }
 
 // UpdateNode handles updating a node
-func (h *NodeHandler) UpdateNode(c *app.RequestContext) {
+func (h *NodeHandler) UpdateNode(c *gin.Context) {
 	nodeID := c.Param("nodeId")
 	if nodeID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
@@ -121,9 +112,8 @@ func (h *NodeHandler) UpdateNode(c *app.RequestContext) {
 		})
 		return
 	}
-
 	var req dto.UpdateNodeRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
 			Message:   "invalid request parameters",
@@ -133,27 +123,30 @@ func (h *NodeHandler) UpdateNode(c *app.RequestContext) {
 		})
 		return
 	}
-
-	// TODO: Call service layer to update node
-	// For now, return mock response
+	// TODO: 获取userID，暂用uuid.Nil
+	userID := uuid.Nil
+	resp, err := h.NodeService.UpdateNode(c.Request.Context(), nodeID, req, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, dto.Response{
-		Code:    http.StatusOK,
-		Message: "success",
-		Data: dto.NodeResponse{
-			ID:        nodeID,
-			Question:  req.Question,
-			Target:    req.Target,
-			Context:   req.Context,
-			Position:  req.Position,
-			UpdatedAt: time.Now(),
-		},
+		Code:      http.StatusOK,
+		Message:   "success",
+		Data:      resp,
 		Timestamp: time.Now(),
 		RequestID: uuid.New().String(),
 	})
 }
 
 // DeleteNode handles deleting a node
-func (h *NodeHandler) DeleteNode(c *app.RequestContext) {
+func (h *NodeHandler) DeleteNode(c *gin.Context) {
 	nodeID := c.Param("nodeId")
 	if nodeID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
@@ -165,9 +158,16 @@ func (h *NodeHandler) DeleteNode(c *app.RequestContext) {
 		})
 		return
 	}
-
-	// TODO: Call service layer to delete node
-	// For now, return success response
+	if err := h.NodeService.DeleteNode(c.Request.Context(), nodeID); err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, dto.Response{
 		Code:      http.StatusOK,
 		Message:   "success",
@@ -178,7 +178,7 @@ func (h *NodeHandler) DeleteNode(c *app.RequestContext) {
 }
 
 // GetDependencies handles retrieving node dependencies
-func (h *NodeHandler) GetDependencies(c *app.RequestContext) {
+func (h *NodeHandler) GetDependencies(c *gin.Context) {
 	nodeID := c.Param("nodeId")
 	if nodeID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{

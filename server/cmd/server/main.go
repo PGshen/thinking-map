@@ -1,12 +1,22 @@
+/*
+ * @Date: 2025-06-18 22:16:47
+ * @LastEditors: peng pgs1108pgs@gmail.com
+ * @LastEditTime: 2025-06-20 23:52:18
+ * @FilePath: /thinking-map/server/cmd/server/main.go
+ */
 package main
 
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/thinking-map/server/internal/config"
+	"github.com/thinking-map/server/internal/pkg/database"
 	"github.com/thinking-map/server/internal/pkg/logger"
 	"github.com/thinking-map/server/internal/pkg/validator"
+	"github.com/thinking-map/server/internal/router"
+	"github.com/thinking-map/server/internal/service"
 	"go.uber.org/zap"
 )
 
@@ -31,5 +41,34 @@ func main() {
 	// 启动服务器
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("Server starting", zap.String("addr", addr))
-	// TODO: 启动 HTTP 服务器
+
+	// 初始化数据库
+	db, err := database.NewPostgresDB(&cfg.Database)
+	if err != nil {
+		logger.Fatal("Failed to connect to database", zap.Error(err))
+	}
+
+	// 初始化 Redis
+	redisClientRaw, err := database.NewClient(&cfg.Redis)
+	if err != nil {
+		logger.Fatal("Failed to connect to Redis", zap.Error(err))
+	}
+	redisClient := redisClientRaw
+
+	// 解析 JWT 配置
+	expireDuration, err := time.ParseDuration(cfg.JWT.Expire)
+	if err != nil {
+		logger.Fatal("Invalid JWT expire duration", zap.Error(err))
+	}
+	jwtConfig := service.JWTConfig{
+		SecretKey:       cfg.JWT.Secret,
+		AccessTokenTTL:  expireDuration,
+		RefreshTokenTTL: expireDuration * 2, // 可根据实际需求调整
+		TokenIssuer:     "thinking-map",
+	}
+
+	r := router.SetupRouter(db, redisClient, jwtConfig)
+	if err := r.Run(addr); err != nil {
+		logger.Fatal("Failed to start HTTP server", zap.Error(err))
+	}
 }

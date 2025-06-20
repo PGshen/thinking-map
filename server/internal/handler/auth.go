@@ -1,10 +1,10 @@
 package handler
 
 import (
-	"context"
+	"net/http"
 	"time"
 
-	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/thinking-map/server/internal/model/dto"
 	"github.com/thinking-map/server/internal/service"
@@ -21,11 +21,11 @@ func NewAuthHandler(authService service.AuthService) *AuthHandler {
 }
 
 // Register handles user registration
-func (h *AuthHandler) Register(ctx context.Context, c *app.RequestContext) {
+func (h *AuthHandler) Register(c *gin.Context) {
 	var req dto.RegisterRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(400, dto.Response{
-			Code:      400,
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
 			Message:   "invalid request parameters",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -33,10 +33,11 @@ func (h *AuthHandler) Register(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
-	authData, err := h.authService.Register(ctx, &req)
+
+	authData, err := h.authService.Register(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(500, dto.Response{
-			Code:      500,
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
 			Message:   "failed to register user",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -44,8 +45,9 @@ func (h *AuthHandler) Register(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
-	c.JSON(200, dto.Response{
-		Code:      200,
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      authData,
 		Timestamp: time.Now(),
@@ -54,11 +56,11 @@ func (h *AuthHandler) Register(ctx context.Context, c *app.RequestContext) {
 }
 
 // Login handles user login
-func (h *AuthHandler) Login(ctx context.Context, c *app.RequestContext) {
+func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(400, dto.Response{
-			Code:      400,
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
 			Message:   "invalid request parameters",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -66,10 +68,11 @@ func (h *AuthHandler) Login(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
-	authData, err := h.authService.Login(ctx, &req)
+
+	authData, err := h.authService.Login(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(401, dto.Response{
-			Code:      401,
+		c.JSON(http.StatusUnauthorized, dto.Response{
+			Code:      http.StatusUnauthorized,
 			Message:   "invalid credentials",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -77,8 +80,9 @@ func (h *AuthHandler) Login(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
-	c.JSON(200, dto.Response{
-		Code:      200,
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      authData,
 		Timestamp: time.Now(),
@@ -87,11 +91,11 @@ func (h *AuthHandler) Login(ctx context.Context, c *app.RequestContext) {
 }
 
 // RefreshToken handles token refresh
-func (h *AuthHandler) RefreshToken(ctx context.Context, c *app.RequestContext) {
-	refreshToken := string(c.GetHeader("Authorization"))
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	refreshToken := c.GetHeader("Authorization")
 	if refreshToken == "" {
-		c.JSON(401, dto.Response{
-			Code:      401,
+		c.JSON(http.StatusUnauthorized, dto.Response{
+			Code:      http.StatusUnauthorized,
 			Message:   "invalid refresh token",
 			Data:      nil,
 			Timestamp: time.Now(),
@@ -99,10 +103,11 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
-	authData, err := h.authService.RefreshToken(ctx, refreshToken)
+
+	authData, err := h.authService.RefreshToken(c.Request.Context(), refreshToken)
 	if err != nil {
-		c.JSON(401, dto.Response{
-			Code:      401,
+		c.JSON(http.StatusUnauthorized, dto.Response{
+			Code:      http.StatusUnauthorized,
 			Message:   "invalid refresh token",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -110,8 +115,9 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
-	c.JSON(200, dto.Response{
-		Code:      200,
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      authData,
 		Timestamp: time.Now(),
@@ -120,11 +126,11 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, c *app.RequestContext) {
 }
 
 // Logout handles user logout
-func (h *AuthHandler) Logout(ctx context.Context, c *app.RequestContext) {
-	accessToken := string(c.GetHeader("Authorization"))
+func (h *AuthHandler) Logout(c *gin.Context) {
+	accessToken := c.GetHeader("Authorization")
 	if accessToken == "" {
-		c.JSON(401, dto.Response{
-			Code:      401,
+		c.JSON(http.StatusUnauthorized, dto.Response{
+			Code:      http.StatusUnauthorized,
 			Message:   "invalid access token",
 			Data:      nil,
 			Timestamp: time.Now(),
@@ -132,9 +138,10 @@ func (h *AuthHandler) Logout(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
-	if err := h.authService.Logout(ctx, accessToken); err != nil {
-		c.JSON(500, dto.Response{
-			Code:      500,
+
+	if err := h.authService.Logout(c.Request.Context(), accessToken); err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
 			Message:   "failed to logout",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -142,8 +149,9 @@ func (h *AuthHandler) Logout(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
-	c.JSON(200, dto.Response{
-		Code:      200,
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      nil,
 		Timestamp: time.Now(),

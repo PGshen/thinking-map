@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 22:17:28
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-18 22:47:08
+ * @LastEditTime: 2025-06-19 23:49:25
  * @FilePath: /thinking-map/server/internal/pkg/database/postgres.go
  */
 package database

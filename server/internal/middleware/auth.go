@@ -7,22 +7,21 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/thinking-map/server/internal/model/dto"
 	"github.com/thinking-map/server/internal/service"
 )
 
 // AuthMiddleware creates a new authentication middleware
-func AuthMiddleware(authService service.AuthService) app.HandlerFunc {
-	return func(ctx context.Context, c *app.RequestContext) {
+func AuthMiddleware(authService service.AuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
 		// Get token from Authorization header
-		authHeader := string(c.GetHeader("Authorization"))
+		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, dto.Response{
 				Code:      http.StatusUnauthorized,
@@ -50,7 +49,7 @@ func AuthMiddleware(authService service.AuthService) app.HandlerFunc {
 		}
 
 		// Validate token
-		tokenInfo, err := authService.ValidateToken(ctx, parts[1])
+		tokenInfo, err := authService.ValidateToken(c.Request.Context(), parts[1])
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, dto.Response{
 				Code:      http.StatusUnauthorized,
@@ -67,6 +66,6 @@ func AuthMiddleware(authService service.AuthService) app.HandlerFunc {
 		c.Set("user_id", tokenInfo.UserID)
 		c.Set("username", tokenInfo.Username)
 
-		c.Next(ctx)
+		c.Next()
 	}
 }

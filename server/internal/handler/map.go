@@ -1,10 +1,10 @@
 package handler
 
 import (
-	"context"
+	"net/http"
 	"time"
 
-	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/thinking-map/server/internal/model/dto"
 	"github.com/thinking-map/server/internal/service"
@@ -21,11 +21,11 @@ func NewMapHandler(mapService *service.MapService) *MapHandler {
 }
 
 // CreateMap handles the creation of a new mind map
-func (h *MapHandler) CreateMap(ctx context.Context, c *app.RequestContext) {
+func (h *MapHandler) CreateMap(c *gin.Context) {
 	var req dto.CreateMapRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(400, dto.Response{
-			Code:      400,
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
 			Message:   "invalid request parameters",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -33,10 +33,12 @@ func (h *MapHandler) CreateMap(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
+
+	// Get user ID from context (assuming it's set by auth middleware)
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(401, dto.Response{
-			Code:      401,
+		c.JSON(http.StatusUnauthorized, dto.Response{
+			Code:      http.StatusUnauthorized,
 			Message:   "unauthorized",
 			Data:      nil,
 			Timestamp: time.Now(),
@@ -44,10 +46,12 @@ func (h *MapHandler) CreateMap(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
-	mapResponse, err := h.mapService.CreateMap(ctx, req, userID.(uuid.UUID))
+
+	// Call service to create map
+	mapResponse, err := h.mapService.CreateMap(c.Request.Context(), req, userID.(uuid.UUID))
 	if err != nil {
-		c.JSON(500, dto.Response{
-			Code:      500,
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
 			Message:   "failed to create map",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -55,8 +59,9 @@ func (h *MapHandler) CreateMap(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
-	c.JSON(200, dto.Response{
-		Code:      200,
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      mapResponse,
 		Timestamp: time.Now(),
@@ -65,11 +70,11 @@ func (h *MapHandler) CreateMap(ctx context.Context, c *app.RequestContext) {
 }
 
 // ListMaps handles retrieving a list of mind maps
-func (h *MapHandler) ListMaps(c *app.RequestContext) {
+func (h *MapHandler) ListMaps(c *gin.Context) {
 	var query dto.MapListQuery
-	if err := c.BindAndValidate(&query); err != nil {
-		c.JSON(400, dto.Response{
-			Code:      400,
+	if err := c.ShouldBindQuery(&query); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
 			Message:   "invalid query parameters",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -77,10 +82,12 @@ func (h *MapHandler) ListMaps(c *app.RequestContext) {
 		})
 		return
 	}
+
+	// Get user ID from context
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(401, dto.Response{
-			Code:      401,
+		c.JSON(http.StatusUnauthorized, dto.Response{
+			Code:      http.StatusUnauthorized,
 			Message:   "unauthorized",
 			Data:      nil,
 			Timestamp: time.Now(),
@@ -88,10 +95,12 @@ func (h *MapHandler) ListMaps(c *app.RequestContext) {
 		})
 		return
 	}
+
+	// Call service to list maps
 	maps, err := h.mapService.ListMaps(c.Request.Context(), query, userID.(uuid.UUID))
 	if err != nil {
-		c.JSON(500, dto.Response{
-			Code:      500,
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
 			Message:   "failed to list maps",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -99,8 +108,9 @@ func (h *MapHandler) ListMaps(c *app.RequestContext) {
 		})
 		return
 	}
-	c.JSON(200, dto.Response{
-		Code:      200,
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      maps,
 		Timestamp: time.Now(),
@@ -109,11 +119,11 @@ func (h *MapHandler) ListMaps(c *app.RequestContext) {
 }
 
 // GetMap handles retrieving a specific mind map
-func (h *MapHandler) GetMap(c *app.RequestContext) {
+func (h *MapHandler) GetMap(c *gin.Context) {
 	mapID := c.Param("mapId")
 	if mapID == "" {
-		c.JSON(400, dto.Response{
-			Code:      400,
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
 			Message:   "map ID is required",
 			Data:      nil,
 			Timestamp: time.Now(),
@@ -121,10 +131,12 @@ func (h *MapHandler) GetMap(c *app.RequestContext) {
 		})
 		return
 	}
+
+	// Parse map ID
 	parsedMapID, err := uuid.Parse(mapID)
 	if err != nil {
-		c.JSON(400, dto.Response{
-			Code:      400,
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
 			Message:   "invalid map ID format",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -132,10 +144,12 @@ func (h *MapHandler) GetMap(c *app.RequestContext) {
 		})
 		return
 	}
+
+	// Get user ID from context
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(401, dto.Response{
-			Code:      401,
+		c.JSON(http.StatusUnauthorized, dto.Response{
+			Code:      http.StatusUnauthorized,
 			Message:   "unauthorized",
 			Data:      nil,
 			Timestamp: time.Now(),
@@ -143,10 +157,12 @@ func (h *MapHandler) GetMap(c *app.RequestContext) {
 		})
 		return
 	}
+
+	// Call service to get map
 	mapResponse, err := h.mapService.GetMap(c.Request.Context(), parsedMapID, userID.(uuid.UUID))
 	if err != nil {
-		c.JSON(500, dto.Response{
-			Code:      500,
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
 			Message:   "failed to get map",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -154,8 +170,9 @@ func (h *MapHandler) GetMap(c *app.RequestContext) {
 		})
 		return
 	}
-	c.JSON(200, dto.Response{
-		Code:      200,
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      mapResponse,
 		Timestamp: time.Now(),
@@ -164,11 +181,11 @@ func (h *MapHandler) GetMap(c *app.RequestContext) {
 }
 
 // UpdateMap handles updating a mind map
-func (h *MapHandler) UpdateMap(c *app.RequestContext) {
+func (h *MapHandler) UpdateMap(c *gin.Context) {
 	mapID := c.Param("mapId")
 	if mapID == "" {
-		c.JSON(400, dto.Response{
-			Code:      400,
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
 			Message:   "map ID is required",
 			Data:      nil,
 			Timestamp: time.Now(),
@@ -176,10 +193,12 @@ func (h *MapHandler) UpdateMap(c *app.RequestContext) {
 		})
 		return
 	}
+
+	// Parse map ID
 	parsedMapID, err := uuid.Parse(mapID)
 	if err != nil {
-		c.JSON(400, dto.Response{
-			Code:      400,
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
 			Message:   "invalid map ID format",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -187,10 +206,11 @@ func (h *MapHandler) UpdateMap(c *app.RequestContext) {
 		})
 		return
 	}
+
 	var req dto.UpdateMapRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(400, dto.Response{
-			Code:      400,
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
 			Message:   "invalid request parameters",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -198,10 +218,12 @@ func (h *MapHandler) UpdateMap(c *app.RequestContext) {
 		})
 		return
 	}
+
+	// Get user ID from context
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(401, dto.Response{
-			Code:      401,
+		c.JSON(http.StatusUnauthorized, dto.Response{
+			Code:      http.StatusUnauthorized,
 			Message:   "unauthorized",
 			Data:      nil,
 			Timestamp: time.Now(),
@@ -209,10 +231,12 @@ func (h *MapHandler) UpdateMap(c *app.RequestContext) {
 		})
 		return
 	}
+
+	// Call service to update map
 	mapResponse, err := h.mapService.UpdateMap(c.Request.Context(), parsedMapID, req, userID.(uuid.UUID))
 	if err != nil {
-		c.JSON(500, dto.Response{
-			Code:      500,
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
 			Message:   "failed to update map",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -220,8 +244,9 @@ func (h *MapHandler) UpdateMap(c *app.RequestContext) {
 		})
 		return
 	}
-	c.JSON(200, dto.Response{
-		Code:      200,
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      mapResponse,
 		Timestamp: time.Now(),
@@ -230,11 +255,11 @@ func (h *MapHandler) UpdateMap(c *app.RequestContext) {
 }
 
 // DeleteMap handles deleting a mind map
-func (h *MapHandler) DeleteMap(c *app.RequestContext) {
+func (h *MapHandler) DeleteMap(c *gin.Context) {
 	mapID := c.Param("mapId")
 	if mapID == "" {
-		c.JSON(400, dto.Response{
-			Code:      400,
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
 			Message:   "map ID is required",
 			Data:      nil,
 			Timestamp: time.Now(),
@@ -242,10 +267,12 @@ func (h *MapHandler) DeleteMap(c *app.RequestContext) {
 		})
 		return
 	}
+
+	// Parse map ID
 	parsedMapID, err := uuid.Parse(mapID)
 	if err != nil {
-		c.JSON(400, dto.Response{
-			Code:      400,
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
 			Message:   "invalid map ID format",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -253,10 +280,12 @@ func (h *MapHandler) DeleteMap(c *app.RequestContext) {
 		})
 		return
 	}
+
+	// Get user ID from context
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(401, dto.Response{
-			Code:      401,
+		c.JSON(http.StatusUnauthorized, dto.Response{
+			Code:      http.StatusUnauthorized,
 			Message:   "unauthorized",
 			Data:      nil,
 			Timestamp: time.Now(),
@@ -264,9 +293,11 @@ func (h *MapHandler) DeleteMap(c *app.RequestContext) {
 		})
 		return
 	}
+
+	// Call service to delete map
 	if err := h.mapService.DeleteMap(c.Request.Context(), parsedMapID, userID.(uuid.UUID)); err != nil {
-		c.JSON(500, dto.Response{
-			Code:      500,
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
 			Message:   "failed to delete map",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
@@ -274,8 +305,9 @@ func (h *MapHandler) DeleteMap(c *app.RequestContext) {
 		})
 		return
 	}
-	c.JSON(200, dto.Response{
-		Code:      200,
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      nil,
 		Timestamp: time.Now(),

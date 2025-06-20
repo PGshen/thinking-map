@@ -4,12 +4,15 @@ server:
 
 database:
   driver: postgres
-  host: localhost
-  port: 5432
-  username: postgres
-  password: postgres
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  username: ${DB_USERNAME}
+  password: ${DB_PASSWORD}
   dbname: thinking_map
   sslmode: disable
+redis:
+  addr: ${REDIS_ADDR}
+  password: ${REDIS_PASSWORD}
 
 jwt:
   secret: your-secret-key
