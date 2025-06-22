@@ -1,11 +1,45 @@
+/*
+ * @Date: 2025-06-18 22:26:13
+ * @LastEditors: peng pgs1108pgs@gmail.com
+ * @LastEditTime: 2025-06-23 00:01:47
+ * @FilePath: /thinking-map/server/internal/model/message.go
+ */
 package model
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
+
+// Message 消息模型
+type Message struct {
+	ID          uuid.UUID      `gorm:"type:uuid;primary_key"`
+	NodeID      uuid.UUID      `gorm:"type:uuid;not null;index"`
+	ParentID    uuid.UUID      `gorm:"type:uuid;index"`
+	MessageType string         `gorm:"type:varchar(20);not null;default:1"` // text, rag, notice
+	Content     MessageContent `gorm:"type:jsonb;not null"`
+	Metadata    datatypes.JSON `gorm:"type:jsonb;default:'{}'"`
+	CreatedAt   time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+	UpdatedAt   time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (m *Message) BeforeCreate(tx *gorm.DB) error {
+	if m.ID == uuid.Nil {
+		m.ID = uuid.New()
+	}
+	return nil
+}
+
+func (Message) TableName() string {
+	return "messages"
+}
 
 // Notice 通知信息
 type Notice struct {
@@ -20,23 +54,20 @@ type MessageContent struct {
 	Notice []Notice `json:"notice,omitempty"`
 }
 
-// Message 消息模型
-type Message struct {
-	ID          uuid.UUID `gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	NodeID      uuid.UUID `gorm:"type:uuid;not null;index"`
-	ParentID    uuid.UUID `gorm:"type:uuid;index"`
-	MessageType int       `gorm:"type:int;not null;default:1"` // 1:text, 2:image, 3:file, 4:link
-	Content     string    `gorm:"type:text;not null"`
-	Status      int       `gorm:"type:int;not null;default:1"`
-	CreatedAt   time.Time `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
-	UpdatedAt   time.Time `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
-	CreatedBy   uuid.UUID `gorm:"type:uuid;not null"`
-	UpdatedBy   uuid.UUID `gorm:"type:uuid;not null"`
+// MessageContent 实现 Scanner 接口
+func (m *MessageContent) Scan(value interface{}) error {
+	if value == nil {
+		*m = MessageContent{}
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal JSON value: %v", value)
+	}
+	return json.Unmarshal(bytes, m)
 }
 
-func (m *Message) BeforeCreate(tx *gorm.DB) error {
-	if m.ID == uuid.Nil {
-		m.ID = uuid.New()
-	}
-	return nil
+// MessageContent 实现 Valuer 接口
+func (m MessageContent) Value() (driver.Value, error) {
+	return json.Marshal(m)
 }

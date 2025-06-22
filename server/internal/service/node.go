@@ -2,23 +2,25 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/thinking-map/server/internal/model"
 	"github.com/thinking-map/server/internal/model/dto"
+	"github.com/thinking-map/server/internal/pkg/comm"
 	"github.com/thinking-map/server/internal/repository"
 )
 
 type NodeService struct {
-	nodeRepo repository.ThinkingNode
+	nodeRepo       repository.ThinkingNode
+	nodeDetailRepo repository.NodeDetail
 }
 
-func NewNodeService(nodeRepo repository.ThinkingNode) *NodeService {
+func NewNodeService(nodeRepo repository.ThinkingNode, nodeDetailRepo repository.NodeDetail) *NodeService {
 	return &NodeService{
-		nodeRepo: nodeRepo,
+		nodeRepo:       nodeRepo,
+		nodeDetailRepo: nodeDetailRepo,
 	}
 }
 
@@ -34,7 +36,18 @@ func (s *NodeService) ListNodes(ctx context.Context, mapID string) ([]dto.NodeRe
 	}
 	var res []dto.NodeResponse
 	for _, n := range nodes {
-		res = append(res, modelToNodeResponse(n))
+		details, err := s.nodeDetailRepo.FindByNodeID(ctx, n.ID)
+		if err != nil {
+			return nil, err
+		}
+		resp := modelToNodeResponse(n)
+		if details != nil {
+			resp.NodeDetails = make([]model.NodeDetail, len(details))
+			for i, d := range details {
+				resp.NodeDetails[i] = *d
+			}
+		}
+		res = append(res, resp)
 	}
 	return res, nil
 }
@@ -49,36 +62,59 @@ func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.Crea
 	if err != nil {
 		return nil, errors.New("invalid parentID")
 	}
-	posBytes, _ := json.Marshal(req.Position)
-	var pos model.JSONB
-	_ = json.Unmarshal(posBytes, &pos)
 	node := &model.ThinkingNode{
-		ID:        uuid.New(),
-		MapID:     mapUUID,
-		ParentID:  parentUUID,
-		NodeType:  nodeTypeStrToInt(req.NodeType),
-		Content:   req.Question, // 这里假设Content存储Question
-		Position:  pos,
-		Status:    1,
+		MapID:    mapUUID,
+		ParentID: parentUUID,
+		NodeType: req.NodeType,
+		Question: req.Question,
+		Target:   req.Target,
+		Status:   1,
+		Position: model.Position{
+			X:      req.Position.X,
+			Y:      req.Position.Y,
+			Width:  req.Position.Width,
+			Height: req.Position.Height,
+		},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		CreatedBy: userID,
-		UpdatedBy: userID,
 	}
 	if err := s.nodeRepo.Create(ctx, node); err != nil {
 		return nil, err
 	}
+	// 创建node同时创建node_detail记录，默认创建info, conclusion两种类型的节点详情，decompose类型在执行过程中有需要再创建
+	infoDetail := &model.NodeDetail{
+		ID:         uuid.New(),
+		NodeID:     node.ID,
+		DetailType: comm.DetailTypeInfo,
+		Content: model.DetailContent{
+			Question: req.Question,
+			Target:   req.Target,
+		},
+		Status:    comm.DetailStatusPending,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	conclusionDetail := &model.NodeDetail{
+		ID:         uuid.New(),
+		NodeID:     node.ID,
+		DetailType: comm.DetailTypeConclusion,
+		Content:    model.DetailContent{},
+		Status:     comm.DetailStatusPending,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+	if err := s.nodeDetailRepo.Create(ctx, infoDetail); err != nil {
+		return nil, err
+	}
+	if err := s.nodeDetailRepo.Create(ctx, conclusionDetail); err != nil {
+		return nil, err
+	}
 	resp := modelToNodeResponse(node)
-	resp.MapID = mapID
-	resp.ParentID = req.ParentID
-	resp.Question = req.Question
-	resp.Target = req.Target
-	resp.Context = req.Context
 	return &resp, nil
 }
 
 // UpdateNode 更新节点
-func (s *NodeService) UpdateNode(ctx context.Context, nodeID string, req dto.UpdateNodeRequest, userID uuid.UUID) (*dto.NodeResponse, error) {
+func (s *NodeService) UpdateNode(ctx context.Context, nodeID string, req dto.UpdateNodeRequest) (*dto.NodeResponse, error) {
 	uid, err := uuid.Parse(nodeID)
 	if err != nil {
 		return nil, errors.New("invalid nodeID")
@@ -88,23 +124,24 @@ func (s *NodeService) UpdateNode(ctx context.Context, nodeID string, req dto.Upd
 		return nil, err
 	}
 	if req.Question != "" {
-		node.Content = req.Question
+		node.Question = req.Question
 	}
-	if (req.Position != dto.Position{}) {
-		posBytes, _ := json.Marshal(req.Position)
-		var pos model.JSONB
-		_ = json.Unmarshal(posBytes, &pos)
-		node.Position = pos
+	if req.Target != "" {
+		node.Target = req.Target
+	}
+	if (req.Position != model.Position{}) {
+		node.Position = model.Position{
+			X:      req.Position.X,
+			Y:      req.Position.Y,
+			Width:  req.Position.Width,
+			Height: req.Position.Height,
+		}
 	}
 	node.UpdatedAt = time.Now()
-	node.UpdatedBy = userID
 	if err := s.nodeRepo.Update(ctx, node); err != nil {
 		return nil, err
 	}
 	resp := modelToNodeResponse(node)
-	resp.Question = req.Question
-	resp.Target = req.Target
-	resp.Context = req.Context
 	return &resp, nil
 }
 
@@ -119,46 +156,18 @@ func (s *NodeService) DeleteNode(ctx context.Context, nodeID string) error {
 
 // modelToNodeResponse 将model.ThinkingNode转为dto.NodeResponse
 func modelToNodeResponse(n *model.ThinkingNode) dto.NodeResponse {
-	var pos dto.Position
-	posBytes, _ := json.Marshal(n.Position)
-	_ = json.Unmarshal(posBytes, &pos)
 	return dto.NodeResponse{
-		ID:        n.ID.String(),
-		MapID:     n.MapID.String(),
-		ParentID:  n.ParentID.String(),
-		NodeType:  nodeTypeIntToStr(n.NodeType),
-		Question:  n.Content, // 假设Content存储Question
-		Status:    n.Status,
-		Position:  pos,
-		CreatedAt: n.CreatedAt,
-		UpdatedAt: n.UpdatedAt,
-	}
-}
-
-// nodeTypeStrToInt 字符串类型转int
-func nodeTypeStrToInt(t string) int {
-	switch t {
-	case "question":
-		return 1
-	case "analysis":
-		return 2
-	case "target":
-		return 3
-	default:
-		return 1
-	}
-}
-
-// nodeTypeIntToStr int类型转字符串
-func nodeTypeIntToStr(t int) string {
-	switch t {
-	case 1:
-		return "question"
-	case 2:
-		return "analysis"
-	case 3:
-		return "target"
-	default:
-		return "question"
+		ID:           n.ID.String(),
+		MapID:        n.MapID.String(),
+		ParentID:     n.ParentID.String(),
+		NodeType:     n.NodeType,
+		Question:     n.Question,
+		Target:       n.Target,
+		Context:      n.Context,
+		Status:       n.Status,
+		Position:     n.Position,
+		Dependencies: n.Dependencies,
+		CreatedAt:    n.CreatedAt,
+		UpdatedAt:    n.UpdatedAt,
 	}
 }

@@ -123,9 +123,8 @@ func (h *NodeHandler) UpdateNode(c *gin.Context) {
 		})
 		return
 	}
-	// TODO: 获取userID，暂用uuid.Nil
-	userID := uuid.Nil
-	resp, err := h.NodeService.UpdateNode(c.Request.Context(), nodeID, req, userID)
+	// TODO: 获取userID，校验节点是否属于该用户
+	resp, err := h.NodeService.UpdateNode(c.Request.Context(), nodeID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,
@@ -202,7 +201,6 @@ func (h *NodeHandler) GetDependencies(c *gin.Context) {
 					NodeID:         uuid.New().String(),
 					DependencyType: "prerequisite",
 					Required:       true,
-					Status:         2,
 				},
 			},
 			DependentNodes: []dto.DependencyInfo{
@@ -210,7 +208,6 @@ func (h *NodeHandler) GetDependencies(c *gin.Context) {
 					NodeID:         uuid.New().String(),
 					DependencyType: "dependent",
 					Required:       true,
-					Status:         0,
 				},
 			},
 		},

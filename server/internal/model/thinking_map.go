@@ -1,29 +1,37 @@
 /*
  * @Date: 2025-06-18 22:25:29
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-18 23:09:42
+ * @LastEditTime: 2025-06-23 00:02:02
  * @FilePath: /thinking-map/server/internal/model/thinking_map.go
  */
 package model
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
 // ThinkingMap 思维导图模型
 type ThinkingMap struct {
-	ID           uuid.UUID `gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	Title        string    `gorm:"type:varchar(100);not null"`
-	Description  string    `gorm:"type:text"`
-	RootQuestion string    `gorm:"type:text;not null"`
-	Status       int       `gorm:"type:int;not null;default:1"`
-	CreatedAt    time.Time `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
-	UpdatedAt    time.Time `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
-	CreatedBy    uuid.UUID `gorm:"type:uuid;not null"`
-	UpdatedBy    uuid.UUID `gorm:"type:uuid;not null"`
+	ID          uuid.UUID      `gorm:"type:uuid;primary_key"`
+	UserID      uuid.UUID      `json:"user_id" gorm:"type:uuid;not null"`
+	Problem     string         `json:"problem" gorm:"type:text;not null"`
+	ProblemType string         `json:"problem_type" gorm:"type:varchar(50)"`
+	Target      string         `json:"target" gorm:"type:text"`
+	KeyPoints   KeyPoints      `json:"key_points" gorm:"type:jsonb"`
+	Constraints Constraints    `json:"constraints" gorm:"type:jsonb"`
+	Conclusion  string         `json:"conclusion" gorm:"type:text"`
+	Status      int            `json:"status" gorm:"type:int;not null;default:1"`
+	Metadata    datatypes.JSON `json:"metadata" gorm:"type:jsonb"`
+	CreatedAt   time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
+	UpdatedAt   time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 func (t *ThinkingMap) BeforeCreate(tx *gorm.DB) error {
@@ -31,4 +39,55 @@ func (t *ThinkingMap) BeforeCreate(tx *gorm.DB) error {
 		t.ID = uuid.New()
 	}
 	return nil
+}
+
+// TableName 定义表名
+func (ThinkingMap) TableName() string {
+	return "thinking_maps"
+}
+
+type KeyPoints []string
+
+// 实现Scanner接口
+func (k *KeyPoints) Scan(value interface{}) error {
+	if value == nil {
+		*k = nil
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal JSON value: %v", value)
+	}
+	return json.Unmarshal(bytes, k)
+}
+
+// 实现Valuer接口
+func (k KeyPoints) Value() (driver.Value, error) {
+	if len(k) == 0 {
+		return nil, nil
+	}
+	return json.Marshal(k)
+}
+
+type Constraints []string
+
+// 实现Scanner接口
+func (c *Constraints) Scan(value interface{}) error {
+	if value == nil {
+		*c = nil
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal JSON value: %v", value)
+	}
+	return json.Unmarshal(bytes, c)
+}
+
+// 实现Valuer接口
+func (c Constraints) Value() (driver.Value, error) {
+	if len(c) == 0 {
+		return nil, nil
+	}
+	return json.Marshal(c)
 }

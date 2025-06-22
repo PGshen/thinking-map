@@ -1,6 +1,16 @@
+/*
+ * @Date: 2025-06-19 00:09:56
+ * @LastEditors: peng pgs1108pgs@gmail.com
+ * @LastEditTime: 2025-06-22 21:37:47
+ * @FilePath: /thinking-map/server/internal/model/dto/sse.go
+ */
 package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/thinking-map/server/internal/model"
+)
 
 // SSEConnectionResponse represents the SSE connection response
 type SSEConnectionResponse struct {
@@ -18,13 +28,13 @@ type SSEDisconnectionResponse struct {
 
 // NodeCreatedEvent represents the node creation event
 type NodeCreatedEvent struct {
-	NodeID    string    `json:"node_id"`
-	ParentID  string    `json:"parent_id"`
-	NodeType  string    `json:"node_type"`
-	Question  string    `json:"question"`
-	Target    string    `json:"target"`
-	Position  Position  `json:"position"`
-	Timestamp time.Time `json:"timestamp"`
+	NodeID    string         `json:"node_id"`
+	ParentID  string         `json:"parent_id"`
+	NodeType  string         `json:"node_type"`
+	Question  string         `json:"question"`
+	Target    string         `json:"target"`
+	Position  model.Position `json:"position"`
+	Timestamp time.Time      `json:"timestamp"`
 }
 
 // NodeUpdatedEvent represents the node update event

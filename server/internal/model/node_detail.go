@@ -1,18 +1,53 @@
+/*
+ * @Date: 2025-06-18 22:25:59
+ * @LastEditors: peng pgs1108pgs@gmail.com
+ * @LastEditTime: 2025-06-23 00:01:53
+ * @FilePath: /thinking-map/server/internal/model/node_detail.go
+ */
 package model
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
+// NodeDetail 节点详情模型
+type NodeDetail struct {
+	ID         uuid.UUID      `gorm:"type:uuid;primary_key"`
+	NodeID     uuid.UUID      `gorm:"type:uuid;not null;index"`
+	DetailType string         `gorm:"type:varchar(50);not null"` // 1:text, 2:image, 3:file, 4:link
+	Content    DetailContent  `gorm:"type:jsonb;not null;default:'{}'"`
+	Status     int            `gorm:"type:int;not null;default:1"`
+	Metadata   datatypes.JSON `gorm:"type:jsonb;default:'{}'"`
+	CreatedAt  time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+	UpdatedAt  time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (n *NodeDetail) BeforeCreate(tx *gorm.DB) error {
+	if n.ID == uuid.Nil {
+		n.ID = uuid.New()
+	}
+	return nil
+}
+
+func (NodeDetail) TableName() string {
+	return "node_details"
+}
+
 // ContextInfo 上下文信息
 type ContextInfo struct {
-	Type       string `json:"type"`
-	Question   string `json:"question"`
-	Target     string `json:"target"`
-	Conclusion string `json:"conclusion"`
+	NodeID     uuid.UUID `json:"node_id"`
+	Type       string    `json:"type"`
+	Question   string    `json:"question"`
+	Target     string    `json:"target"`
+	Conclusion string    `json:"conclusion"`
 }
 
 // DecomposeResult 分解结果
@@ -21,8 +56,8 @@ type DecomposeResult struct {
 	Target   string `json:"target"`
 }
 
-// TabContent 标签页内容
-type TabContent struct {
+// DetailContent 标签页内容
+type DetailContent struct {
 	// Info tab
 	Context  []ContextInfo `json:"context,omitempty"`
 	Question string        `json:"question,omitempty"`
@@ -36,22 +71,20 @@ type TabContent struct {
 	Conclusion string `json:"conclusion,omitempty"`
 }
 
-// NodeDetail 节点详情模型
-type NodeDetail struct {
-	ID         uuid.UUID `gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	NodeID     uuid.UUID `gorm:"type:uuid;not null;index"`
-	DetailType int       `gorm:"type:int;not null;default:1"` // 1:text, 2:image, 3:file, 4:link
-	Content    JSONB     `gorm:"type:jsonb;not null;default:'{}'"`
-	Status     int       `gorm:"type:int;not null;default:1"`
-	CreatedAt  time.Time `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
-	UpdatedAt  time.Time `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
-	CreatedBy  uuid.UUID `gorm:"type:uuid;not null"`
-	UpdatedBy  uuid.UUID `gorm:"type:uuid;not null"`
+// DetailContent 实现 Scanner 接口
+func (d *DetailContent) Scan(value interface{}) error {
+	if value == nil {
+		*d = DetailContent{}
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal JSON value: %v", value)
+	}
+	return json.Unmarshal(bytes, d)
 }
 
-func (n *NodeDetail) BeforeCreate(tx *gorm.DB) error {
-	if n.ID == uuid.Nil {
-		n.ID = uuid.New()
-	}
-	return nil
+// DetailContent 实现 Valuer 接口
+func (d DetailContent) Value() (driver.Value, error) {
+	return json.Marshal(d)
 }

@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 22:17:20
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-19 00:19:26
+ * @LastEditTime: 2025-06-23 00:02:14
  * @FilePath: /thinking-map/server/internal/model/user.go
  */
 package model
@@ -21,8 +21,8 @@ type User struct {
 	Password  string         `gorm:"type:varchar(255);not null" json:"-"`
 	FullName  string         `gorm:"type:varchar(100);not null" json:"full_name"`
 	Status    int            `gorm:"type:smallint;default:1;not null" json:"status"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	CreatedAt time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
+	UpdatedAt time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
 

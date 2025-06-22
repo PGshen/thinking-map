@@ -1,33 +1,53 @@
+/*
+ * @Date: 2025-06-18 23:59:38
+ * @LastEditors: peng pgs1108pgs@gmail.com
+ * @LastEditTime: 2025-06-22 20:23:45
+ * @FilePath: /thinking-map/server/internal/model/dto/map.go
+ */
 package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/thinking-map/server/internal/model"
+)
 
 // CreateMapRequest represents the request body for creating a mind map
 type CreateMapRequest struct {
-	Title        string `json:"title" binding:"required,max=100"`
-	Description  string `json:"description" binding:"max=500"`
-	RootQuestion string `json:"root_question" binding:"required,max=200"`
+	Problem     string            `json:"problem" binding:"required,max=1000"`
+	ProblemType string            `json:"problem_type" binding:"max=50"`
+	Target      string            `json:"target" binding:"max=1000"`
+	KeyPoints   model.KeyPoints   `json:"key_points"`
+	Constraints model.Constraints `json:"constraints"`
+	Conclusion  string            `json:"conclusion" binding:"max=1000"`
 }
 
 // UpdateMapRequest represents the request body for updating a mind map
 type UpdateMapRequest struct {
-	Title       string `json:"title" binding:"max=100"`
-	Description string `json:"description" binding:"max=500"`
-	Status      int    `json:"status" binding:"oneof=0 1 2"`
+	Status      int               `json:"status" binding:"oneof=0 1 2"`
+	Problem     string            `json:"problem" binding:"max=1000"`
+	ProblemType string            `json:"problem_type" binding:"max=50"`
+	Target      string            `json:"target" binding:"max=1000"`
+	KeyPoints   model.KeyPoints   `json:"key_points"`
+	Constraints model.Constraints `json:"constraints"`
+	Conclusion  string            `json:"conclusion" binding:"max=1000"`
 }
 
 // MapResponse represents the mind map data in responses
 type MapResponse struct {
-	ID           string                 `json:"id"`
-	Title        string                 `json:"title"`
-	Description  string                 `json:"description"`
-	RootQuestion string                 `json:"root_question"`
-	RootNodeID   string                 `json:"root_node_id,omitempty"`
-	Status       int                    `json:"status"`
-	Metadata     map[string]interface{} `json:"metadata"`
-	NodeCount    int                    `json:"node_count,omitempty"`
-	CreatedAt    time.Time              `json:"created_at"`
-	UpdatedAt    time.Time              `json:"updated_at"`
+	ID          string            `json:"id"`
+	RootNodeID  string            `json:"root_node_id,omitempty"`
+	Status      int               `json:"status"`
+	Problem     string            `json:"problem"`
+	ProblemType string            `json:"problem_type"`
+	Target      string            `json:"target"`
+	KeyPoints   model.KeyPoints   `json:"key_points"`
+	Constraints model.Constraints `json:"constraints"`
+	Conclusion  string            `json:"conclusion"`
+	Metadata    interface{}       `json:"metadata"`
+	NodeCount   int               `json:"node_count,omitempty"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
 // MapListResponse represents the paginated list of mind maps

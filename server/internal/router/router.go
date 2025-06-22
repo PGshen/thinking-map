@@ -28,11 +28,12 @@ func SetupRouter(
 	// Create repositories
 	mapRepo := repository.NewMapRepository(db)
 	nodeRepo := repository.NewThinkingNodeRepository(db)
+	nodeDetailRepo := repository.NewNodeDetailRepository(db)
 
 	// Create services
 	authService := service.NewAuthService(db, redisClient, jwtConfig)
 	mapService := service.NewMapService(mapRepo)
-	nodeService := service.NewNodeService(nodeRepo)
+	nodeService := service.NewNodeService(nodeRepo, nodeDetailRepo)
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)

@@ -41,7 +41,7 @@ func (r *MapRepository) ListMaps(userID uuid.UUID, status int, page, limit int) 
 	var maps []model.ThinkingMap
 	var total int64
 
-	dbQuery := r.db.Model(&model.ThinkingMap{}).Where("created_by = ?", userID)
+	dbQuery := r.db.Model(&model.ThinkingMap{}).Where("user_id = ?", userID)
 	if status > 0 {
 		dbQuery = dbQuery.Where("status = ?", status)
 	}
@@ -61,7 +61,7 @@ func (r *MapRepository) ListMaps(userID uuid.UUID, status int, page, limit int) 
 // GetMap retrieves a specific thinking map
 func (r *MapRepository) GetMap(mapID, userID uuid.UUID) (*model.ThinkingMap, error) {
 	var thinkingMap model.ThinkingMap
-	if err := r.db.Where("id = ? AND created_by = ?", mapID, userID).First(&thinkingMap).Error; err != nil {
+	if err := r.db.Where("id = ? AND user_id = ?", mapID, userID).First(&thinkingMap).Error; err != nil {
 		return nil, err
 	}
 	return &thinkingMap, nil
@@ -88,7 +88,7 @@ func (r *MapRepository) GetNodeCount(mapID uuid.UUID) (int64, error) {
 // UpdateMap updates a thinking map
 func (r *MapRepository) UpdateMap(mapID, userID uuid.UUID, updates map[string]interface{}) error {
 	return r.db.Model(&model.ThinkingMap{}).
-		Where("id = ? AND created_by = ?", mapID, userID).
+		Where("id = ? AND user_id = ?", mapID, userID).
 		Updates(updates).Error
 }
 
@@ -104,7 +104,7 @@ func (r *MapRepository) DeleteMap(mapID, userID uuid.UUID) error {
 		return err
 	}
 
-	if err := tx.Where("id = ? AND created_by = ?", mapID, userID).Delete(&model.ThinkingMap{}).Error; err != nil {
+	if err := tx.Where("id = ? AND user_id = ?", mapID, userID).Delete(&model.ThinkingMap{}).Error; err != nil {
 		tx.Rollback()
 		return err
 	}

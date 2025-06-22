@@ -418,71 +418,63 @@ server/
 ### 5.1 数据库表结构
 #### 5.1.1 用户表 (users)
 ```sql
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    full_name VARCHAR(100),
-    avatar_url VARCHAR(255),
-    status INTEGER DEFAULT 1, -- 1:active, 0:inactive
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE
+CREATE TABLE "users" (
+    id UUID PRIMARY KEY,
+    username VARCHAR(32) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    status SMALLINT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
 );
-
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_status ON users(status);
+CREATE INDEX idx_users_deleted_at ON "users"(deleted_at);
 ```
 
 #### 5.1.2 思维导图表 (thinking_maps)
 ```sql
-CREATE TABLE thinking_maps (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE "thinking_maps" (
+    id UUID PRIMARY KEY,
     user_id UUID NOT NULL,
-    title VARCHAR(200) NOT NULL,
-    description TEXT,
-    root_question TEXT NOT NULL,
-    status INTEGER DEFAULT 1, -- 1:active, 2:completed, 0:archived
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE
+    problem TEXT NOT NULL,
+    problem_type VARCHAR(50),
+    target TEXT,
+    key_points JSONB,
+    constraints JSONB,
+    conclusion TEXT,
+    status INT NOT NULL DEFAULT 1,
+    metadata JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
 );
-
-CREATE INDEX idx_thinking_maps_user_id ON thinking_maps(user_id);
-CREATE INDEX idx_thinking_maps_status ON thinking_maps(status);
-CREATE INDEX idx_thinking_maps_metadata ON thinking_maps USING GIN(metadata);
+CREATE INDEX idx_thinking_maps_user_id ON "thinking_maps"(user_id);
+CREATE INDEX idx_thinking_maps_deleted_at ON "thinking_maps"(deleted_at);
 ```
 
 #### 5.1.3 节点表 (thinking_nodes)
 ```sql
-CREATE TABLE thinking_nodes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE "thinking_nodes" (
+    id UUID PRIMARY KEY,
     map_id UUID NOT NULL,
     parent_id UUID,
-    node_type VARCHAR(50) NOT NULL, -- root, analysis, conclusion, custom
+    node_type VARCHAR(50) NOT NULL,
     question TEXT NOT NULL,
     target TEXT,
-    context TEXT,
+    context TEXT DEFAULT '[]',
     conclusion TEXT,
-    status INTEGER DEFAULT 0, -- 0:pending, 1:processing, 2:completed, -1:failed
-    position JSONB DEFAULT '{"x": 0, "y": 0}',
+    status INT DEFAULT 0,
+    position JSONB DEFAULT '{"x":0,"y":0}',
     metadata JSONB DEFAULT '{}',
-    dependencies JSONB DEFAULT '[]', -- 依赖的节点ID数组
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE
+    dependencies JSONB DEFAULT '[]',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
 );
-
-CREATE INDEX idx_thinking_nodes_map_id ON thinking_nodes(map_id);
-CREATE INDEX idx_thinking_nodes_parent_id ON thinking_nodes(parent_id);
-CREATE INDEX idx_thinking_nodes_status ON thinking_nodes(status);
-CREATE INDEX idx_thinking_nodes_type ON thinking_nodes(node_type);
-CREATE INDEX idx_thinking_nodes_position ON thinking_nodes USING GIN(position);
-CREATE INDEX idx_thinking_nodes_metadata ON thinking_nodes USING GIN(metadata);
-CREATE INDEX idx_thinking_nodes_dependencies ON thinking_nodes USING GIN(dependencies);
+CREATE INDEX idx_thinking_nodes_map_id ON "thinking_nodes"(map_id);
+CREATE INDEX idx_thinking_nodes_parent_id ON "thinking_nodes"(parent_id);
+CREATE INDEX idx_thinking_nodes_deleted_at ON "thinking_nodes"(deleted_at);
 ```
 > position 字段结构
 ```json
@@ -506,21 +498,19 @@ CREATE INDEX idx_thinking_nodes_dependencies ON thinking_nodes USING GIN(depende
 
 #### 5.1.4 节点详情表 (node_details)
 ```sql
-CREATE TABLE node_details (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE "node_details" (
+    id UUID PRIMARY KEY,
     node_id UUID NOT NULL,
-    tab_type VARCHAR(20) NOT NULL, -- info, decompose, conclusion
-    status INTEGER DEFAULT 0, -- 0:pending, 1:processing, 2:completed, -1:failed
-    tab_content JSONB DEFAULT '{}',
+    detail_type VARCHAR(50) NOT NULL,
+    content JSONB NOT NULL DEFAULT '{}',
+    status INT NOT NULL DEFAULT 1,
     metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
 );
-
-CREATE INDEX idx_node_details_node_id ON node_details(node_id);
-CREATE INDEX idx_node_details_tab_type ON node_details(tab_type);
-CREATE INDEX idx_node_details_metadata ON node_details USING GIN(metadata);
+CREATE INDEX idx_node_details_node_id ON "node_details"(node_id);
+CREATE INDEX idx_node_details_deleted_at ON "node_details"(deleted_at);
 ```
 > tab_content 字段结构
 // info tab
@@ -571,24 +561,20 @@ CREATE INDEX idx_node_details_metadata ON node_details USING GIN(metadata);
 
 #### 5.1.5 消息表 (messages)
 ```sql
-CREATE TABLE messages (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE "messages" (
+    id UUID PRIMARY KEY,
     node_id UUID NOT NULL,
-    role VARCHAR(20) NOT NULL, -- user, assistant, system
-    message_type VARCHAR(20) NOT NULL, -- text, rag, notice
-    content JSONB DEFAULT '{}',
     parent_id UUID,
-    version INTEGER NOT NULL DEFAULT 1, -- 消息版本号，用于回滚
+    message_type VARCHAR(20) NOT NULL DEFAULT '1',
+    content JSONB NOT NULL,
     metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
 );
-
-CREATE INDEX idx_messages_node_id ON messages(node_id);
-CREATE INDEX idx_messages_parent_id ON messages(parent_id);
-CREATE INDEX idx_messages_version ON messages(version);
-CREATE INDEX idx_messages_metadata ON messages USING GIN(metadata);
+CREATE INDEX idx_messages_node_id ON "messages"(node_id);
+CREATE INDEX idx_messages_parent_id ON "messages"(parent_id);
+CREATE INDEX idx_messages_deleted_at ON "messages"(deleted_at);
 ```
 > content 字段结构
 ```json
@@ -605,19 +591,17 @@ CREATE INDEX idx_messages_metadata ON messages USING GIN(metadata);
 ```
 #### 5.1.6 RAG检索记录表 (rag_record)
 ```sql
-CREATE TABLE rag_record (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    node_id UUID NOT NULL,
+CREATE TABLE "rag_records" (
+    id UUID PRIMARY KEY,
     query TEXT NOT NULL,
-    context TEXT,
-    retrieved_docs JSONB DEFAULT '[]',
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE
+    answer TEXT NOT NULL,
+    sources JSONB NOT NULL DEFAULT '[]',
+    status INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
 );
-
-CREATE INDEX idx_rag_record_node_id ON rag_record(node_id);
+CREATE INDEX idx_rag_records_deleted_at ON "rag_records"(deleted_at);
 ```
 
 ## 6. API设计
