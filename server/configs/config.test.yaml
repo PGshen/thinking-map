@@ -1,0 +1,31 @@
+# 测试环境配置
+server:
+  port: 8080
+  mode: test
+
+database:
+  driver: postgres
+  host: ${DB_HOST:-localhost}
+  port: ${DB_PORT:-5432}
+  username: ${DB_USER:-postgres}
+  password: ${DB_PASSWORD:-postgres}
+  dbname: ${DB_NAME:-thinking_map_test}
+  sslmode: disable
+
+redis:
+  addr: ${REDIS_ADDR:-localhost:6379}
+  password: ${REDIS_PASSWORD:-}
+  db: ${REDIS_DB:-2}
+
+jwt:
+  secret: ${JWT_SECRET:-testsecret}
+  expire: ${JWT_ACCESS_TTL:-10m}
+
+log:
+  level: error
+  filename: logs/test.log
+  maxSize: 10
+  maxBackups: 3
+  maxAge: 7
+  compress: false
+  console: false 

@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/thinking-map/server/internal/model"
 	"github.com/thinking-map/server/internal/model/dto"
@@ -94,7 +96,13 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 		ExpiresAt:   time.Now().Add(s.jwt.AccessTokenTTL),
 	}
 
-	if err := s.redis.Set(ctx, "token:"+accessToken, tokenInfo, s.jwt.AccessTokenTTL).Err(); err != nil {
+	// Serialize token info to JSON
+	tokenInfoJSON, err := json.Marshal(tokenInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.redis.Set(ctx, "token:"+accessToken, tokenInfoJSON, s.jwt.AccessTokenTTL).Err(); err != nil {
 		return nil, err
 	}
 
@@ -138,7 +146,13 @@ func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Au
 		ExpiresAt:   time.Now().Add(s.jwt.AccessTokenTTL),
 	}
 
-	if err := s.redis.Set(ctx, "token:"+accessToken, tokenInfo, s.jwt.AccessTokenTTL).Err(); err != nil {
+	// Serialize token info to JSON
+	tokenInfoJSON, err := json.Marshal(tokenInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.redis.Set(ctx, "token:"+accessToken, tokenInfoJSON, s.jwt.AccessTokenTTL).Err(); err != nil {
 		return nil, err
 	}
 
@@ -190,7 +204,13 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		ExpiresAt:   time.Now().Add(s.jwt.AccessTokenTTL),
 	}
 
-	if err := s.redis.Set(ctx, "token:"+accessToken, tokenInfo, s.jwt.AccessTokenTTL).Err(); err != nil {
+	// Serialize token info to JSON
+	tokenInfoJSON, err := json.Marshal(tokenInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.redis.Set(ctx, "token:"+accessToken, tokenInfoJSON, s.jwt.AccessTokenTTL).Err(); err != nil {
 		return nil, err
 	}
 
@@ -210,9 +230,15 @@ func (s *authService) Logout(ctx context.Context, accessToken string) error {
 
 // ValidateToken validates the access token
 func (s *authService) ValidateToken(ctx context.Context, token string) (*model.TokenInfo, error) {
+	// Get token info from Redis
+	tokenInfoJSON, err := s.redis.Get(ctx, "token:"+token).Result()
+	if err != nil {
+		return nil, ErrInvalidToken
+	}
+
+	// Deserialize token info from JSON
 	var tokenInfo model.TokenInfo
-	cmd := s.redis.Get(ctx, "token:"+token)
-	if err := cmd.Scan(&tokenInfo); err != nil {
+	if err := json.Unmarshal([]byte(tokenInfoJSON), &tokenInfo); err != nil {
 		return nil, ErrInvalidToken
 	}
 
@@ -233,6 +259,7 @@ func (s *authService) generateTokens(userID, username string) (string, string, e
 		"iat":      time.Now().Unix(),
 		"iss":      s.jwt.TokenIssuer,
 		"type":     "access",
+		"jti":      uuid.NewString(),
 	}
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokenClaims)
@@ -249,6 +276,7 @@ func (s *authService) generateTokens(userID, username string) (string, string, e
 		"iat":      time.Now().Unix(),
 		"iss":      s.jwt.TokenIssuer,
 		"type":     "refresh",
+		"jti":      uuid.NewString(),
 	}
 
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)

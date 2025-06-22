@@ -9,12 +9,13 @@ package model
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // User represents the user model
 type User struct {
-	ID        string         `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
+	ID        string         `gorm:"type:uuid;primary_key" json:"id"`
 	Username  string         `gorm:"type:varchar(32);uniqueIndex;not null" json:"username"`
 	Email     string         `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
 	Password  string         `gorm:"type:varchar(255);not null" json:"-"`
@@ -28,6 +29,14 @@ type User struct {
 // TableName specifies the table name for User model
 func (User) TableName() string {
 	return "users"
+}
+
+// BeforeCreate 在创建记录前生成 UUID
+func (u *User) BeforeCreate(tx *gorm.DB) error {
+	if u.ID == "" {
+		u.ID = uuid.New().String()
+	}
+	return nil
 }
 
 // TokenInfo represents the token information stored in Redis
