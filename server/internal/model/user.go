@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 22:17:20
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-23 00:02:14
+ * @LastEditTime: 2025-06-23 00:50:11
  * @FilePath: /thinking-map/server/internal/model/user.go
  */
 package model
@@ -15,7 +15,8 @@ import (
 
 // User represents the user model
 type User struct {
-	ID        string         `gorm:"type:uuid;primary_key" json:"id"`
+	SerialID  int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
+	ID        string         `gorm:"type:uuid;uniqueIndex" json:"id"`
 	Username  string         `gorm:"type:varchar(32);uniqueIndex;not null" json:"username"`
 	Email     string         `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
 	Password  string         `gorm:"type:varchar(255);not null" json:"-"`

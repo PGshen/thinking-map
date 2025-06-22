@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 22:25:59
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-23 00:01:53
+ * @LastEditTime: 2025-06-23 00:40:21
  * @FilePath: /thinking-map/server/internal/model/node_detail.go
  */
 package model
@@ -19,9 +19,10 @@ import (
 
 // NodeDetail 节点详情模型
 type NodeDetail struct {
-	ID         uuid.UUID      `gorm:"type:uuid;primary_key"`
+	SerialID   int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
+	ID         uuid.UUID      `gorm:"type:uuid;uniqueIndex"`
 	NodeID     uuid.UUID      `gorm:"type:uuid;not null;index"`
-	DetailType string         `gorm:"type:varchar(50);not null"` // 1:text, 2:image, 3:file, 4:link
+	DetailType string         `gorm:"type:varchar(50);not null"`
 	Content    DetailContent  `gorm:"type:jsonb;not null;default:'{}'"`
 	Status     int            `gorm:"type:int;not null;default:1"`
 	Metadata   datatypes.JSON `gorm:"type:jsonb;default:'{}'"`

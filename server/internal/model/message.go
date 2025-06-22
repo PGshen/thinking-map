@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 22:26:13
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-23 00:01:47
+ * @LastEditTime: 2025-06-23 00:37:03
  * @FilePath: /thinking-map/server/internal/model/message.go
  */
 package model
@@ -19,7 +19,8 @@ import (
 
 // Message 消息模型
 type Message struct {
-	ID          uuid.UUID      `gorm:"type:uuid;primary_key"`
+	SerialID    int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
+	ID          uuid.UUID      `gorm:"type:uuid;uniqueIndex"`
 	NodeID      uuid.UUID      `gorm:"type:uuid;not null;index"`
 	ParentID    uuid.UUID      `gorm:"type:uuid;index"`
 	MessageType string         `gorm:"type:varchar(20);not null;default:1"` // text, rag, notice

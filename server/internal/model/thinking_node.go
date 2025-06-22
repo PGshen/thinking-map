@@ -19,7 +19,8 @@ import (
 
 // ThinkingNode 思维节点模型
 type ThinkingNode struct {
-	ID           uuid.UUID      `gorm:"type:uuid;primary_key"`
+	SerialID     int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
+	ID           uuid.UUID      `gorm:"type:uuid;uniqueIndex"`
 	MapID        uuid.UUID      `gorm:"type:uuid;not null;index"`
 	ParentID     uuid.UUID      `gorm:"type:uuid;index"`
 	NodeType     string         `gorm:"type:varchar(50);not null"` // root, analysis, conclusion, custom

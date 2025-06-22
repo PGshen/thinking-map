@@ -19,7 +19,8 @@ import (
 
 // ThinkingMap 思维导图模型
 type ThinkingMap struct {
-	ID          uuid.UUID      `gorm:"type:uuid;primary_key"`
+	SerialID    int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
+	ID          uuid.UUID      `gorm:"type:uuid;uniqueIndex" json:"id"`
 	UserID      uuid.UUID      `json:"user_id" gorm:"type:uuid;not null"`
 	Problem     string         `json:"problem" gorm:"type:text;not null"`
 	ProblemType string         `json:"problem_type" gorm:"type:varchar(50)"`

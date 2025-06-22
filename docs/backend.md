@@ -419,7 +419,8 @@ server/
 #### 5.1.1 用户表 (users)
 ```sql
 CREATE TABLE "users" (
-    id UUID PRIMARY KEY,
+    serial_id BIGSERIAL PRIMARY KEY,
+    id UUID NOT NULL UNIQUE,
     username VARCHAR(32) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
@@ -435,7 +436,8 @@ CREATE INDEX idx_users_deleted_at ON "users"(deleted_at);
 #### 5.1.2 思维导图表 (thinking_maps)
 ```sql
 CREATE TABLE "thinking_maps" (
-    id UUID PRIMARY KEY,
+    serial_id BIGSERIAL PRIMARY KEY,
+    id UUID NOT NULL UNIQUE,
     user_id UUID NOT NULL,
     problem TEXT NOT NULL,
     problem_type VARCHAR(50),
@@ -456,7 +458,8 @@ CREATE INDEX idx_thinking_maps_deleted_at ON "thinking_maps"(deleted_at);
 #### 5.1.3 节点表 (thinking_nodes)
 ```sql
 CREATE TABLE "thinking_nodes" (
-    id UUID PRIMARY KEY,
+    serial_id BIGSERIAL PRIMARY KEY,
+    id UUID NOT NULL UNIQUE,
     map_id UUID NOT NULL,
     parent_id UUID,
     node_type VARCHAR(50) NOT NULL,
@@ -499,7 +502,8 @@ CREATE INDEX idx_thinking_nodes_deleted_at ON "thinking_nodes"(deleted_at);
 #### 5.1.4 节点详情表 (node_details)
 ```sql
 CREATE TABLE "node_details" (
-    id UUID PRIMARY KEY,
+    serial_id BIGSERIAL PRIMARY KEY,
+    id UUID NOT NULL UNIQUE,
     node_id UUID NOT NULL,
     detail_type VARCHAR(50) NOT NULL,
     content JSONB NOT NULL DEFAULT '{}',
@@ -562,7 +566,8 @@ CREATE INDEX idx_node_details_deleted_at ON "node_details"(deleted_at);
 #### 5.1.5 消息表 (messages)
 ```sql
 CREATE TABLE "messages" (
-    id UUID PRIMARY KEY,
+    serial_id BIGSERIAL PRIMARY KEY,
+    id UUID NOT NULL UNIQUE,
     node_id UUID NOT NULL,
     parent_id UUID,
     message_type VARCHAR(20) NOT NULL DEFAULT '1',
@@ -592,7 +597,8 @@ CREATE INDEX idx_messages_deleted_at ON "messages"(deleted_at);
 #### 5.1.6 RAG检索记录表 (rag_record)
 ```sql
 CREATE TABLE "rag_records" (
-    id UUID PRIMARY KEY,
+    serial_id BIGSERIAL PRIMARY KEY,
+    id UUID NOT NULL UNIQUE,
     query TEXT NOT NULL,
     answer TEXT NOT NULL,
     sources JSONB NOT NULL DEFAULT '[]',
