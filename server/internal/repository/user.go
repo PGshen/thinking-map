@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/thinking-map/server/internal/model"
 	"gorm.io/gorm"
 )
@@ -25,11 +24,11 @@ func (r *userRepository) Update(ctx context.Context, user *model.User) error {
 	return r.db.WithContext(ctx).Save(user).Error
 }
 
-func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *userRepository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&model.User{}, id).Error
 }
 
-func (r *userRepository) FindByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
+func (r *userRepository) FindByID(ctx context.Context, id string) (*model.User, error) {
 	var user model.User
 	err := r.db.WithContext(ctx).First(&user, id).Error
 	if err != nil {

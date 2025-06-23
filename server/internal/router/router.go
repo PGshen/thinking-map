@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 23:52:48
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-19 23:43:41
+ * @LastEditTime: 2025-06-23 23:18:01
  * @FilePath: /thinking-map/server/internal/router/router.go
  */
 package router
@@ -26,14 +26,14 @@ func SetupRouter(
 	r := gin.Default()
 
 	// Create repositories
-	mapRepo := repository.NewMapRepository(db)
+	thinkingMapRepo := repository.NewThinkingMapRepository(db)
 	nodeRepo := repository.NewThinkingNodeRepository(db)
 	nodeDetailRepo := repository.NewNodeDetailRepository(db)
 
 	// Create services
 	authService := service.NewAuthService(db, redisClient, jwtConfig)
-	mapService := service.NewMapService(mapRepo)
-	nodeService := service.NewNodeService(nodeRepo, nodeDetailRepo)
+	mapService := service.NewMapService(thinkingMapRepo)
+	nodeService := service.NewNodeService(nodeRepo, nodeDetailRepo, thinkingMapRepo)
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -64,9 +64,9 @@ func SetupRouter(
 			{
 				maps.POST("", mapHandler.CreateMap)
 				maps.GET("", mapHandler.ListMaps)
-				maps.GET("/:mapId", mapHandler.GetMap)
-				maps.PUT("/:mapId", mapHandler.UpdateMap)
-				maps.DELETE("/:mapId", mapHandler.DeleteMap)
+				maps.PUT("/:mapId", middleware.MapOwnershipMiddleware(thinkingMapRepo), mapHandler.UpdateMap)
+				maps.DELETE("/:mapId", middleware.MapOwnershipMiddleware(thinkingMapRepo), mapHandler.DeleteMap)
+				maps.GET("/:mapId", middleware.MapOwnershipMiddleware(thinkingMapRepo), mapHandler.GetMap)
 			}
 
 			// Node routes
@@ -74,9 +74,9 @@ func SetupRouter(
 			{
 				nodes.GET("", nodeHandler.ListNodes)
 				nodes.POST("", nodeHandler.CreateNode)
-				nodes.PUT("/:nodeId", nodeHandler.UpdateNode)
-				nodes.DELETE("/:nodeId", nodeHandler.DeleteNode)
-				nodes.GET("/:nodeId/dependencies", nodeHandler.GetDependencies)
+				nodes.PUT("/:nodeId", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.UpdateNode)
+				nodes.DELETE("/:nodeId", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.DeleteNode)
+				nodes.GET("/:nodeId/dependencies", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.GetDependencies)
 			}
 
 			// Thinking routes

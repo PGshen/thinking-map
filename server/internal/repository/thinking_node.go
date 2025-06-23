@@ -9,7 +9,6 @@ package repository
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/thinking-map/server/internal/model"
 	"gorm.io/gorm"
 )
@@ -31,11 +30,11 @@ func (r *thinkingNodeRepository) Update(ctx context.Context, node *model.Thinkin
 	return r.db.WithContext(ctx).Save(node).Error
 }
 
-func (r *thinkingNodeRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *thinkingNodeRepository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&model.ThinkingNode{}, id).Error
 }
 
-func (r *thinkingNodeRepository) FindByID(ctx context.Context, id uuid.UUID) (*model.ThinkingNode, error) {
+func (r *thinkingNodeRepository) FindByID(ctx context.Context, id string) (*model.ThinkingNode, error) {
 	var node model.ThinkingNode
 	err := r.db.WithContext(ctx).First(&node, id).Error
 	if err != nil {
@@ -44,7 +43,7 @@ func (r *thinkingNodeRepository) FindByID(ctx context.Context, id uuid.UUID) (*m
 	return &node, nil
 }
 
-func (r *thinkingNodeRepository) FindByMapID(ctx context.Context, mapID uuid.UUID) ([]*model.ThinkingNode, error) {
+func (r *thinkingNodeRepository) FindByMapID(ctx context.Context, mapID string) ([]*model.ThinkingNode, error) {
 	var nodes []*model.ThinkingNode
 	err := r.db.WithContext(ctx).Where("map_id = ?", mapID).Find(&nodes).Error
 	if err != nil {
@@ -53,7 +52,7 @@ func (r *thinkingNodeRepository) FindByMapID(ctx context.Context, mapID uuid.UUI
 	return nodes, nil
 }
 
-func (r *thinkingNodeRepository) FindByParentID(ctx context.Context, parentID uuid.UUID) ([]*model.ThinkingNode, error) {
+func (r *thinkingNodeRepository) FindByParentID(ctx context.Context, parentID string) ([]*model.ThinkingNode, error) {
 	var nodes []*model.ThinkingNode
 	err := r.db.WithContext(ctx).Where("parent_id = ?", parentID).Find(&nodes).Error
 	if err != nil {
@@ -80,14 +79,14 @@ func (r *thinkingNodeRepository) List(ctx context.Context, offset, limit int) ([
 }
 
 // UpdatePosition 更新节点位置
-func (r *thinkingNodeRepository) UpdatePosition(ctx context.Context, id uuid.UUID, position model.JSONB) error {
+func (r *thinkingNodeRepository) UpdatePosition(ctx context.Context, id string, position model.JSONB) error {
 	return r.db.WithContext(ctx).Model(&model.ThinkingNode{}).
 		Where("id = ?", id).
 		Update("position", position).Error
 }
 
 // UpdateStatus 更新节点状态
-func (r *thinkingNodeRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status int) error {
+func (r *thinkingNodeRepository) UpdateStatus(ctx context.Context, id string, status int) error {
 	return r.db.WithContext(ctx).Model(&model.ThinkingNode{}).
 		Where("id = ?", id).
 		Update("status", status).Error

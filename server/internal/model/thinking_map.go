@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 22:25:29
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-23 00:02:02
+ * @LastEditTime: 2025-06-23 22:58:29
  * @FilePath: /thinking-map/server/internal/model/thinking_map.go
  */
 package model
@@ -20,8 +20,8 @@ import (
 // ThinkingMap 思维导图模型
 type ThinkingMap struct {
 	SerialID    int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
-	ID          uuid.UUID      `gorm:"type:uuid;uniqueIndex" json:"id"`
-	UserID      uuid.UUID      `json:"user_id" gorm:"type:uuid;not null"`
+	ID          string         `gorm:"type:uuid;uniqueIndex" json:"id"`
+	UserID      string         `json:"user_id" gorm:"type:uuid;not null"`
 	Problem     string         `json:"problem" gorm:"type:text;not null"`
 	ProblemType string         `json:"problem_type" gorm:"type:varchar(50)"`
 	Target      string         `json:"target" gorm:"type:text"`
@@ -36,8 +36,8 @@ type ThinkingMap struct {
 }
 
 func (t *ThinkingMap) BeforeCreate(tx *gorm.DB) error {
-	if t.ID == uuid.Nil {
-		t.ID = uuid.New()
+	if t.ID == uuid.Nil.String() {
+		t.ID = uuid.NewString()
 	}
 	return nil
 }

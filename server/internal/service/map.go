@@ -12,18 +12,18 @@ import (
 )
 
 type MapService struct {
-	mapRepo *repository.MapRepository
+	mapRepo repository.ThinkingMap
 }
 
-func NewMapService(mapRepo *repository.MapRepository) *MapService {
+func NewMapService(mapRepo repository.ThinkingMap) *MapService {
 	return &MapService{
 		mapRepo: mapRepo,
 	}
 }
 
 // CreateMap creates a new thinking map
-func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, userID uuid.UUID) (*dto.MapResponse, error) {
-	mapID := uuid.New()
+func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, userID string) (*dto.MapResponse, error) {
+	mapID := uuid.NewString()
 	thinkingMap := &model.ThinkingMap{
 		ID:          mapID,
 		UserID:      userID,
@@ -37,11 +37,11 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 		Metadata:    nil, // 可根据需要初始化
 	}
 
-	rootNodeID := uuid.New()
+	rootNodeID := uuid.NewString()
 	rootNode := &model.ThinkingNode{
 		ID:        rootNodeID,
 		MapID:     mapID,
-		ParentID:  uuid.Nil,
+		ParentID:  uuid.Nil.String(),
 		NodeType:  comm.NodeTypeProblem,
 		Question:  req.Problem,
 		Status:    1,
@@ -50,13 +50,13 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 		UpdatedAt: time.Now(),
 	}
 
-	if err := s.mapRepo.CreateMap(thinkingMap, rootNode); err != nil {
+	if err := s.mapRepo.Create(ctx, thinkingMap, rootNode); err != nil {
 		return nil, err
 	}
 
 	return &dto.MapResponse{
-		ID:          mapID.String(),
-		RootNodeID:  rootNodeID.String(),
+		ID:          mapID,
+		RootNodeID:  rootNodeID,
 		Status:      thinkingMap.Status,
 		Problem:     thinkingMap.Problem,
 		ProblemType: thinkingMap.ProblemType,
@@ -65,27 +65,43 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 		Constraints: thinkingMap.Constraints,
 		Conclusion:  thinkingMap.Conclusion,
 		Metadata:    thinkingMap.Metadata,
-		NodeCount:   1,
+		CreatedAt:   thinkingMap.CreatedAt,
+		UpdatedAt:   thinkingMap.UpdatedAt,
+	}, nil
+}
+
+// GetMap retrieves a specific thinking map
+func (s *MapService) GetMap(ctx context.Context, mapID string) (*dto.MapResponse, error) {
+	thinkingMap, err := s.mapRepo.FindByID(ctx, mapID)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.MapResponse{
+		ID:          thinkingMap.ID,
+		Status:      thinkingMap.Status,
+		Problem:     thinkingMap.Problem,
+		ProblemType: thinkingMap.ProblemType,
+		Target:      thinkingMap.Target,
+		KeyPoints:   thinkingMap.KeyPoints,
+		Constraints: thinkingMap.Constraints,
+		Conclusion:  thinkingMap.Conclusion,
+		Metadata:    thinkingMap.Metadata,
 		CreatedAt:   thinkingMap.CreatedAt,
 		UpdatedAt:   thinkingMap.UpdatedAt,
 	}, nil
 }
 
 // ListMaps retrieves a list of thinking maps
-func (s *MapService) ListMaps(ctx context.Context, query dto.MapListQuery, userID uuid.UUID) (*dto.MapListResponse, error) {
-	maps, total, err := s.mapRepo.ListMaps(userID, query.Status, query.Page, query.Limit)
+func (s *MapService) ListMaps(ctx context.Context, query dto.MapListQuery, userID string) (*dto.MapListResponse, error) {
+	maps, total, err := s.mapRepo.List(ctx, userID, query.Status, query.Page, query.Limit)
 	if err != nil {
 		return nil, err
 	}
 
 	items := make([]dto.MapResponse, len(maps))
 	for i, m := range maps {
-		nodeCount, err := s.mapRepo.GetNodeCount(m.ID)
-		if err != nil {
-			return nil, err
-		}
 		items[i] = dto.MapResponse{
-			ID:          m.ID.String(),
+			ID:          m.ID,
 			Status:      m.Status,
 			Problem:     m.Problem,
 			ProblemType: m.ProblemType,
@@ -94,7 +110,6 @@ func (s *MapService) ListMaps(ctx context.Context, query dto.MapListQuery, userI
 			Constraints: m.Constraints,
 			Conclusion:  m.Conclusion,
 			Metadata:    m.Metadata,
-			NodeCount:   int(nodeCount),
 			CreatedAt:   m.CreatedAt,
 			UpdatedAt:   m.UpdatedAt,
 		}
@@ -108,39 +123,8 @@ func (s *MapService) ListMaps(ctx context.Context, query dto.MapListQuery, userI
 	}, nil
 }
 
-// GetMap retrieves a specific thinking map
-func (s *MapService) GetMap(ctx context.Context, mapID uuid.UUID, userID uuid.UUID) (*dto.MapResponse, error) {
-	thinkingMap, err := s.mapRepo.GetMap(mapID, userID)
-	if err != nil {
-		return nil, err
-	}
-	rootNode, err := s.mapRepo.GetRootNode(mapID)
-	if err != nil {
-		return nil, err
-	}
-	nodeCount, err := s.mapRepo.GetNodeCount(mapID)
-	if err != nil {
-		return nil, err
-	}
-	return &dto.MapResponse{
-		ID:          thinkingMap.ID.String(),
-		RootNodeID:  rootNode.ID.String(),
-		Status:      thinkingMap.Status,
-		Problem:     thinkingMap.Problem,
-		ProblemType: thinkingMap.ProblemType,
-		Target:      thinkingMap.Target,
-		KeyPoints:   thinkingMap.KeyPoints,
-		Constraints: thinkingMap.Constraints,
-		Conclusion:  thinkingMap.Conclusion,
-		Metadata:    thinkingMap.Metadata,
-		NodeCount:   int(nodeCount),
-		CreatedAt:   thinkingMap.CreatedAt,
-		UpdatedAt:   thinkingMap.UpdatedAt,
-	}, nil
-}
-
 // UpdateMap updates a thinking map
-func (s *MapService) UpdateMap(ctx context.Context, mapID uuid.UUID, req dto.UpdateMapRequest, userID uuid.UUID) (*dto.MapResponse, error) {
+func (s *MapService) UpdateMap(ctx context.Context, mapID string, req dto.UpdateMapRequest, userID string) (*dto.MapResponse, error) {
 	updates := map[string]interface{}{
 		"updated_at": time.Now(),
 	}
@@ -165,15 +149,15 @@ func (s *MapService) UpdateMap(ctx context.Context, mapID uuid.UUID, req dto.Upd
 	if req.Conclusion != "" {
 		updates["conclusion"] = req.Conclusion
 	}
-	if err := s.mapRepo.UpdateMap(mapID, userID, updates); err != nil {
+	if err := s.mapRepo.Update(ctx, mapID, updates); err != nil {
 		return nil, err
 	}
-	thinkingMap, err := s.mapRepo.GetMap(mapID, userID)
+	thinkingMap, err := s.mapRepo.FindByID(ctx, mapID)
 	if err != nil {
 		return nil, err
 	}
 	return &dto.MapResponse{
-		ID:          thinkingMap.ID.String(),
+		ID:          thinkingMap.ID,
 		Status:      thinkingMap.Status,
 		Problem:     thinkingMap.Problem,
 		ProblemType: thinkingMap.ProblemType,
@@ -187,6 +171,6 @@ func (s *MapService) UpdateMap(ctx context.Context, mapID uuid.UUID, req dto.Upd
 }
 
 // DeleteMap deletes a thinking map
-func (s *MapService) DeleteMap(ctx context.Context, mapID uuid.UUID, userID uuid.UUID) error {
-	return s.mapRepo.DeleteMap(mapID, userID)
+func (s *MapService) DeleteMap(ctx context.Context, mapID string, userID string) error {
+	return s.mapRepo.Delete(ctx, mapID)
 }

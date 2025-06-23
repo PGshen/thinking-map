@@ -78,7 +78,7 @@ func (h *NodeHandler) CreateNode(c *gin.Context) {
 		return
 	}
 	// TODO: 获取userID，暂用uuid.Nil
-	userID := uuid.Nil
+	userID := uuid.Nil.String()
 	resp, err := h.NodeService.CreateNode(c.Request.Context(), mapID, req, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
@@ -123,7 +123,7 @@ func (h *NodeHandler) UpdateNode(c *gin.Context) {
 		})
 		return
 	}
-	// TODO: 获取userID，校验节点是否属于该用户
+
 	resp, err := h.NodeService.UpdateNode(c.Request.Context(), nodeID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{

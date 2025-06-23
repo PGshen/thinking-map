@@ -35,20 +35,10 @@ func (h *MapHandler) CreateMap(c *gin.Context) {
 	}
 
 	// Get user ID from context (assuming it's set by auth middleware)
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.Response{
-			Code:      http.StatusUnauthorized,
-			Message:   "unauthorized",
-			Data:      nil,
-			Timestamp: time.Now(),
-			RequestID: uuid.New().String(),
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
 	// Call service to create map
-	mapResponse, err := h.mapService.CreateMap(c.Request.Context(), req, userID.(uuid.UUID))
+	mapResponse, err := h.mapService.CreateMap(c.Request.Context(), req, userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,
@@ -84,20 +74,10 @@ func (h *MapHandler) ListMaps(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.Response{
-			Code:      http.StatusUnauthorized,
-			Message:   "unauthorized",
-			Data:      nil,
-			Timestamp: time.Now(),
-			RequestID: uuid.New().String(),
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
 	// Call service to list maps
-	maps, err := h.mapService.ListMaps(c.Request.Context(), query, userID.(uuid.UUID))
+	maps, err := h.mapService.ListMaps(c.Request.Context(), query, userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,
@@ -132,34 +112,8 @@ func (h *MapHandler) GetMap(c *gin.Context) {
 		return
 	}
 
-	// Parse map ID
-	parsedMapID, err := uuid.Parse(mapID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.Response{
-			Code:      http.StatusBadRequest,
-			Message:   "invalid map ID format",
-			Data:      dto.ErrorData{Error: err.Error()},
-			Timestamp: time.Now(),
-			RequestID: uuid.New().String(),
-		})
-		return
-	}
-
-	// Get user ID from context
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.Response{
-			Code:      http.StatusUnauthorized,
-			Message:   "unauthorized",
-			Data:      nil,
-			Timestamp: time.Now(),
-			RequestID: uuid.New().String(),
-		})
-		return
-	}
-
 	// Call service to get map
-	mapResponse, err := h.mapService.GetMap(c.Request.Context(), parsedMapID, userID.(uuid.UUID))
+	mapResponse, err := h.mapService.GetMap(c.Request.Context(), mapID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,
@@ -194,19 +148,6 @@ func (h *MapHandler) UpdateMap(c *gin.Context) {
 		return
 	}
 
-	// Parse map ID
-	parsedMapID, err := uuid.Parse(mapID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.Response{
-			Code:      http.StatusBadRequest,
-			Message:   "invalid map ID format",
-			Data:      dto.ErrorData{Error: err.Error()},
-			Timestamp: time.Now(),
-			RequestID: uuid.New().String(),
-		})
-		return
-	}
-
 	var req dto.UpdateMapRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.Response{
@@ -220,20 +161,10 @@ func (h *MapHandler) UpdateMap(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.Response{
-			Code:      http.StatusUnauthorized,
-			Message:   "unauthorized",
-			Data:      nil,
-			Timestamp: time.Now(),
-			RequestID: uuid.New().String(),
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
 	// Call service to update map
-	mapResponse, err := h.mapService.UpdateMap(c.Request.Context(), parsedMapID, req, userID.(uuid.UUID))
+	mapResponse, err := h.mapService.UpdateMap(c.Request.Context(), mapID, req, userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,
@@ -268,34 +199,11 @@ func (h *MapHandler) DeleteMap(c *gin.Context) {
 		return
 	}
 
-	// Parse map ID
-	parsedMapID, err := uuid.Parse(mapID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.Response{
-			Code:      http.StatusBadRequest,
-			Message:   "invalid map ID format",
-			Data:      dto.ErrorData{Error: err.Error()},
-			Timestamp: time.Now(),
-			RequestID: uuid.New().String(),
-		})
-		return
-	}
-
 	// Get user ID from context
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.Response{
-			Code:      http.StatusUnauthorized,
-			Message:   "unauthorized",
-			Data:      nil,
-			Timestamp: time.Now(),
-			RequestID: uuid.New().String(),
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
 	// Call service to delete map
-	if err := h.mapService.DeleteMap(c.Request.Context(), parsedMapID, userID.(uuid.UUID)); err != nil {
+	if err := h.mapService.DeleteMap(c.Request.Context(), mapID, userID.(string)); err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,
 			Message:   "failed to delete map",

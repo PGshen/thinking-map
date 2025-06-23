@@ -9,7 +9,6 @@ package repository
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/thinking-map/server/internal/model"
 	"gorm.io/gorm"
 )
@@ -31,11 +30,11 @@ func (r *nodeDetailRepository) Update(ctx context.Context, detail *model.NodeDet
 	return r.db.WithContext(ctx).Save(detail).Error
 }
 
-func (r *nodeDetailRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *nodeDetailRepository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&model.NodeDetail{}, id).Error
 }
 
-func (r *nodeDetailRepository) FindByID(ctx context.Context, id uuid.UUID) (*model.NodeDetail, error) {
+func (r *nodeDetailRepository) FindByID(ctx context.Context, id string) (*model.NodeDetail, error) {
 	var detail model.NodeDetail
 	err := r.db.WithContext(ctx).First(&detail, id).Error
 	if err != nil {
@@ -44,7 +43,7 @@ func (r *nodeDetailRepository) FindByID(ctx context.Context, id uuid.UUID) (*mod
 	return &detail, nil
 }
 
-func (r *nodeDetailRepository) FindByNodeID(ctx context.Context, nodeID uuid.UUID) ([]*model.NodeDetail, error) {
+func (r *nodeDetailRepository) FindByNodeID(ctx context.Context, nodeID string) ([]*model.NodeDetail, error) {
 	var details []*model.NodeDetail
 	err := r.db.WithContext(ctx).Where("node_id = ?", nodeID).Find(&details).Error
 	if err != nil {
@@ -53,7 +52,7 @@ func (r *nodeDetailRepository) FindByNodeID(ctx context.Context, nodeID uuid.UUI
 	return details, nil
 }
 
-func (r *nodeDetailRepository) FindByNodeIDAndTabType(ctx context.Context, nodeID uuid.UUID, tabType string) (*model.NodeDetail, error) {
+func (r *nodeDetailRepository) FindByNodeIDAndTabType(ctx context.Context, nodeID string, tabType string) (*model.NodeDetail, error) {
 	var detail model.NodeDetail
 	err := r.db.WithContext(ctx).Where("node_id = ? AND tab_type = ?", nodeID, tabType).First(&detail).Error
 	if err != nil {
@@ -62,7 +61,7 @@ func (r *nodeDetailRepository) FindByNodeIDAndTabType(ctx context.Context, nodeI
 	return &detail, nil
 }
 
-func (r *nodeDetailRepository) FindByNodeIDAndType(ctx context.Context, nodeID uuid.UUID, detailType string) (*model.NodeDetail, error) {
+func (r *nodeDetailRepository) FindByNodeIDAndType(ctx context.Context, nodeID string, detailType string) (*model.NodeDetail, error) {
 	var detail model.NodeDetail
 	err := r.db.WithContext(ctx).Where("node_id = ? AND detail_type = ?", nodeID, detailType).First(&detail).Error
 	if err != nil {
@@ -89,14 +88,14 @@ func (r *nodeDetailRepository) List(ctx context.Context, offset, limit int) ([]*
 }
 
 // UpdateContent 更新节点详情内容
-func (r *nodeDetailRepository) UpdateContent(ctx context.Context, id uuid.UUID, content model.JSONB) error {
+func (r *nodeDetailRepository) UpdateContent(ctx context.Context, id string, content model.JSONB) error {
 	return r.db.WithContext(ctx).Model(&model.NodeDetail{}).
 		Where("id = ?", id).
 		Update("content", content).Error
 }
 
 // UpdateStatus 更新节点详情状态
-func (r *nodeDetailRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status int) error {
+func (r *nodeDetailRepository) UpdateStatus(ctx context.Context, id string, status int) error {
 	return r.db.WithContext(ctx).Model(&model.NodeDetail{}).
 		Where("id = ?", id).
 		Update("status", status).Error

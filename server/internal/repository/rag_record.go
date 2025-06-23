@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/thinking-map/server/internal/model"
 	"gorm.io/gorm"
 )
@@ -25,11 +24,11 @@ func (r *ragRecordRepository) Update(ctx context.Context, record *model.RAGRecor
 	return r.db.WithContext(ctx).Save(record).Error
 }
 
-func (r *ragRecordRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *ragRecordRepository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&model.RAGRecord{}, id).Error
 }
 
-func (r *ragRecordRepository) FindByID(ctx context.Context, id uuid.UUID) (*model.RAGRecord, error) {
+func (r *ragRecordRepository) FindByID(ctx context.Context, id string) (*model.RAGRecord, error) {
 	var record model.RAGRecord
 	err := r.db.WithContext(ctx).First(&record, id).Error
 	if err != nil {
@@ -38,7 +37,7 @@ func (r *ragRecordRepository) FindByID(ctx context.Context, id uuid.UUID) (*mode
 	return &record, nil
 }
 
-func (r *ragRecordRepository) FindByNodeID(ctx context.Context, nodeID uuid.UUID, offset, limit int) ([]*model.RAGRecord, int64, error) {
+func (r *ragRecordRepository) FindByNodeID(ctx context.Context, nodeID string, offset, limit int) ([]*model.RAGRecord, int64, error) {
 	var records []*model.RAGRecord
 	var total int64
 

@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 22:25:44
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-23 00:02:08
+ * @LastEditTime: 2025-06-23 22:58:36
  * @FilePath: /thinking-map/server/internal/model/thinking_node.go
  */
 package model
@@ -20,9 +20,9 @@ import (
 // ThinkingNode 思维节点模型
 type ThinkingNode struct {
 	SerialID     int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
-	ID           uuid.UUID      `gorm:"type:uuid;uniqueIndex"`
-	MapID        uuid.UUID      `gorm:"type:uuid;not null;index"`
-	ParentID     uuid.UUID      `gorm:"type:uuid;index"`
+	ID           string         `gorm:"type:uuid;uniqueIndex"`
+	MapID        string         `gorm:"type:uuid;not null;index"`
+	ParentID     string         `gorm:"type:uuid;index"`
 	NodeType     string         `gorm:"type:varchar(50);not null"` // root, analysis, conclusion, custom
 	Question     string         `gorm:"type:text;not null"`
 	Target       string         `gorm:"type:text"`
@@ -38,8 +38,8 @@ type ThinkingNode struct {
 }
 
 func (t *ThinkingNode) BeforeCreate(tx *gorm.DB) error {
-	if t.ID == uuid.Nil {
-		t.ID = uuid.New()
+	if t.ID == uuid.Nil.String() {
+		t.ID = uuid.NewString()
 	}
 	return nil
 }
@@ -58,9 +58,9 @@ type Position struct {
 
 // Dependency 节点依赖信息
 type Dependency struct {
-	NodeID         uuid.UUID `json:"node_id"`
-	DependencyType string    `json:"dependency_type"`
-	Required       bool      `json:"required"`
+	NodeID         string `json:"node_id"`
+	DependencyType string `json:"dependency_type"`
+	Required       bool   `json:"required"`
 }
 
 type Dependencies []Dependency

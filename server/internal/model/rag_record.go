@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 22:26:28
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-23 00:01:58
+ * @LastEditTime: 2025-06-23 22:58:20
  * @FilePath: /thinking-map/server/internal/model/rag_record.go
  */
 package model
@@ -16,7 +16,7 @@ import (
 // RAGRecord RAG 记录模型
 type RAGRecord struct {
 	SerialID  int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
-	ID        uuid.UUID      `gorm:"type:uuid;uniqueIndex"`
+	ID        string         `gorm:"type:uuid;uniqueIndex"`
 	Query     string         `gorm:"type:text;not null"`
 	Answer    string         `gorm:"type:text;not null"`
 	Sources   JSONB          `gorm:"type:jsonb;not null;default:'[]'"`
@@ -27,8 +27,8 @@ type RAGRecord struct {
 }
 
 func (r *RAGRecord) BeforeCreate(tx *gorm.DB) error {
-	if r.ID == uuid.Nil {
-		r.ID = uuid.New()
+	if r.ID == uuid.Nil.String() {
+		r.ID = uuid.NewString()
 	}
 	return nil
 }

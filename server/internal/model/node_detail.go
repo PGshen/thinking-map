@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 22:25:59
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-23 00:40:21
+ * @LastEditTime: 2025-06-23 22:58:11
  * @FilePath: /thinking-map/server/internal/model/node_detail.go
  */
 package model
@@ -20,8 +20,8 @@ import (
 // NodeDetail 节点详情模型
 type NodeDetail struct {
 	SerialID   int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
-	ID         uuid.UUID      `gorm:"type:uuid;uniqueIndex"`
-	NodeID     uuid.UUID      `gorm:"type:uuid;not null;index"`
+	ID         string         `gorm:"type:uuid;uniqueIndex"`
+	NodeID     string         `gorm:"type:uuid;not null;index"`
 	DetailType string         `gorm:"type:varchar(50);not null"`
 	Content    DetailContent  `gorm:"type:jsonb;not null;default:'{}'"`
 	Status     int            `gorm:"type:int;not null;default:1"`
@@ -32,8 +32,8 @@ type NodeDetail struct {
 }
 
 func (n *NodeDetail) BeforeCreate(tx *gorm.DB) error {
-	if n.ID == uuid.Nil {
-		n.ID = uuid.New()
+	if n.ID == uuid.Nil.String() {
+		n.ID = uuid.NewString()
 	}
 	return nil
 }
@@ -44,11 +44,11 @@ func (NodeDetail) TableName() string {
 
 // ContextInfo 上下文信息
 type ContextInfo struct {
-	NodeID     uuid.UUID `json:"node_id"`
-	Type       string    `json:"type"`
-	Question   string    `json:"question"`
-	Target     string    `json:"target"`
-	Conclusion string    `json:"conclusion"`
+	NodeID     string `json:"node_id"`
+	Type       string `json:"type"`
+	Question   string `json:"question"`
+	Target     string `json:"target"`
+	Conclusion string `json:"conclusion"`
 }
 
 // DecomposeResult 分解结果

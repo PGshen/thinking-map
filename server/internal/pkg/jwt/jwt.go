@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 var (
@@ -15,14 +14,14 @@ var (
 
 // Claims 自定义的 JWT 声明
 type Claims struct {
-	UserID   uuid.UUID `json:"user_id"`
-	Username string    `json:"username"`
-	Role     string    `json:"role"`
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	Role     string `json:"role"`
 	jwt.RegisteredClaims
 }
 
 // GenerateToken 生成 JWT token
-func GenerateToken(userID uuid.UUID, username, role string, secretKey string, expiresIn time.Duration) (string, error) {
+func GenerateToken(userID string, username, role string, secretKey string, expiresIn time.Duration) (string, error) {
 	claims := Claims{
 		UserID:   userID,
 		Username: username,

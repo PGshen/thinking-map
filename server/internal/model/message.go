@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 22:26:13
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-23 00:37:03
+ * @LastEditTime: 2025-06-23 22:43:13
  * @FilePath: /thinking-map/server/internal/model/message.go
  */
 package model
@@ -20,9 +20,9 @@ import (
 // Message 消息模型
 type Message struct {
 	SerialID    int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
-	ID          uuid.UUID      `gorm:"type:uuid;uniqueIndex"`
-	NodeID      uuid.UUID      `gorm:"type:uuid;not null;index"`
-	ParentID    uuid.UUID      `gorm:"type:uuid;index"`
+	ID          string         `gorm:"type:uuid;uniqueIndex"`
+	NodeID      string         `gorm:"type:uuid;not null;index"`
+	ParentID    string         `gorm:"type:uuid;index"`
 	MessageType string         `gorm:"type:varchar(20);not null;default:1"` // text, rag, notice
 	Content     MessageContent `gorm:"type:jsonb;not null"`
 	Metadata    datatypes.JSON `gorm:"type:jsonb;default:'{}'"`
@@ -32,8 +32,8 @@ type Message struct {
 }
 
 func (m *Message) BeforeCreate(tx *gorm.DB) error {
-	if m.ID == uuid.Nil {
-		m.ID = uuid.New()
+	if m.ID == uuid.Nil.String() {
+		m.ID = uuid.NewString()
 	}
 	return nil
 }

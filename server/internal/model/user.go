@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 22:17:20
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-23 00:50:11
+ * @LastEditTime: 2025-06-23 23:18:55
  * @FilePath: /thinking-map/server/internal/model/user.go
  */
 package model

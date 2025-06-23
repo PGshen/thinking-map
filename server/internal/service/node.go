@@ -15,22 +15,25 @@ import (
 type NodeService struct {
 	nodeRepo       repository.ThinkingNode
 	nodeDetailRepo repository.NodeDetail
+	mapRepo        repository.ThinkingMap
 }
 
-func NewNodeService(nodeRepo repository.ThinkingNode, nodeDetailRepo repository.NodeDetail) *NodeService {
+var (
+	ErrNodeNotFound  = errors.New("node not found")
+	ErrForbiddenNode = errors.New("forbidden: node does not belong to user")
+)
+
+func NewNodeService(nodeRepo repository.ThinkingNode, nodeDetailRepo repository.NodeDetail, mapRepo repository.ThinkingMap) *NodeService {
 	return &NodeService{
 		nodeRepo:       nodeRepo,
 		nodeDetailRepo: nodeDetailRepo,
+		mapRepo:        mapRepo,
 	}
 }
 
 // ListNodes 获取某个map下的所有节点
 func (s *NodeService) ListNodes(ctx context.Context, mapID string) ([]dto.NodeResponse, error) {
-	uid, err := uuid.Parse(mapID)
-	if err != nil {
-		return nil, errors.New("invalid mapID")
-	}
-	nodes, err := s.nodeRepo.FindByMapID(ctx, uid)
+	nodes, err := s.nodeRepo.FindByMapID(ctx, mapID)
 	if err != nil {
 		return nil, err
 	}
@@ -53,18 +56,10 @@ func (s *NodeService) ListNodes(ctx context.Context, mapID string) ([]dto.NodeRe
 }
 
 // CreateNode 创建节点
-func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.CreateNodeRequest, userID uuid.UUID) (*dto.NodeResponse, error) {
-	mapUUID, err := uuid.Parse(mapID)
-	if err != nil {
-		return nil, errors.New("invalid mapID")
-	}
-	parentUUID, err := uuid.Parse(req.ParentID)
-	if err != nil {
-		return nil, errors.New("invalid parentID")
-	}
+func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.CreateNodeRequest, userID string) (*dto.NodeResponse, error) {
 	node := &model.ThinkingNode{
-		MapID:    mapUUID,
-		ParentID: parentUUID,
+		MapID:    mapID,
+		ParentID: req.ParentID,
 		NodeType: req.NodeType,
 		Question: req.Question,
 		Target:   req.Target,
@@ -83,7 +78,7 @@ func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.Crea
 	}
 	// 创建node同时创建node_detail记录，默认创建info, conclusion两种类型的节点详情，decompose类型在执行过程中有需要再创建
 	infoDetail := &model.NodeDetail{
-		ID:         uuid.New(),
+		ID:         uuid.NewString(),
 		NodeID:     node.ID,
 		DetailType: comm.DetailTypeInfo,
 		Content: model.DetailContent{
@@ -95,7 +90,7 @@ func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.Crea
 		UpdatedAt: time.Now(),
 	}
 	conclusionDetail := &model.NodeDetail{
-		ID:         uuid.New(),
+		ID:         uuid.NewString(),
 		NodeID:     node.ID,
 		DetailType: comm.DetailTypeConclusion,
 		Content:    model.DetailContent{},
@@ -115,11 +110,7 @@ func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.Crea
 
 // UpdateNode 更新节点
 func (s *NodeService) UpdateNode(ctx context.Context, nodeID string, req dto.UpdateNodeRequest) (*dto.NodeResponse, error) {
-	uid, err := uuid.Parse(nodeID)
-	if err != nil {
-		return nil, errors.New("invalid nodeID")
-	}
-	node, err := s.nodeRepo.FindByID(ctx, uid)
+	node, err := s.nodeRepo.FindByID(ctx, nodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -147,19 +138,15 @@ func (s *NodeService) UpdateNode(ctx context.Context, nodeID string, req dto.Upd
 
 // DeleteNode 删除节点
 func (s *NodeService) DeleteNode(ctx context.Context, nodeID string) error {
-	uid, err := uuid.Parse(nodeID)
-	if err != nil {
-		return errors.New("invalid nodeID")
-	}
-	return s.nodeRepo.Delete(ctx, uid)
+	return s.nodeRepo.Delete(ctx, nodeID)
 }
 
 // modelToNodeResponse 将model.ThinkingNode转为dto.NodeResponse
 func modelToNodeResponse(n *model.ThinkingNode) dto.NodeResponse {
 	return dto.NodeResponse{
-		ID:           n.ID.String(),
-		MapID:        n.MapID.String(),
-		ParentID:     n.ParentID.String(),
+		ID:           n.ID,
+		MapID:        n.MapID,
+		ParentID:     n.ParentID,
 		NodeType:     n.NodeType,
 		Question:     n.Question,
 		Target:       n.Target,

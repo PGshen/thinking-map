@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 23:59:38
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-22 20:23:45
+ * @LastEditTime: 2025-06-23 22:56:26
  * @FilePath: /thinking-map/server/internal/model/dto/map.go
  */
 package dto
@@ -45,7 +45,6 @@ type MapResponse struct {
 	Constraints model.Constraints `json:"constraints"`
 	Conclusion  string            `json:"conclusion"`
 	Metadata    interface{}       `json:"metadata"`
-	NodeCount   int               `json:"node_count,omitempty"`
 	CreatedAt   time.Time         `json:"created_at"`
 	UpdatedAt   time.Time         `json:"updated_at"`
 }

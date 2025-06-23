@@ -9,7 +9,6 @@ package repository
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/thinking-map/server/internal/model"
 	"gorm.io/gorm"
 )
@@ -31,11 +30,11 @@ func (r *messageRepository) Update(ctx context.Context, message *model.Message) 
 	return r.db.WithContext(ctx).Save(message).Error
 }
 
-func (r *messageRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *messageRepository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&model.Message{}, id).Error
 }
 
-func (r *messageRepository) FindByID(ctx context.Context, id uuid.UUID) (*model.Message, error) {
+func (r *messageRepository) FindByID(ctx context.Context, id string) (*model.Message, error) {
 	var message model.Message
 	err := r.db.WithContext(ctx).First(&message, id).Error
 	if err != nil {
@@ -44,7 +43,7 @@ func (r *messageRepository) FindByID(ctx context.Context, id uuid.UUID) (*model.
 	return &message, nil
 }
 
-func (r *messageRepository) FindByNodeID(ctx context.Context, nodeID uuid.UUID, offset, limit int) ([]*model.Message, int64, error) {
+func (r *messageRepository) FindByNodeID(ctx context.Context, nodeID string, offset, limit int) ([]*model.Message, int64, error) {
 	var messages []*model.Message
 	var total int64
 
@@ -61,7 +60,7 @@ func (r *messageRepository) FindByNodeID(ctx context.Context, nodeID uuid.UUID, 
 	return messages, total, nil
 }
 
-func (r *messageRepository) FindByNodeIDAndType(ctx context.Context, nodeID uuid.UUID, messageType string) ([]*model.Message, error) {
+func (r *messageRepository) FindByNodeIDAndType(ctx context.Context, nodeID string, messageType string) ([]*model.Message, error) {
 	var messages []*model.Message
 	err := r.db.WithContext(ctx).Where("node_id = ? AND message_type = ?", nodeID, messageType).Find(&messages).Error
 	if err != nil {
@@ -70,7 +69,7 @@ func (r *messageRepository) FindByNodeIDAndType(ctx context.Context, nodeID uuid
 	return messages, nil
 }
 
-func (r *messageRepository) FindByParentID(ctx context.Context, parentID uuid.UUID) ([]*model.Message, error) {
+func (r *messageRepository) FindByParentID(ctx context.Context, parentID string) ([]*model.Message, error) {
 	var messages []*model.Message
 	err := r.db.WithContext(ctx).Where("parent_id = ?", parentID).Find(&messages).Error
 	if err != nil {
@@ -79,7 +78,7 @@ func (r *messageRepository) FindByParentID(ctx context.Context, parentID uuid.UU
 	return messages, nil
 }
 
-func (r *messageRepository) UpdateVersion(ctx context.Context, id uuid.UUID, version int) error {
+func (r *messageRepository) UpdateVersion(ctx context.Context, id string, version int) error {
 	return r.db.WithContext(ctx).Model(&model.Message{}).Where("id = ?", id).Update("version", version).Error
 }
 

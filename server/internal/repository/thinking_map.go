@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/thinking-map/server/internal/model"
 	"gorm.io/gorm"
 )
@@ -17,57 +16,98 @@ func NewThinkingMapRepository(db *gorm.DB) ThinkingMap {
 	return &thinkingMapRepository{db: db}
 }
 
-func (r *thinkingMapRepository) Create(ctx context.Context, map_ *model.ThinkingMap) error {
-	return r.db.WithContext(ctx).Create(map_).Error
+// CreateMap creates a new thinking map and its root node
+func (r *thinkingMapRepository) Create(ctx context.Context, thinkingMap *model.ThinkingMap, rootNode *model.ThinkingNode) error {
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	if err := tx.Create(thinkingMap).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Create(rootNode).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }
 
-func (r *thinkingMapRepository) Update(ctx context.Context, map_ *model.ThinkingMap) error {
-	return r.db.WithContext(ctx).Save(map_).Error
+// ListMaps retrieves a list of thinking maps with pagination
+func (r *thinkingMapRepository) List(ctx context.Context, userID string, status int, page, limit int) ([]*model.ThinkingMap, int64, error) {
+	var maps []*model.ThinkingMap
+	var total int64
+
+	dbQuery := r.db.Model(&model.ThinkingMap{}).Where("user_id = ?", userID)
+	if status > 0 {
+		dbQuery = dbQuery.Where("status = ?", status)
+	}
+
+	if err := dbQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	if err := dbQuery.Offset(offset).Limit(limit).Find(maps).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return maps, total, nil
 }
 
-func (r *thinkingMapRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Delete(&model.ThinkingMap{}, id).Error
-}
-
-func (r *thinkingMapRepository) FindByID(ctx context.Context, id uuid.UUID) (*model.ThinkingMap, error) {
-	var map_ model.ThinkingMap
-	err := r.db.WithContext(ctx).First(&map_, id).Error
-	if err != nil {
+// GetMap retrieves a specific thinking map
+func (r *thinkingMapRepository) FindByID(ctx context.Context, mapID string) (*model.ThinkingMap, error) {
+	var thinkingMap model.ThinkingMap
+	if err := r.db.Where("id = ?", mapID).First(&thinkingMap).Error; err != nil {
 		return nil, err
 	}
-	return &map_, nil
+	return &thinkingMap, nil
 }
 
-func (r *thinkingMapRepository) FindByUserID(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*model.ThinkingMap, int64, error) {
-	var maps []*model.ThinkingMap
-	var total int64
-
-	err := r.db.WithContext(ctx).Model(&model.ThinkingMap{}).Where("user_id = ?", userID).Count(&total).Error
-	if err != nil {
-		return nil, 0, err
+// GetRootNode retrieves the root node of a thinking map
+func (r *thinkingMapRepository) GetRootNode(ctx context.Context, mapID string) (*model.ThinkingNode, error) {
+	var rootNode model.ThinkingNode
+	if err := r.db.Where("map_id = ? AND parent_id IS NULL", mapID).First(&rootNode).Error; err != nil {
+		return nil, err
 	}
-
-	err = r.db.WithContext(ctx).Where("user_id = ?", userID).Offset(offset).Limit(limit).Find(&maps).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return maps, total, nil
+	return &rootNode, nil
 }
 
-func (r *thinkingMapRepository) List(ctx context.Context, offset, limit int) ([]*model.ThinkingMap, int64, error) {
-	var maps []*model.ThinkingMap
-	var total int64
+// GetNodeCount retrieves the number of nodes in a thinking map
+func (r *thinkingMapRepository) GetNodeCount(ctx context.Context, mapID string) (int64, error) {
+	var count int64
+	if err := r.db.Model(&model.ThinkingNode{}).Where("map_id = ?", mapID).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
 
-	err := r.db.WithContext(ctx).Model(&model.ThinkingMap{}).Count(&total).Error
-	if err != nil {
-		return nil, 0, err
+// UpdateMap updates a thinking map
+func (r *thinkingMapRepository) Update(ctx context.Context, mapID string, updates map[string]interface{}) error {
+	return r.db.Model(&model.ThinkingMap{}).
+		Where("id = ?", mapID).
+		Updates(updates).Error
+}
+
+// DeleteMap deletes a thinking map and all its nodes
+func (r *thinkingMapRepository) Delete(ctx context.Context, mapID string) error {
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
 	}
 
-	err = r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&maps).Error
-	if err != nil {
-		return nil, 0, err
+	if err := tx.Where("map_id = ?", mapID).Delete(&model.ThinkingNode{}).Error; err != nil {
+		tx.Rollback()
+		return err
 	}
 
-	return maps, total, nil
+	if err := tx.Where("id = ?", mapID).Delete(&model.ThinkingMap{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }
