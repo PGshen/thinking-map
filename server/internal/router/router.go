@@ -13,6 +13,8 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/repository"
 	"github.com/PGshen/thinking-map/server/internal/service"
 
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -41,8 +43,11 @@ func SetupRouter(
 	mapHandler := handler.NewMapHandler(mapService)
 	nodeHandler := handler.NewNodeHandler(nodeService)
 	thinkingHandler := handler.NewThinkingHandler()
-	eventManager := sse.NewEventManager()
-	sseHandler := handler.NewSSEHandler(eventManager)
+
+	// 新增：创建 broker
+	store := sse.NewMemorySessionStore() // internal/sse/store.go
+	broker := sse.NewBroker(store, 30*time.Second, 60*time.Second)
+	sseHandler := handler.NewSSEHandler(broker, thinkingMapRepo)
 
 	// API v1 group
 	v1 := r.Group("/api/v1")

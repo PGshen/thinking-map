@@ -1,25 +1,26 @@
 package handler
 
 import (
-	"io"
 	"net/http"
 
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
-
+	"github.com/PGshen/thinking-map/server/internal/repository"
 	"github.com/gin-gonic/gin"
 )
 
 type SSEHandler struct {
-	eventManager *sse.EventManager
+	broker  *sse.Broker
+	mapRepo repository.ThinkingMap
 }
 
-func NewSSEHandler(eventManager *sse.EventManager) *SSEHandler {
+func NewSSEHandler(broker *sse.Broker, mapRepo repository.ThinkingMap) *SSEHandler {
 	return &SSEHandler{
-		eventManager: eventManager,
+		broker:  broker,
+		mapRepo: mapRepo,
 	}
 }
 
-// Connect handles SSE connection requests
+// Connect handles SSE connection requests, with map ownership check
 func (h *SSEHandler) Connect(c *gin.Context) {
 	mapID := c.Param("mapId")
 	if mapID == "" {
@@ -29,27 +30,27 @@ func (h *SSEHandler) Connect(c *gin.Context) {
 		return
 	}
 
-	// Set headers for SSE
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	userIDStr, ok := userID.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid user id"})
+		return
+	}
 
-	// Create SSE connection
-	connectionID, eventChan := h.eventManager.Connect(mapID)
+	mapObj, err := h.mapRepo.FindByID(c.Request.Context(), mapID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "map not found"})
+		return
+	}
+	if mapObj.UserID != userIDStr {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden: map does not belong to user"})
+		return
+	}
 
-	// Clean up connection when client disconnects
-	c.Stream(func(w io.Writer) bool {
-		select {
-		case msg, ok := <-eventChan:
-			if !ok {
-				return false
-			}
-			c.SSEvent("message", string(msg))
-			return true
-		case <-c.Request.Context().Done():
-			h.eventManager.Disconnect(mapID, connectionID)
-			return false
-		}
-	})
+	// 以 userID 作为 clientID，或可自定义
+	h.broker.HandleSSE(c, mapID, userIDStr)
 }
