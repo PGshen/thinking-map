@@ -1,12 +1,10 @@
 /*
  * @Date: 2025-06-18 23:15:18
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-22 23:39:31
+ * @LastEditTime: 2025-06-24 09:13:14
  * @FilePath: /thinking-map/server/internal/pkg/comm/enums.go
  */
 package comm
-
-import "errors"
 
 // 用户状态
 const (
@@ -71,10 +69,4 @@ const (
 	RAGStatusActive   = 1 // 正常
 	RAGStatusArchived = 0 // 归档
 	RAGStatusDeleted  = 2 // 删除
-)
-
-var (
-	ErrMessageNotFound     = errors.New("message not found")
-	ErrNoPermission        = errors.New("no permission")
-	ErrThinkingMapNotFound = errors.New("thinking map not found")
 )

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"github.com/thinking-map/server/internal/model/dto"
+	"github.com/PGshen/thinking-map/server/internal/model/dto"
 )
 
 var (

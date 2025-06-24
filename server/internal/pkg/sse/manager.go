@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/model/dto"
+
 	"github.com/google/uuid"
-	"github.com/thinking-map/server/internal/model/dto"
 )
 
 // EventManager manages SSE connections and events

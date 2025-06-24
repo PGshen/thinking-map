@@ -2,14 +2,14 @@ package service
 
 import (
 	"context"
-	"errors"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/model"
+	"github.com/PGshen/thinking-map/server/internal/model/dto"
+	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
+	"github.com/PGshen/thinking-map/server/internal/repository"
+
 	"github.com/google/uuid"
-	"github.com/thinking-map/server/internal/model"
-	"github.com/thinking-map/server/internal/model/dto"
-	"github.com/thinking-map/server/internal/pkg/comm"
-	"github.com/thinking-map/server/internal/repository"
 )
 
 type NodeService struct {
@@ -17,11 +17,6 @@ type NodeService struct {
 	nodeDetailRepo repository.NodeDetail
 	mapRepo        repository.ThinkingMap
 }
-
-var (
-	ErrNodeNotFound  = errors.New("node not found")
-	ErrForbiddenNode = errors.New("forbidden: node does not belong to user")
-)
 
 func NewNodeService(nodeRepo repository.ThinkingNode, nodeDetailRepo repository.NodeDetail, mapRepo repository.ThinkingMap) *NodeService {
 	return &NodeService{
@@ -63,7 +58,7 @@ func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.Crea
 		NodeType: req.NodeType,
 		Question: req.Question,
 		Target:   req.Target,
-		Status:   1,
+		Status:   comm.NodeStatusPending,
 		Position: model.Position{
 			X:      req.Position.X,
 			Y:      req.Position.Y,

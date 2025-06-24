@@ -9,8 +9,9 @@ package database
 import (
 	"context"
 
+	"github.com/PGshen/thinking-map/server/internal/config"
+
 	"github.com/redis/go-redis/v9"
-	"github.com/thinking-map/server/internal/config"
 )
 
 // NewClient creates a new Redis client

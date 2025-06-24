@@ -4,10 +4,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/model/dto"
+	"github.com/PGshen/thinking-map/server/internal/service"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/thinking-map/server/internal/model/dto"
-	"github.com/thinking-map/server/internal/service"
 )
 
 // NodeHandler 节点相关接口

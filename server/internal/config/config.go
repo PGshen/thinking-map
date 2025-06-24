@@ -7,7 +7,7 @@
 package config
 
 import (
-	"github.com/thinking-map/server/internal/pkg/logger"
+	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 )
 
 // Config 配置结构体

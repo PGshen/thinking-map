@@ -9,7 +9,7 @@ package dto
 import (
 	"time"
 
-	"github.com/thinking-map/server/internal/model"
+	"github.com/PGshen/thinking-map/server/internal/model"
 )
 
 // CreateNodeRequest represents the request body for creating a node

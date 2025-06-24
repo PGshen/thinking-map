@@ -84,4 +84,4 @@ go run cmd/migrate/main.go
 
 ## 许可证
 
-MIT License 
+Apache-2.0 license

@@ -6,20 +6,15 @@ import (
 	"errors"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/model"
+	"github.com/PGshen/thinking-map/server/internal/model/dto"
+	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"github.com/thinking-map/server/internal/model"
-	"github.com/thinking-map/server/internal/model/dto"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-)
-
-var (
-	ErrUserNotFound       = errors.New("user not found")
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUserExists         = errors.New("user already exists")
-	ErrInvalidToken       = errors.New("invalid token")
 )
 
 // AuthService defines the interface for authentication operations
@@ -60,7 +55,7 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 	// Check if user exists
 	var existingUser model.User
 	if err := s.db.Where("username = ? OR email = ?", req.Username, req.Email).First(&existingUser).Error; err == nil {
-		return nil, ErrUserExists
+		return nil, comm.ErrUserAlreadyExists
 	}
 
 	// Hash password
@@ -122,14 +117,14 @@ func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Au
 	var user model.User
 	if err := s.db.Where("username = ?", req.Username).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrInvalidCredentials
+			return nil, comm.ErrInvalidCredentials
 		}
 		return nil, err
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		return nil, ErrInvalidCredentials
+		return nil, comm.ErrInvalidCredentials
 	}
 
 	// Generate tokens
@@ -176,18 +171,18 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	})
 
 	if err != nil || !token.Valid {
-		return nil, ErrInvalidToken
+		return nil, comm.ErrInvalidToken
 	}
 
 	// Get user info from claims
 	userID, ok := claims["user_id"].(string)
 	if !ok {
-		return nil, ErrInvalidToken
+		return nil, comm.ErrInvalidToken
 	}
 
 	username, ok := claims["username"].(string)
 	if !ok {
-		return nil, ErrInvalidToken
+		return nil, comm.ErrInvalidToken
 	}
 
 	// Generate new tokens
@@ -233,17 +228,17 @@ func (s *authService) ValidateToken(ctx context.Context, token string) (*model.T
 	// Get token info from Redis
 	tokenInfoJSON, err := s.redis.Get(ctx, "token:"+token).Result()
 	if err != nil {
-		return nil, ErrInvalidToken
+		return nil, comm.ErrInvalidToken
 	}
 
 	// Deserialize token info from JSON
 	var tokenInfo model.TokenInfo
 	if err := json.Unmarshal([]byte(tokenInfoJSON), &tokenInfo); err != nil {
-		return nil, ErrInvalidToken
+		return nil, comm.ErrInvalidToken
 	}
 
 	if time.Now().After(tokenInfo.ExpiresAt) {
-		return nil, ErrInvalidToken
+		return nil, comm.ErrInvalidToken
 	}
 
 	return &tokenInfo, nil

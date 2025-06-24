@@ -9,7 +9,8 @@ package repository
 import (
 	"context"
 
-	"github.com/thinking-map/server/internal/model"
+	"github.com/PGshen/thinking-map/server/internal/model"
+
 	"gorm.io/gorm"
 )
 

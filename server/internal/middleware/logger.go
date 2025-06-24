@@ -3,8 +3,9 @@ package middleware
 import (
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
+
 	"github.com/gin-gonic/gin"
-	"github.com/thinking-map/server/internal/pkg/logger"
 	"go.uber.org/zap"
 )
 

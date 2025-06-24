@@ -11,12 +11,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/thinking-map/server/internal/config"
-	"github.com/thinking-map/server/internal/pkg/database"
-	"github.com/thinking-map/server/internal/pkg/logger"
-	"github.com/thinking-map/server/internal/pkg/validator"
-	"github.com/thinking-map/server/internal/router"
-	"github.com/thinking-map/server/internal/service"
+	"github.com/PGshen/thinking-map/server/internal/config"
+	"github.com/PGshen/thinking-map/server/internal/pkg/database"
+	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
+	"github.com/PGshen/thinking-map/server/internal/pkg/validator"
+	"github.com/PGshen/thinking-map/server/internal/router"
+	"github.com/PGshen/thinking-map/server/internal/service"
+
 	"go.uber.org/zap"
 )
 

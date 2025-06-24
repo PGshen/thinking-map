@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/model/dto"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/thinking-map/server/internal/model/dto"
 )
 
 type ThinkingHandler struct {

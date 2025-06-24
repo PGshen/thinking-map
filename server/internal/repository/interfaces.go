@@ -9,7 +9,7 @@ package repository
 import (
 	"context"
 
-	"github.com/thinking-map/server/internal/model"
+	"github.com/PGshen/thinking-map/server/internal/model"
 )
 
 // User 用户仓储接口

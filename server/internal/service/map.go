@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/model"
+	"github.com/PGshen/thinking-map/server/internal/model/dto"
+	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
+	"github.com/PGshen/thinking-map/server/internal/repository"
+
 	"github.com/google/uuid"
-	"github.com/thinking-map/server/internal/model"
-	"github.com/thinking-map/server/internal/model/dto"
-	"github.com/thinking-map/server/internal/pkg/comm"
-	"github.com/thinking-map/server/internal/repository"
 )
 
 type MapService struct {
@@ -33,7 +34,7 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 		KeyPoints:   req.KeyPoints,
 		Constraints: req.Constraints,
 		Conclusion:  req.Conclusion,
-		Status:      1,
+		Status:      comm.MapStatusExecuting,
 		Metadata:    nil, // 可根据需要初始化
 	}
 
@@ -44,7 +45,7 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 		ParentID:  uuid.Nil.String(),
 		NodeType:  comm.NodeTypeProblem,
 		Question:  req.Problem,
-		Status:    1,
+		Status:    comm.NodeStatusPending,
 		Position:  model.Position{X: 0, Y: 0},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),

@@ -3,8 +3,9 @@ package middleware
 import (
 	"net/http"
 
+	"github.com/PGshen/thinking-map/server/internal/repository"
+
 	"github.com/gin-gonic/gin"
-	"github.com/thinking-map/server/internal/repository"
 )
 
 // MapOwnershipMiddleware checks if the map belongs to the user

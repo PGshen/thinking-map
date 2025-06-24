@@ -1,4 +1,4 @@
-module github.com/thinking-map/server
+module github.com/PGshen/thinking-map/server
 
 go 1.23.0
 

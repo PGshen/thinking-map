@@ -16,7 +16,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/thinking-map/server/internal/config"
+	"github.com/PGshen/thinking-map/server/internal/config"
 )
 
 // TestConfig 测试配置结构体

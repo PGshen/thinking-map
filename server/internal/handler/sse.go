@@ -4,8 +4,9 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
+
 	"github.com/gin-gonic/gin"
-	"github.com/thinking-map/server/internal/pkg/sse"
 )
 
 type SSEHandler struct {

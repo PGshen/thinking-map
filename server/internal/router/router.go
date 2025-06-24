@@ -7,13 +7,14 @@
 package router
 
 import (
+	"github.com/PGshen/thinking-map/server/internal/handler"
+	"github.com/PGshen/thinking-map/server/internal/middleware"
+	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
+	"github.com/PGshen/thinking-map/server/internal/repository"
+	"github.com/PGshen/thinking-map/server/internal/service"
+
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
-	"github.com/thinking-map/server/internal/handler"
-	"github.com/thinking-map/server/internal/middleware"
-	"github.com/thinking-map/server/internal/pkg/sse"
-	"github.com/thinking-map/server/internal/repository"
-	"github.com/thinking-map/server/internal/service"
 	"gorm.io/gorm"
 )
 

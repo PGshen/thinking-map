@@ -9,7 +9,8 @@ package database
 import (
 	"fmt"
 
-	"github.com/thinking-map/server/internal/config"
+	"github.com/PGshen/thinking-map/server/internal/config"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
