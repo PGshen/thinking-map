@@ -12,7 +12,7 @@ import (
 
 // RegisterRequest represents the request body for user registration
 type RegisterRequest struct {
-	Username string `json:"username" binding:"required,min=3,max=32"`
+	Username string `json:"username" binding:"min=3,max=32"`
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6,max=32"`
 	FullName string `json:"full_name" binding:"required,max=100"`
@@ -20,7 +20,7 @@ type RegisterRequest struct {
 
 // LoginRequest represents the request body for user login
 type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
 }
 

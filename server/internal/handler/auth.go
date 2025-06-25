@@ -74,7 +74,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, dto.Response{
 			Code:      http.StatusUnauthorized,
-			Message:   "invalid credentials",
+			Message:   "invalid email or password",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
 			RequestID: uuid.New().String(),
@@ -93,7 +93,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 // RefreshToken handles token refresh
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
-	refreshToken := c.GetHeader("Authorization")
+	refreshToken := c.GetHeader("X-Refresh-Token")
 	if refreshToken == "" {
 		c.JSON(http.StatusUnauthorized, dto.Response{
 			Code:      http.StatusUnauthorized,
@@ -129,10 +129,11 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 // Logout handles user logout
 func (h *AuthHandler) Logout(c *gin.Context) {
 	accessToken := c.GetHeader("Authorization")
-	if accessToken == "" {
+	refreshToken := c.GetHeader("X-Refresh-Token")
+	if accessToken == "" || refreshToken == "" {
 		c.JSON(http.StatusUnauthorized, dto.Response{
 			Code:      http.StatusUnauthorized,
-			Message:   "invalid access token",
+			Message:   "invalid access or refresh token",
 			Data:      nil,
 			Timestamp: time.Now(),
 			RequestID: uuid.New().String(),
@@ -140,7 +141,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	if err := h.authService.Logout(c.Request.Context(), accessToken); err != nil {
+	if err := h.authService.Logout(c.Request.Context(), accessToken, refreshToken); err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,
 			Message:   "failed to logout",

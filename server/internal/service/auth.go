@@ -22,7 +22,7 @@ type AuthService interface {
 	Register(ctx context.Context, req *dto.RegisterRequest) (*dto.AuthData, error)
 	Login(ctx context.Context, req *dto.LoginRequest) (*dto.AuthData, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*dto.AuthData, error)
-	Logout(ctx context.Context, accessToken string) error
+	Logout(ctx context.Context, accessToken string, refreshToken string) error
 	ValidateToken(ctx context.Context, token string) (*model.TokenInfo, error)
 }
 
@@ -52,9 +52,9 @@ func NewAuthService(db *gorm.DB, redis *redis.Client, jwtConfig JWTConfig) AuthS
 
 // Register implements user registration
 func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.AuthData, error) {
-	// Check if user exists
+	// Check if email exists
 	var existingUser model.User
-	if err := s.db.Where("username = ? OR email = ?", req.Username, req.Email).First(&existingUser).Error; err == nil {
+	if err := s.db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
 		return nil, comm.ErrUserAlreadyExists
 	}
 
@@ -115,7 +115,7 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 // Login implements user login
 func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.AuthData, error) {
 	var user model.User
-	if err := s.db.Where("username = ?", req.Username).First(&user).Error; err != nil {
+	if err := s.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, comm.ErrInvalidCredentials
 		}
@@ -162,6 +162,42 @@ func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Au
 	}, nil
 }
 
+// Logout implements user logout
+func (s *authService) Logout(ctx context.Context, accessToken string, refreshToken string) error {
+	// accessToken黑名单
+	token, _ := jwt.ParseWithClaims(accessToken, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(s.jwt.SecretKey), nil
+	})
+	if token != nil && token.Valid {
+		claims := token.Claims.(jwt.MapClaims)
+		if jti, ok := claims["jti"].(string); ok {
+			if exp, ok := claims["exp"].(float64); ok {
+				expTime := time.Unix(int64(exp), 0)
+				dur := time.Until(expTime)
+				s.redis.Set(ctx, "blacklist:access:"+jti, 1, dur)
+			}
+		}
+	}
+	// refreshToken黑名单
+	if refreshToken != "" {
+		rt, _ := jwt.ParseWithClaims(refreshToken, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
+			return []byte(s.jwt.SecretKey), nil
+		})
+		if rt != nil && rt.Valid {
+			claims := rt.Claims.(jwt.MapClaims)
+			if jti, ok := claims["jti"].(string); ok {
+				if exp, ok := claims["exp"].(float64); ok {
+					expTime := time.Unix(int64(exp), 0)
+					dur := time.Until(expTime)
+					s.redis.Set(ctx, "blacklist:refresh:"+jti, 1, dur)
+				}
+			}
+		}
+	}
+	// 删除accessToken
+	return s.redis.Del(ctx, "token:"+accessToken).Err()
+}
+
 // RefreshToken implements token refresh
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*dto.AuthData, error) {
 	// Parse and validate refresh token
@@ -172,6 +208,14 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 
 	if err != nil || !token.Valid {
 		return nil, comm.ErrInvalidToken
+	}
+
+	// 检查refreshToken是否在黑名单
+	if jti, ok := claims["jti"].(string); ok {
+		val, _ := s.redis.Get(ctx, "blacklist:refresh:"+jti).Result()
+		if val != "" {
+			return nil, comm.ErrInvalidToken
+		}
 	}
 
 	// Get user info from claims
@@ -216,11 +260,6 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		RefreshToken: newRefreshToken,
 		ExpiresIn:    int(s.jwt.AccessTokenTTL.Seconds()),
 	}, nil
-}
-
-// Logout implements user logout
-func (s *authService) Logout(ctx context.Context, accessToken string) error {
-	return s.redis.Del(ctx, "token:"+accessToken).Err()
 }
 
 // ValidateToken validates the access token

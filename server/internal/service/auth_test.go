@@ -77,7 +77,7 @@ func TestAuthService_Register_Login_Logout_ValidateToken(t *testing.T) {
 
 	// 登录
 	loginReq := &dto.LoginRequest{
-		Username: username,
+		Email:    email,
 		Password: password,
 	}
 	loginData, err := authSvc.Login(ctx, loginReq)
@@ -93,11 +93,15 @@ func TestAuthService_Register_Login_Logout_ValidateToken(t *testing.T) {
 	assert.Equal(t, username, tokenInfo.Username)
 
 	// 登出
-	err = authSvc.Logout(ctx, loginData.AccessToken)
+	err = authSvc.Logout(ctx, loginData.AccessToken, loginData.RefreshToken)
 	assert.NoError(t, err)
 
 	// 校验 token 失效
 	_, err = authSvc.ValidateToken(ctx, loginData.AccessToken)
+	assert.Error(t, err)
+
+	// refresh token 也不能再用
+	_, err = authSvc.RefreshToken(ctx, loginData.RefreshToken)
 	assert.Error(t, err)
 }
 
