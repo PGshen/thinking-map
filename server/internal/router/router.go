@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 23:52:48
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-23 23:18:01
+ * @LastEditTime: 2025-06-25 00:16:23
  * @FilePath: /thinking-map/server/internal/router/router.go
  */
 package router
@@ -37,12 +37,14 @@ func SetupRouter(
 	authService := service.NewAuthService(db, redisClient, jwtConfig)
 	mapService := service.NewMapService(thinkingMapRepo)
 	nodeService := service.NewNodeService(nodeRepo, nodeDetailRepo, thinkingMapRepo)
+	nodeDetailService := service.NewNodeDetailService(nodeDetailRepo)
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)
 	mapHandler := handler.NewMapHandler(mapService)
 	nodeHandler := handler.NewNodeHandler(nodeService)
 	thinkingHandler := handler.NewThinkingHandler()
+	nodeDetailHandler := handler.NewNodeDetailHandler(nodeDetailService)
 
 	// 新增：创建 broker
 	store := sse.NewMemorySessionStore() // internal/sse/store.go
@@ -83,6 +85,14 @@ func SetupRouter(
 				nodes.PUT("/:nodeId", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.UpdateNode)
 				nodes.DELETE("/:nodeId", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.DeleteNode)
 				nodes.GET("/:nodeId/dependencies", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.GetDependencies)
+			}
+
+			{
+				// NodeDetail routes
+				protected.GET("/nodes/:nodeId/details", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeDetailHandler.GetNodeDetails)
+				protected.POST("/nodes/:nodeId/details", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeDetailHandler.CreateNodeDetail)
+				protected.PUT("/node-details/:detailId", middleware.NodeDetailOwnershipMiddleware(nodeDetailRepo, nodeRepo, thinkingMapRepo), nodeDetailHandler.UpdateNodeDetail)
+				protected.DELETE("/node-details/:detailId", middleware.NodeDetailOwnershipMiddleware(nodeDetailRepo, nodeRepo, thinkingMapRepo), nodeDetailHandler.DeleteNodeDetail)
 			}
 
 			// Thinking routes

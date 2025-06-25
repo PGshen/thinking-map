@@ -1,0 +1,50 @@
+package dto
+
+import (
+	"time"
+
+	"github.com/PGshen/thinking-map/server/internal/model"
+)
+
+// CreateNodeDetailRequest 创建节点详情请求
+// POST /api/v1/nodes/{nodeId}/details
+// 只允许部分字段
+// 参考API文档
+// detail_type, content, status, metadata
+// content结构体直接复用model.DetailContent
+// metadata用map[string]interface{}即可
+
+type CreateNodeDetailRequest struct {
+	DetailType string                 `json:"detail_type" binding:"required"`
+	Content    model.DetailContent    `json:"content" binding:"required"`
+	Status     int                    `json:"status"`
+	Metadata   map[string]interface{} `json:"metadata"`
+}
+
+// UpdateNodeDetailRequest 更新节点详情请求
+// PUT /api/v1/node-details/{detailId}
+type UpdateNodeDetailRequest struct {
+	Content  model.DetailContent    `json:"content" binding:"required"`
+	Status   int                    `json:"status"`
+	Metadata map[string]interface{} `json:"metadata"`
+}
+
+// NodeDetailResponse 节点详情响应
+// GET /api/v1/nodes/{nodeId}/details
+// POST /api/v1/nodes/{nodeId}/details
+// PUT /api/v1/node-details/{detailId}
+type NodeDetailResponse struct {
+	ID         string                 `json:"id"`
+	NodeID     string                 `json:"node_id"`
+	DetailType string                 `json:"detail_type"`
+	Content    model.DetailContent    `json:"content"`
+	Status     int                    `json:"status"`
+	Metadata   map[string]interface{} `json:"metadata"`
+	CreatedAt  time.Time              `json:"created_at"`
+	UpdatedAt  time.Time              `json:"updated_at"`
+}
+
+// NodeDetailListResponse 节点详情列表响应
+type NodeDetailListResponse struct {
+	Details []NodeDetailResponse `json:"details"`
+}
