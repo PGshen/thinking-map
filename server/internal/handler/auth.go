@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
@@ -128,12 +129,26 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 
 // Logout handles user logout
 func (h *AuthHandler) Logout(c *gin.Context) {
-	accessToken := c.GetHeader("Authorization")
+	accessTokenHeader := c.GetHeader("Authorization")
 	refreshToken := c.GetHeader("X-Refresh-Token")
-	if accessToken == "" || refreshToken == "" {
+	if accessTokenHeader == "" || refreshToken == "" {
 		c.JSON(http.StatusUnauthorized, dto.Response{
 			Code:      http.StatusUnauthorized,
 			Message:   "invalid access or refresh token",
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+	accessToken := ""
+	if strings.HasPrefix(accessTokenHeader, "Bearer ") {
+		accessToken = strings.TrimPrefix(accessTokenHeader, "Bearer ")
+		accessToken = strings.TrimSpace(accessToken)
+	} else {
+		c.JSON(http.StatusUnauthorized, dto.Response{
+			Code:      http.StatusUnauthorized,
+			Message:   "invalid Authorization header format",
 			Data:      nil,
 			Timestamp: time.Now(),
 			RequestID: uuid.New().String(),

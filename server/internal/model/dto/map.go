@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-06-18 23:59:38
  * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-06-23 22:56:26
+ * @LastEditTime: 2025-06-26 00:03:55
  * @FilePath: /thinking-map/server/internal/model/dto/map.go
  */
 package dto
@@ -19,7 +19,6 @@ type CreateMapRequest struct {
 	Target      string            `json:"target" binding:"max=1000"`
 	KeyPoints   model.KeyPoints   `json:"key_points"`
 	Constraints model.Constraints `json:"constraints"`
-	Conclusion  string            `json:"conclusion" binding:"max=1000"`
 }
 
 // UpdateMapRequest represents the request body for updating a mind map

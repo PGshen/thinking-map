@@ -33,9 +33,8 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 		Target:      req.Target,
 		KeyPoints:   req.KeyPoints,
 		Constraints: req.Constraints,
-		Conclusion:  req.Conclusion,
+		Conclusion:  "",
 		Status:      comm.MapStatusExecuting,
-		Metadata:    nil, // 可根据需要初始化
 	}
 
 	rootNodeID := uuid.NewString()
@@ -45,6 +44,7 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 		ParentID:  uuid.Nil.String(),
 		NodeType:  comm.NodeTypeProblem,
 		Question:  req.Problem,
+		Target:    req.Target,
 		Status:    comm.NodeStatusPending,
 		Position:  model.Position{X: 0, Y: 0},
 		CreatedAt: time.Now(),
