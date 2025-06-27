@@ -12,6 +12,8 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model"
 )
 
+const whereID = "id = ?"
+
 // User 用户仓储接口
 type User interface {
 	Create(ctx context.Context, user *model.User) error

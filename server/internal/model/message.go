@@ -19,7 +19,7 @@ import (
 
 // Message 消息模型
 type Message struct {
-	SerialID    int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
+	SerialID    int64          `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
 	ID          string         `gorm:"type:uuid;uniqueIndex"`
 	NodeID      string         `gorm:"type:uuid;not null;index"`
 	ParentID    string         `gorm:"type:uuid;index"`

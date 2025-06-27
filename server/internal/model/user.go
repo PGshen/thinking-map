@@ -15,7 +15,7 @@ import (
 
 // User represents the user model
 type User struct {
-	SerialID  int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
+	SerialID  int64          `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
 	ID        string         `gorm:"type:uuid;uniqueIndex" json:"id"`
 	Username  string         `gorm:"type:varchar(32);uniqueIndex;not null" json:"username"`
 	Email     string         `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`

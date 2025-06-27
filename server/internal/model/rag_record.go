@@ -15,7 +15,7 @@ import (
 
 // RAGRecord RAG 记录模型
 type RAGRecord struct {
-	SerialID  int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
+	SerialID  int64          `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
 	ID        string         `gorm:"type:uuid;uniqueIndex"`
 	Query     string         `gorm:"type:text;not null"`
 	Answer    string         `gorm:"type:text;not null"`

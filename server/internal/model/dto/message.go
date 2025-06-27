@@ -42,3 +42,17 @@ type MessageListResponse struct {
 	Limit int               `json:"limit"`
 	Items []MessageResponse `json:"items"`
 }
+
+// ToMessageResponse 将 model.Message 转为 dto.MessageResponse
+func ToMessageResponse(m *model.Message) MessageResponse {
+	return MessageResponse{
+		ID:          m.ID,
+		NodeID:      m.NodeID,
+		ParentID:    m.ParentID,
+		MessageType: m.MessageType,
+		Content:     m.Content,
+		Metadata:    m.Metadata,
+		CreatedAt:   m.CreatedAt,
+		UpdatedAt:   m.UpdatedAt,
+	}
+}

@@ -19,7 +19,7 @@ import (
 
 // NodeDetail 节点详情模型
 type NodeDetail struct {
-	SerialID   int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
+	SerialID   int64          `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
 	ID         string         `gorm:"type:uuid;uniqueIndex"`
 	NodeID     string         `gorm:"type:uuid;not null;index"`
 	DetailType string         `gorm:"type:varchar(50);not null"`

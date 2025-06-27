@@ -32,12 +32,12 @@ func (r *messageRepository) Update(ctx context.Context, message *model.Message) 
 }
 
 func (r *messageRepository) Delete(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Delete(&model.Message{}, id).Error
+	return r.db.WithContext(ctx).Where(whereID, id).Delete(&model.Message{}).Error
 }
 
 func (r *messageRepository) FindByID(ctx context.Context, id string) (*model.Message, error) {
 	var message model.Message
-	err := r.db.WithContext(ctx).First(&message, id).Error
+	err := r.db.WithContext(ctx).Where(whereID, id).First(&message).Error
 	if err != nil {
 		return nil, err
 	}

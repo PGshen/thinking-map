@@ -46,7 +46,7 @@ func TestNodeService_CRUD(t *testing.T) {
 		Target:   "分析目标",
 		Position: model.Position{X: 10, Y: 20, Width: 100, Height: 50},
 	}
-	nodeResp, err := nodeSvc.CreateNode(ctx, mapID, createNodeReq, userID)
+	nodeResp, err := nodeSvc.CreateNode(ctx, mapID, createNodeReq)
 	assert.NoError(t, err)
 	assert.Equal(t, createNodeReq.Question, nodeResp.Question)
 	assert.Equal(t, createNodeReq.Target, nodeResp.Target)

@@ -23,7 +23,6 @@ type CreateNodeRequest struct {
 
 // UpdateNodeRequest represents the request body for updating a node
 type UpdateNodeRequest struct {
-	NodeID   string         `json:"id" binding:"required,uuid"`
 	Question string         `json:"question" binding:"max=500"`
 	Target   string         `json:"target" binding:"max=500"`
 	Position model.Position `json:"position"`
@@ -31,19 +30,20 @@ type UpdateNodeRequest struct {
 
 // NodeResponse represents the node data in responses
 type NodeResponse struct {
-	ID           string             `json:"id"`
-	MapID        string             `json:"map_id,omitempty"`
-	ParentID     string             `json:"parent_id"`
-	NodeType     string             `json:"node_type"`
-	Question     string             `json:"question"`
-	Target       string             `json:"target"`
-	Context      string             `json:"context"`
-	Status       int                `json:"status"`
-	Position     model.Position     `json:"position"`
-	Dependencies model.Dependencies `json:"dependencies"`
-	NodeDetails  []model.NodeDetail `json:"node_details"`
-	CreatedAt    time.Time          `json:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
+	ID           string               `json:"id"`
+	MapID        string               `json:"map_id,omitempty"`
+	ParentID     string               `json:"parent_id"`
+	NodeType     string               `json:"node_type"`
+	Question     string               `json:"question"`
+	Target       string               `json:"target"`
+	Context      string               `json:"context"`
+	Status       int                  `json:"status"`
+	Position     model.Position       `json:"position"`
+	Dependencies model.Dependencies   `json:"dependencies"`
+	NodeDetails  []NodeDetailResponse `json:"node_details"`
+	Metadata     interface{}          `json:"metadata"`
+	CreatedAt    time.Time            `json:"created_at"`
+	UpdatedAt    time.Time            `json:"updated_at"`
 }
 
 // NodeListResponse represents the list of nodes in a map
@@ -62,4 +62,30 @@ type DependencyInfo struct {
 type DependencyResponse struct {
 	Dependencies   []DependencyInfo `json:"dependencies"`
 	DependentNodes []DependencyInfo `json:"dependent_nodes"`
+}
+
+// AddDependencyRequest represents the request body for adding a dependency
+type AddDependencyRequest struct {
+	DependencyNodeID string `json:"dependency_node_id" binding:"required,uuid"`
+	DependencyType   string `json:"dependency_type" binding:"required,oneof=prerequisite dependent"`
+	Required         bool   `json:"required"`
+}
+
+// modelToNodeResponse 将model.ThinkingNode转为dto.NodeResponse
+func ToNodeResponse(n *model.ThinkingNode) NodeResponse {
+	return NodeResponse{
+		ID:           n.ID,
+		MapID:        n.MapID,
+		ParentID:     n.ParentID,
+		NodeType:     n.NodeType,
+		Question:     n.Question,
+		Target:       n.Target,
+		Context:      n.Context,
+		Status:       n.Status,
+		Position:     n.Position,
+		Dependencies: n.Dependencies,
+		Metadata:     n.Metadata,
+		CreatedAt:    n.CreatedAt,
+		UpdatedAt:    n.UpdatedAt,
+	}
 }

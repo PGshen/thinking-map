@@ -38,11 +38,11 @@ func (s *NodeService) ListNodes(ctx context.Context, mapID string) ([]dto.NodeRe
 		if err != nil {
 			return nil, err
 		}
-		resp := modelToNodeResponse(n)
+		resp := dto.ToNodeResponse(n)
 		if details != nil {
-			resp.NodeDetails = make([]model.NodeDetail, len(details))
+			resp.NodeDetails = make([]dto.NodeDetailResponse, len(details))
 			for i, d := range details {
-				resp.NodeDetails[i] = *d
+				resp.NodeDetails[i] = dto.ToNodeDetailResponse(d)
 			}
 		}
 		res = append(res, resp)
@@ -51,7 +51,7 @@ func (s *NodeService) ListNodes(ctx context.Context, mapID string) ([]dto.NodeRe
 }
 
 // CreateNode 创建节点
-func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.CreateNodeRequest, userID string) (*dto.NodeResponse, error) {
+func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.CreateNodeRequest) (*dto.NodeResponse, error) {
 	node := &model.ThinkingNode{
 		ID:       uuid.NewString(),
 		MapID:    mapID,
@@ -100,7 +100,10 @@ func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.Crea
 	if err := s.nodeDetailRepo.Create(ctx, conclusionDetail); err != nil {
 		return nil, err
 	}
-	resp := modelToNodeResponse(node)
+	resp := dto.ToNodeResponse(node)
+	resp.NodeDetails = make([]dto.NodeDetailResponse, 0)
+	resp.NodeDetails = append(resp.NodeDetails, dto.ToNodeDetailResponse(infoDetail))
+	resp.NodeDetails = append(resp.NodeDetails, dto.ToNodeDetailResponse(conclusionDetail))
 	return &resp, nil
 }
 
@@ -128,7 +131,7 @@ func (s *NodeService) UpdateNode(ctx context.Context, nodeID string, req dto.Upd
 	if err := s.nodeRepo.Update(ctx, node); err != nil {
 		return nil, err
 	}
-	resp := modelToNodeResponse(node)
+	resp := dto.ToNodeResponse(node)
 	return &resp, nil
 }
 
@@ -137,20 +140,48 @@ func (s *NodeService) DeleteNode(ctx context.Context, nodeID string) error {
 	return s.nodeRepo.Delete(ctx, nodeID)
 }
 
-// modelToNodeResponse 将model.ThinkingNode转为dto.NodeResponse
-func modelToNodeResponse(n *model.ThinkingNode) dto.NodeResponse {
-	return dto.NodeResponse{
-		ID:           n.ID,
-		MapID:        n.MapID,
-		ParentID:     n.ParentID,
-		NodeType:     n.NodeType,
-		Question:     n.Question,
-		Target:       n.Target,
-		Context:      n.Context,
-		Status:       n.Status,
-		Position:     n.Position,
-		Dependencies: n.Dependencies,
-		CreatedAt:    n.CreatedAt,
-		UpdatedAt:    n.UpdatedAt,
+// AddDependency 添加节点依赖
+func (s *NodeService) AddDependency(ctx context.Context, nodeID string, req dto.AddDependencyRequest) (*dto.DependencyInfo, error) {
+	node, err := s.nodeRepo.FindByID(ctx, nodeID)
+	if err != nil {
+		return nil, err
 	}
+	// 检查是否已存在该依赖
+	for _, dep := range node.Dependencies {
+		if dep.NodeID == req.DependencyNodeID && dep.DependencyType == req.DependencyType {
+			return nil, nil // 已存在，直接返回
+		}
+	}
+	dep := model.Dependency{
+		NodeID:         req.DependencyNodeID,
+		DependencyType: req.DependencyType,
+		Required:       req.Required,
+	}
+	node.Dependencies = append(node.Dependencies, dep)
+	node.UpdatedAt = time.Now()
+	if err := s.nodeRepo.Update(ctx, node); err != nil {
+		return nil, err
+	}
+	return &dto.DependencyInfo{
+		NodeID:         dep.NodeID,
+		DependencyType: dep.DependencyType,
+		Required:       dep.Required,
+	}, nil
+}
+
+// DeleteDependency 删除节点依赖
+func (s *NodeService) DeleteDependency(ctx context.Context, nodeID string, dependencyNodeID string) error {
+	node, err := s.nodeRepo.FindByID(ctx, nodeID)
+	if err != nil {
+		return err
+	}
+	newDeps := make(model.Dependencies, 0, len(node.Dependencies))
+	for _, dep := range node.Dependencies {
+		if dep.NodeID != dependencyNodeID {
+			newDeps = append(newDeps, dep)
+		}
+	}
+	node.Dependencies = newDeps
+	node.UpdatedAt = time.Now()
+	return s.nodeRepo.Update(ctx, node)
 }

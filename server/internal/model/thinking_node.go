@@ -19,7 +19,7 @@ import (
 
 // ThinkingNode 思维节点模型
 type ThinkingNode struct {
-	SerialID     int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
+	SerialID     int64          `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
 	ID           string         `gorm:"type:uuid;uniqueIndex"`
 	MapID        string         `gorm:"type:uuid;not null;index"`
 	ParentID     string         `gorm:"type:uuid;index"`

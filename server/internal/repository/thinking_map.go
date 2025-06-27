@@ -62,7 +62,7 @@ func (r *thinkingMapRepository) List(ctx context.Context, userID string, status 
 // GetMap retrieves a specific thinking map
 func (r *thinkingMapRepository) FindByID(ctx context.Context, mapID string) (*model.ThinkingMap, error) {
 	var thinkingMap model.ThinkingMap
-	if err := r.db.Where("id = ?", mapID).First(&thinkingMap).Error; err != nil {
+	if err := r.db.Where(whereID, mapID).First(&thinkingMap).Error; err != nil {
 		return nil, err
 	}
 	return &thinkingMap, nil

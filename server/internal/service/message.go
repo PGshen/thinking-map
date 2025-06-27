@@ -33,7 +33,8 @@ func (s *MessageService) CreateMessage(ctx context.Context, req dto.CreateMessag
 	if err := s.messageRepo.Create(ctx, msg); err != nil {
 		return nil, err
 	}
-	return modelToMessageResponse(msg), nil
+	resp := dto.ToMessageResponse(msg)
+	return &resp, nil
 }
 
 // UpdateMessage 更新消息
@@ -55,7 +56,8 @@ func (s *MessageService) UpdateMessage(ctx context.Context, req dto.UpdateMessag
 	if err := s.messageRepo.Update(ctx, msg); err != nil {
 		return nil, err
 	}
-	return modelToMessageResponse(msg), nil
+	resp := dto.ToMessageResponse(msg)
+	return &resp, nil
 }
 
 // DeleteMessage 删除消息
@@ -69,7 +71,8 @@ func (s *MessageService) GetMessageByID(ctx context.Context, id string) (*dto.Me
 	if err != nil {
 		return nil, err
 	}
-	return modelToMessageResponse(msg), nil
+	resp := dto.ToMessageResponse(msg)
+	return &resp, nil
 }
 
 // ListMessagesByNodeID 根据节点ID分页获取消息
@@ -81,7 +84,7 @@ func (s *MessageService) ListMessagesByNodeID(ctx context.Context, nodeID string
 	}
 	items := make([]dto.MessageResponse, len(msgs))
 	for i, m := range msgs {
-		items[i] = *modelToMessageResponse(m)
+		items[i] = dto.ToMessageResponse(m)
 	}
 	return &dto.MessageListResponse{
 		Total: int(total),
@@ -89,20 +92,6 @@ func (s *MessageService) ListMessagesByNodeID(ctx context.Context, nodeID string
 		Limit: limit,
 		Items: items,
 	}, nil
-}
-
-// modelToMessageResponse 将 model.Message 转为 dto.MessageResponse
-func modelToMessageResponse(m *model.Message) *dto.MessageResponse {
-	return &dto.MessageResponse{
-		ID:          m.ID,
-		NodeID:      m.NodeID,
-		ParentID:    m.ParentID,
-		MessageType: m.MessageType,
-		Content:     m.Content,
-		Metadata:    m.Metadata,
-		CreatedAt:   m.CreatedAt,
-		UpdatedAt:   m.UpdatedAt,
-	}
 }
 
 // isZeroMessageContent 判断 MessageContent 是否为零值

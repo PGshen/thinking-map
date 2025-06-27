@@ -9,6 +9,8 @@ package dto
 import (
 	"time"
 
+	"encoding/json"
+
 	"github.com/PGshen/thinking-map/server/internal/model"
 )
 
@@ -61,4 +63,27 @@ type MapListQuery struct {
 	Page   int `form:"page" binding:"required,min=1"`
 	Limit  int `form:"limit" binding:"required,min=1,max=100"`
 	Status int `form:"status" binding:"omitempty,oneof=0 1 2"`
+}
+
+// ToMapResponse converts a model.ThinkingMap to a MapResponse
+func ToMapResponse(m *model.ThinkingMap) MapResponse {
+	var meta interface{}
+	if m.Metadata != nil {
+		_ = json.Unmarshal(m.Metadata, &meta)
+	}
+	rootNodeID := "" // 目前model未包含RootNodeID字段，如后续有可补充
+	return MapResponse{
+		ID:          m.ID,
+		RootNodeID:  rootNodeID,
+		Status:      m.Status,
+		Problem:     m.Problem,
+		ProblemType: m.ProblemType,
+		Target:      m.Target,
+		KeyPoints:   m.KeyPoints,
+		Constraints: m.Constraints,
+		Conclusion:  m.Conclusion,
+		Metadata:    meta,
+		CreatedAt:   m.CreatedAt,
+		UpdatedAt:   m.UpdatedAt,
+	}
 }

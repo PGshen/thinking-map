@@ -57,20 +57,8 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 		return nil, err
 	}
 
-	return &dto.MapResponse{
-		ID:          mapID,
-		RootNodeID:  rootNodeID,
-		Status:      thinkingMap.Status,
-		Problem:     thinkingMap.Problem,
-		ProblemType: thinkingMap.ProblemType,
-		Target:      thinkingMap.Target,
-		KeyPoints:   thinkingMap.KeyPoints,
-		Constraints: thinkingMap.Constraints,
-		Conclusion:  thinkingMap.Conclusion,
-		Metadata:    thinkingMap.Metadata,
-		CreatedAt:   thinkingMap.CreatedAt,
-		UpdatedAt:   thinkingMap.UpdatedAt,
-	}, nil
+	resp := dto.ToMapResponse(thinkingMap)
+	return &resp, nil
 }
 
 // GetMap retrieves a specific thinking map
@@ -79,19 +67,8 @@ func (s *MapService) GetMap(ctx context.Context, mapID string) (*dto.MapResponse
 	if err != nil {
 		return nil, err
 	}
-	return &dto.MapResponse{
-		ID:          thinkingMap.ID,
-		Status:      thinkingMap.Status,
-		Problem:     thinkingMap.Problem,
-		ProblemType: thinkingMap.ProblemType,
-		Target:      thinkingMap.Target,
-		KeyPoints:   thinkingMap.KeyPoints,
-		Constraints: thinkingMap.Constraints,
-		Conclusion:  thinkingMap.Conclusion,
-		Metadata:    thinkingMap.Metadata,
-		CreatedAt:   thinkingMap.CreatedAt,
-		UpdatedAt:   thinkingMap.UpdatedAt,
-	}, nil
+	resp := dto.ToMapResponse(thinkingMap)
+	return &resp, nil
 }
 
 // ListMaps retrieves a list of thinking maps
@@ -103,19 +80,7 @@ func (s *MapService) ListMaps(ctx context.Context, query dto.MapListQuery, userI
 
 	items := make([]dto.MapResponse, len(maps))
 	for i, m := range maps {
-		items[i] = dto.MapResponse{
-			ID:          m.ID,
-			Status:      m.Status,
-			Problem:     m.Problem,
-			ProblemType: m.ProblemType,
-			Target:      m.Target,
-			KeyPoints:   m.KeyPoints,
-			Constraints: m.Constraints,
-			Conclusion:  m.Conclusion,
-			Metadata:    m.Metadata,
-			CreatedAt:   m.CreatedAt,
-			UpdatedAt:   m.UpdatedAt,
-		}
+		items[i] = dto.ToMapResponse(m)
 	}
 
 	return &dto.MapListResponse{
@@ -159,18 +124,8 @@ func (s *MapService) UpdateMap(ctx context.Context, mapID string, req dto.Update
 	if err != nil {
 		return nil, err
 	}
-	return &dto.MapResponse{
-		ID:          thinkingMap.ID,
-		Status:      thinkingMap.Status,
-		Problem:     thinkingMap.Problem,
-		ProblemType: thinkingMap.ProblemType,
-		Target:      thinkingMap.Target,
-		KeyPoints:   thinkingMap.KeyPoints,
-		Constraints: thinkingMap.Constraints,
-		Conclusion:  thinkingMap.Conclusion,
-		Metadata:    thinkingMap.Metadata,
-		UpdatedAt:   thinkingMap.UpdatedAt,
-	}, nil
+	resp := dto.ToMapResponse(thinkingMap)
+	return &resp, nil
 }
 
 // DeleteMap deletes a thinking map

@@ -27,20 +27,7 @@ func (s *NodeDetailService) GetNodeDetails(ctx context.Context, nodeID string) (
 	}
 	var res []dto.NodeDetailResponse
 	for _, d := range details {
-		var meta map[string]interface{}
-		if d.Metadata != nil {
-			_ = json.Unmarshal(d.Metadata, &meta)
-		}
-		res = append(res, dto.NodeDetailResponse{
-			ID:         d.ID,
-			NodeID:     d.NodeID,
-			DetailType: d.DetailType,
-			Content:    d.Content,
-			Status:     d.Status,
-			Metadata:   meta,
-			CreatedAt:  d.CreatedAt,
-			UpdatedAt:  d.UpdatedAt,
-		})
+		res = append(res, dto.ToNodeDetailResponse(d))
 	}
 	return res, nil
 }
@@ -61,16 +48,8 @@ func (s *NodeDetailService) CreateNodeDetail(ctx context.Context, nodeID string,
 	if err := s.repo.Create(ctx, detail); err != nil {
 		return nil, err
 	}
-	return &dto.NodeDetailResponse{
-		ID:         detail.ID,
-		NodeID:     detail.NodeID,
-		DetailType: detail.DetailType,
-		Content:    detail.Content,
-		Status:     detail.Status,
-		Metadata:   req.Metadata,
-		CreatedAt:  detail.CreatedAt,
-		UpdatedAt:  detail.UpdatedAt,
-	}, nil
+	resp := dto.ToNodeDetailResponse(detail)
+	return &resp, nil
 }
 
 // UpdateNodeDetail 更新节点详情
@@ -87,16 +66,8 @@ func (s *NodeDetailService) UpdateNodeDetail(ctx context.Context, detailID strin
 	if err := s.repo.Update(ctx, detail); err != nil {
 		return nil, err
 	}
-	return &dto.NodeDetailResponse{
-		ID:         detail.ID,
-		NodeID:     detail.NodeID,
-		DetailType: detail.DetailType,
-		Content:    detail.Content,
-		Status:     detail.Status,
-		Metadata:   req.Metadata,
-		CreatedAt:  detail.CreatedAt,
-		UpdatedAt:  detail.UpdatedAt,
-	}, nil
+	resp := dto.ToNodeDetailResponse(detail)
+	return &resp, nil
 }
 
 // DeleteNodeDetail 删除节点详情

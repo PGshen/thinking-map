@@ -26,12 +26,12 @@ func (r *ragRecordRepository) Update(ctx context.Context, record *model.RAGRecor
 }
 
 func (r *ragRecordRepository) Delete(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Delete(&model.RAGRecord{}, id).Error
+	return r.db.WithContext(ctx).Where(whereID, id).Delete(&model.RAGRecord{}).Error
 }
 
 func (r *ragRecordRepository) FindByID(ctx context.Context, id string) (*model.RAGRecord, error) {
 	var record model.RAGRecord
-	err := r.db.WithContext(ctx).First(&record, id).Error
+	err := r.db.WithContext(ctx).Where(whereID, id).First(&record).Error
 	if err != nil {
 		return nil, err
 	}

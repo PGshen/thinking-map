@@ -32,12 +32,12 @@ func (r *thinkingNodeRepository) Update(ctx context.Context, node *model.Thinkin
 }
 
 func (r *thinkingNodeRepository) Delete(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Delete(&model.ThinkingNode{}, id).Error
+	return r.db.WithContext(ctx).Where(whereID, id).Delete(&model.ThinkingNode{}).Error
 }
 
 func (r *thinkingNodeRepository) FindByID(ctx context.Context, id string) (*model.ThinkingNode, error) {
 	var node model.ThinkingNode
-	err := r.db.WithContext(ctx).First(&node, id).Error
+	err := r.db.WithContext(ctx).Where(whereID, id).First(&node).Error
 	if err != nil {
 		return nil, err
 	}

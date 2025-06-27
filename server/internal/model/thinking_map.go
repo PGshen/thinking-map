@@ -19,7 +19,7 @@ import (
 
 // ThinkingMap 思维导图模型
 type ThinkingMap struct {
-	SerialID    int64          `gorm:"primaryKey;autoIncrement;column:serial_id"`
+	SerialID    int64          `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
 	ID          string         `gorm:"type:uuid;uniqueIndex" json:"id"`
 	UserID      string         `json:"user_id" gorm:"type:uuid;not null"`
 	Problem     string         `json:"problem" gorm:"type:text;not null"`

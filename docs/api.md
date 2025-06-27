@@ -388,6 +388,46 @@ Response 200 OK:
   "timestamp": "2024-01-01T00:00:00Z",
   "request_id": "uuid"
 }
+
+# 添加节点依赖
+POST /api/v1/nodes/{nodeId}/dependencies
+Authorization: Bearer <token>
+Content-Type: application/json
+
+Request:
+{
+  "dependency_node_id": "uuid", // 依赖的节点ID
+  "dependency_type": "prerequisite", // prerequisite | dependent
+  "required": true
+}
+
+Response 200 OK:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "node_id": "uuid",
+    "dependency_node_id": "uuid",
+    "dependency_type": "prerequisite",
+    "required": true,
+    "status": 0
+  },
+  "timestamp": "2024-01-01T00:00:00Z",
+  "request_id": "uuid"
+}
+
+# 删除节点依赖
+DELETE /api/v1/nodes/{nodeId}/dependencies/{dependencyNodeId}
+Authorization: Bearer <token>
+
+Response 200 OK:
+{
+  "code": 200,
+  "message": "success",
+  "data": null,
+  "timestamp": "2024-01-01T00:00:00Z",
+  "request_id": "uuid"
+}
 ```
 
 #### 6.3.4 节点详情接口

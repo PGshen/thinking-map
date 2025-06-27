@@ -78,9 +78,7 @@ func (h *NodeHandler) CreateNode(c *gin.Context) {
 		})
 		return
 	}
-	// TODO: 获取userID，暂用uuid.Nil
-	userID := uuid.Nil.String()
-	resp, err := h.NodeService.CreateNode(c.Request.Context(), mapID, req, userID)
+	resp, err := h.NodeService.CreateNode(c.Request.Context(), mapID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,
@@ -212,6 +210,83 @@ func (h *NodeHandler) GetDependencies(c *gin.Context) {
 				},
 			},
 		},
+		Timestamp: time.Now(),
+		RequestID: uuid.New().String(),
+	})
+}
+
+// AddDependency handles adding a dependency to a node
+func (h *NodeHandler) AddDependency(c *gin.Context) {
+	nodeID := c.Param("nodeId")
+	if nodeID == "" {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "node ID is required",
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+	var req dto.AddDependencyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "invalid request parameters",
+			Data:      dto.ErrorData{Error: err.Error()},
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+	resp, err := h.NodeService.AddDependency(c.Request.Context(), nodeID, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
+		Message:   "success",
+		Data:      resp,
+		Timestamp: time.Now(),
+		RequestID: uuid.New().String(),
+	})
+}
+
+// DeleteDependency handles removing a dependency from a node
+func (h *NodeHandler) DeleteDependency(c *gin.Context) {
+	nodeID := c.Param("nodeId")
+	dependencyNodeID := c.Param("dependencyNodeId")
+	if nodeID == "" || dependencyNodeID == "" {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "node ID and dependency node ID are required",
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+	if err := h.NodeService.DeleteDependency(c.Request.Context(), nodeID, dependencyNodeID); err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
+		Message:   "success",
+		Data:      nil,
 		Timestamp: time.Now(),
 		RequestID: uuid.New().String(),
 	})

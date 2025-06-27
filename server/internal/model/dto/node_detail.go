@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/model"
@@ -47,4 +48,22 @@ type NodeDetailResponse struct {
 // NodeDetailListResponse 节点详情列表响应
 type NodeDetailListResponse struct {
 	Details []NodeDetailResponse `json:"details"`
+}
+
+// ToNodeDetailResponse converts a model.NodeDetail to a NodeDetailResponse
+func ToNodeDetailResponse(detail *model.NodeDetail) NodeDetailResponse {
+	var meta map[string]interface{}
+	if detail.Metadata != nil {
+		_ = json.Unmarshal(detail.Metadata, &meta)
+	}
+	return NodeDetailResponse{
+		ID:         detail.ID,
+		NodeID:     detail.NodeID,
+		DetailType: detail.DetailType,
+		Content:    detail.Content,
+		Status:     detail.Status,
+		Metadata:   meta,
+		CreatedAt:  detail.CreatedAt,
+		UpdatedAt:  detail.UpdatedAt,
+	}
 }
