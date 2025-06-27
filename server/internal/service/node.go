@@ -53,6 +53,7 @@ func (s *NodeService) ListNodes(ctx context.Context, mapID string) ([]dto.NodeRe
 // CreateNode 创建节点
 func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.CreateNodeRequest, userID string) (*dto.NodeResponse, error) {
 	node := &model.ThinkingNode{
+		ID:       uuid.NewString(),
 		MapID:    mapID,
 		ParentID: req.ParentID,
 		NodeType: req.NodeType,

@@ -8,6 +8,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
 	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
 	"github.com/PGshen/thinking-map/server/internal/repository"
+	"gorm.io/datatypes"
 
 	"github.com/google/uuid"
 )
@@ -34,6 +35,7 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 		KeyPoints:   req.KeyPoints,
 		Constraints: req.Constraints,
 		Conclusion:  "",
+		Metadata:    datatypes.JSON{},
 		Status:      comm.MapStatusExecuting,
 	}
 

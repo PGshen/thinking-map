@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
+	"github.com/PGshen/thinking-map/server/internal/repository"
 )
 
 var (
@@ -45,6 +46,12 @@ func TestMain(m *testing.M) {
 		RefreshTokenTTL: expireDuration * 2,
 		TokenIssuer:     "test",
 	})
+	mapRepo := repository.NewThinkingMapRepository(testDB)
+	mapSvc = NewMapService(mapRepo)
+
+	nodeRepo := repository.NewThinkingNodeRepository(testDB)
+	nodeDetailRepo := repository.NewNodeDetailRepository(testDB)
+	nodeSvc = NewNodeService(nodeRepo, nodeDetailRepo, mapRepo)
 
 	code := m.Run()
 
