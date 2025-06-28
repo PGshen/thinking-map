@@ -58,6 +58,7 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 	}
 
 	resp := dto.ToMapResponse(thinkingMap)
+	resp.RootNodeID = rootNodeID
 	return &resp, nil
 }
 

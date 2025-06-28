@@ -16,10 +16,6 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
 )
 
-var (
-	nodeSvc *NodeService
-)
-
 func TestNodeService_CRUD(t *testing.T) {
 
 	ctx := context.Background()

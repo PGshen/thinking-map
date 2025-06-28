@@ -16,10 +16,6 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
 )
 
-var (
-	mapSvc *MapService
-)
-
 func TestMapService_CRUD(t *testing.T) {
 	ctx := context.Background()
 	userID := uuid.NewString()

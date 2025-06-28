@@ -71,10 +71,8 @@ func ToMapResponse(m *model.ThinkingMap) MapResponse {
 	if m.Metadata != nil {
 		_ = json.Unmarshal(m.Metadata, &meta)
 	}
-	rootNodeID := "" // 目前model未包含RootNodeID字段，如后续有可补充
 	return MapResponse{
 		ID:          m.ID,
-		RootNodeID:  rootNodeID,
 		Status:      m.Status,
 		Problem:     m.Problem,
 		ProblemType: m.ProblemType,

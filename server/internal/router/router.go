@@ -89,12 +89,13 @@ func SetupRouter(
 				nodes.DELETE("/:nodeId/dependencies/:dependencyNodeId", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.DeleteDependency)
 			}
 
+			nodeDetails := protected.Group("/maps/:mapId/nodes/:nodeId/details")
 			{
 				// NodeDetail routes
-				protected.GET("/nodes/:nodeId/details", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeDetailHandler.GetNodeDetails)
-				protected.POST("/nodes/:nodeId/details", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeDetailHandler.CreateNodeDetail)
-				protected.PUT("/node-details/:detailId", middleware.NodeDetailOwnershipMiddleware(nodeDetailRepo, nodeRepo, thinkingMapRepo), nodeDetailHandler.UpdateNodeDetail)
-				protected.DELETE("/node-details/:detailId", middleware.NodeDetailOwnershipMiddleware(nodeDetailRepo, nodeRepo, thinkingMapRepo), nodeDetailHandler.DeleteNodeDetail)
+				nodeDetails.GET("", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeDetailHandler.GetNodeDetails)
+				nodeDetails.POST("", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeDetailHandler.CreateNodeDetail)
+				nodeDetails.PUT("/:detailId", middleware.NodeDetailOwnershipMiddleware(nodeDetailRepo, nodeRepo, thinkingMapRepo), nodeDetailHandler.UpdateNodeDetail)
+				nodeDetails.DELETE("/:detailId", middleware.NodeDetailOwnershipMiddleware(nodeDetailRepo, nodeRepo, thinkingMapRepo), nodeDetailHandler.DeleteNodeDetail)
 			}
 
 			// Thinking routes

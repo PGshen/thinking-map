@@ -9,6 +9,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
 	"github.com/PGshen/thinking-map/server/internal/repository"
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 )
 
 type NodeDetailService struct {
@@ -34,7 +35,10 @@ func (s *NodeDetailService) GetNodeDetails(ctx context.Context, nodeID string) (
 
 // CreateNodeDetail 创建节点详情
 func (s *NodeDetailService) CreateNodeDetail(ctx context.Context, nodeID string, req dto.CreateNodeDetailRequest) (*dto.NodeDetailResponse, error) {
-	meta, _ := json.Marshal(req.Metadata)
+	meta := datatypes.JSON{}
+	if req.Metadata != nil {
+		meta, _ = json.Marshal(req.Metadata)
+	}
 	detail := &model.NodeDetail{
 		ID:         uuid.NewString(),
 		NodeID:     nodeID,
@@ -58,7 +62,10 @@ func (s *NodeDetailService) UpdateNodeDetail(ctx context.Context, detailID strin
 	if err != nil {
 		return nil, err
 	}
-	meta, _ := json.Marshal(req.Metadata)
+	meta := datatypes.JSON{}
+	if req.Metadata != nil {
+		meta, _ = json.Marshal(req.Metadata)
+	}
 	detail.Content = req.Content
 	detail.Status = req.Status
 	detail.Metadata = meta
