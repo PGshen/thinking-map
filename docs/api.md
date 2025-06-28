@@ -572,20 +572,99 @@ Response 200 OK:
 }
 ```
 
-#### 6.3.5 AI思考接口
+#### 6.3.5 思考相关接口
 ```yaml
-# 开始问题分析
+
+
+# SSE连接
+GET /api/v1/sse/connect?map_id={map_id}&user_id={user_id}
+Authorization: Bearer <token>
+
+Response 200 OK:
+event: connection_established
+data: {
+  "map_id": "uuid",
+  "current_status": "ready",
+  "active_nodes": ["uuid"]
+}
+
+# SSE事件格式
+event: node_created
+data: {
+  "node_id": "uuid",
+  "parent_id": "uuid",
+  "node_type": "analysis",
+  "question": "string",
+  "target": "string",
+  "position": {"x": 100, "y": 200},
+  "dependencies": ["uuid"]
+}
+
+event: node_updated
+data: {
+  "node_id": "uuid",
+  "updates": {
+    "status": "completed",
+    "conclusion": "string"
+  }
+}
+
+event: thinking_progress
+data: {
+  "node_id": "uuid",
+  "stage": "analyzing|reasoning|synthesizing",
+  "progress": 50,
+  "message": "string"
+}
+
+
+# 问题分析
 POST /api/v1/thinking/analyze
 Authorization: Bearer <token>
 Content-Type: application/json
 
 Request:
 {
-  "node_id": "uuid",
-  "context": "string",
-  "options": {
-    "model": "gpt-4",
-    "temperature": 0.7
+  "question": "string",
+  "question_type": "research|creative|analysis|planning",
+  "user_id": "uuid"
+}
+
+Response 200 OK:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "understanding": {
+      "core_question": "string",
+      "target": "string",
+      "key_points": ["string"],
+      "constraints": ["string"],
+      "context": "string",
+      "complexity": "high|medium|low"
+    },
+    "suggestions": ["string"],
+    "clarification_questions": ["string"]
+  },
+  "timestamp": "2024-01-01T00:00:00Z",
+  "request_id": "uuid"
+}
+
+# 问题澄清
+POST /api/v1/thinking/clarify
+Authorization: Bearer <token>
+Content-Type: application/json
+
+Request:
+{
+  "session_id": "uuid",
+  "clarifications": {
+    "answers": ["string"],
+    "additional_info": "string",
+    "modifications": {
+      "target": "string",
+      "constraints": ["string"]
+    }
   }
 }
 
@@ -594,16 +673,79 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "task_id": "uuid",
-    "node_id": "uuid",
-    "status": "processing",
-    "estimated_time": 30
+    "understanding": {
+      "core_question": "string",
+      "target": "string",
+      "key_points": ["string"],
+      "constraints": ["string"],
+      "context": "string",
+      "complexity": "high|medium|low"
+    },
+    "suggestions": ["string"],
+    "clarification_questions": ["string"]
   },
   "timestamp": "2024-01-01T00:00:00Z",
   "request_id": "uuid"
 }
 
-# 开始问题拆解
+# 问题确认
+POST /api/v1/thinking/confirm
+Authorization: Bearer <token>
+Content-Type: application/json
+
+Request:
+{
+  "session_id": "uuid",
+  "final_understanding": {
+    "problem": "string",
+    "target": "string",
+    "key_points": ["string"],
+    "constraints": ["string"]
+  }
+}
+
+Response 200 OK:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "map_id": "uuid",
+    "root_node": {
+      "node_id": "uuid",
+      "question": "string",
+      "target": "string",
+      "status": "pending"
+    }
+  },
+  "timestamp": "2024-01-01T00:00:00Z",
+  "request_id": "uuid"
+}
+
+# 节点执行
+POST /api/v1/thinking/execute
+Authorization: Bearer <token>
+Content-Type: application/json
+
+Request:
+{
+  "node_id": "uuid",
+  "action": "start"
+}
+
+Response 200 OK:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "action": "decompose|conclude",
+    "reason": "string",
+    "next_tab": "decompose|conclusion"
+  },
+  "timestamp": "2024-01-01T00:00:00Z",
+  "request_id": "uuid"
+}
+
+# 问题拆解
 POST /api/v1/thinking/decompose
 Authorization: Bearer <token>
 Content-Type: application/json
@@ -611,8 +753,8 @@ Content-Type: application/json
 Request:
 {
   "node_id": "uuid",
-  "decompose_strategy": "breadth_first",
-  "max_depth": 3
+  "question": "string",
+  "context": "string"
 }
 
 Response 200 OK:
@@ -620,16 +762,57 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "task_id": "uuid",
-    "node_id": "uuid",
-    "status": "processing",
-    "estimated_time": 60
+    "sub_problems": [
+      {
+        "question": "string",
+        "target": "string",
+        "priority": 1,
+        "dependencies": ["string"]
+      }
+    ],
+    "strategy": "string"
   },
   "timestamp": "2024-01-01T00:00:00Z",
   "request_id": "uuid"
 }
 
-# 生成结论
+# 问题拆解反馈
+POST /api/v1/thinking/decompose/feedback
+Authorization: Bearer <token>
+Content-Type: application/json
+
+Request:
+{
+  "node_id": "节点ID",
+  "feedback": {
+    "rating": 3,
+    "comments": "拆解不够细致，缺少技术实现层面",
+    "issues": [
+      {
+        "sub_problem_id": "子问题ID",
+        "issue": "问题描述过于宽泛"
+      }
+    ],
+    "suggestions": "希望增加技术选型相关的子问题"
+  },
+  "action": "regenerate|adjust|confirm"
+}
+
+Response 200 OK:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "feedback_id": "反馈ID",
+    "status": "received",
+    "next_action": "regenerate"
+  },
+  "timestamp": "2024-01-01T00:00:00Z",
+  "request_id": "uuid"
+}
+
+
+# 结论生成
 POST /api/v1/thinking/conclude
 Authorization: Bearer <token>
 Content-Type: application/json
@@ -637,8 +820,9 @@ Content-Type: application/json
 Request:
 {
   "node_id": "uuid",
-  "evidence": ["string"],
-  "reasoning_type": "deductive"
+  "question": "string",
+  "context": "string",
+  "sub_conclusions": ["string"]
 }
 
 Response 200 OK:
@@ -646,25 +830,26 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "task_id": "uuid",
-    "node_id": "uuid",
-    "status": "processing",
-    "estimated_time": 45
+    "conclusion": "string",
+    "confidence": 0.85,
+    "evidence": ["string"],
+    "limitations": ["string"],
+    "recommendations": ["string"]
   },
   "timestamp": "2024-01-01T00:00:00Z",
   "request_id": "uuid"
 }
 
-# 对话交互
-POST /api/v1/thinking/chat
+# 用户反馈
+POST /api/v1/thinking/conclude/feedback
 Authorization: Bearer <token>
 Content-Type: application/json
 
 Request:
 {
   "node_id": "uuid",
-  "message": "string",
-  "context": "decompose" // decompose | conclude
+  "feedback": "string",
+  "action": "adjust|confirm"
 }
 
 Response 200 OK:
@@ -672,38 +857,15 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "message_id": "uuid",
-    "content": "string",
-    "role": "assistant",
-    "created_at": "2024-01-01T00:00:00Z"
+    "conclusion": "string",
+    "confidence": 0.85,
+    "evidence": ["string"],
+    "limitations": ["string"],
+    "recommendations": ["string"]
   },
   "timestamp": "2024-01-01T00:00:00Z",
   "request_id": "uuid"
 }
+
 ```
 
-#### 6.3.6 SSE接口
-```yaml
-# 建立SSE连接
-GET /api/v1/sse/connect/{mapId}
-Authorization: Bearer <token>
-Accept: text/event-stream
-Cache-Control: no-cache
-Connection: keep-alive
-
-# 连接成功响应
-event: connected
-data: {
-  "connection_id": "uuid",
-  "map_id": "uuid",
-  "timestamp": "2024-01-01T00:00:00Z"
-}
-
-# 连接关闭响应
-event: disconnected
-data: {
-  "connection_id": "uuid",
-  "reason": "user_disconnected",
-  "timestamp": "2024-01-01T00:00:00Z"
-}
-```
