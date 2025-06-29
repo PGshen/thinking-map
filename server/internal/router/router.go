@@ -48,7 +48,7 @@ func SetupRouter(
 
 	// 新增：创建 broker
 	store := sse.NewMemorySessionStore() // internal/sse/store.go
-	broker := sse.NewBroker(store, 30*time.Second, 60*time.Second)
+	broker := sse.NewBroker(store, 10*time.Second, 60*time.Second)
 	sseHandler := handler.NewSSEHandler(broker, thinkingMapRepo)
 
 	// API v1 group
@@ -111,6 +111,7 @@ func SetupRouter(
 			sse := protected.Group("/sse")
 			{
 				sse.GET("/connect/:mapId", sseHandler.Connect)
+				sse.POST("/send-event/:mapId", sseHandler.SendEvent)
 			}
 		}
 	}

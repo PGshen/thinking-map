@@ -12,20 +12,6 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model"
 )
 
-// SSEConnectionResponse represents the SSE connection response
-type SSEConnectionResponse struct {
-	ConnectionID string    `json:"connection_id"`
-	MapID        string    `json:"map_id"`
-	Timestamp    time.Time `json:"timestamp"`
-}
-
-// SSEDisconnectionResponse represents the SSE disconnection response
-type SSEDisconnectionResponse struct {
-	ConnectionID string    `json:"connection_id"`
-	Reason       string    `json:"reason"`
-	Timestamp    time.Time `json:"timestamp"`
-}
-
 // NodeCreatedEvent represents the node creation event
 type NodeCreatedEvent struct {
 	NodeID    string         `json:"node_id"`
@@ -59,4 +45,19 @@ type ErrorEvent struct {
 	ErrorCode    string    `json:"error_code"`
 	ErrorMessage string    `json:"error_message"`
 	Timestamp    time.Time `json:"timestamp"`
+}
+
+// TestEventRequest represents the request for testing SSE events
+type TestEventRequest struct {
+	EventType string                 `json:"event_type" binding:"required,oneof=node_created node_updated thinking_progress error custom"`
+	Data      map[string]interface{} `json:"data" binding:"required"`
+	Delay     int                    `json:"delay" binding:"min=0,max=10000"` // 延迟发送时间（毫秒）
+}
+
+// TestEventResponse represents the response for testing SSE events
+type TestEventResponse struct {
+	EventID   string    `json:"event_id"`
+	EventType string    `json:"event_type"`
+	SentAt    time.Time `json:"sent_at"`
+	Message   string    `json:"message"`
 }
