@@ -8,6 +8,7 @@ package router
 
 import (
 	"github.com/PGshen/thinking-map/server/internal/handler"
+	thinkinghandler "github.com/PGshen/thinking-map/server/internal/handler/thinking"
 	"github.com/PGshen/thinking-map/server/internal/middleware"
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
 	"github.com/PGshen/thinking-map/server/internal/repository"
@@ -32,19 +33,21 @@ func SetupRouter(
 	thinkingMapRepo := repository.NewThinkingMapRepository(db)
 	nodeRepo := repository.NewThinkingNodeRepository(db)
 	nodeDetailRepo := repository.NewNodeDetailRepository(db)
+	messageRepo := repository.NewMessageRepository(db)
 
 	// Create services
 	authService := service.NewAuthService(db, redisClient, jwtConfig)
 	mapService := service.NewMapService(thinkingMapRepo)
 	nodeService := service.NewNodeService(nodeRepo, nodeDetailRepo, thinkingMapRepo)
 	nodeDetailService := service.NewNodeDetailService(nodeDetailRepo)
+	understandingService := service.NewUnderstandingService(messageRepo)
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)
 	mapHandler := handler.NewMapHandler(mapService)
 	nodeHandler := handler.NewNodeHandler(nodeService)
-	thinkingHandler := handler.NewThinkingHandler()
 	nodeDetailHandler := handler.NewNodeDetailHandler(nodeDetailService)
+	understandingHandler := thinkinghandler.NewUnderstandingHandler(understandingService)
 
 	// 新增：创建 broker
 	store := sse.NewMemorySessionStore() // internal/sse/store.go
@@ -101,10 +104,7 @@ func SetupRouter(
 			// Thinking routes
 			thinking := protected.Group("/thinking")
 			{
-				thinking.POST("/analyze", thinkingHandler.Analyze)
-				thinking.POST("/decompose", thinkingHandler.Decompose)
-				thinking.POST("/conclude", thinkingHandler.Conclude)
-				thinking.POST("/chat", thinkingHandler.Chat)
+				thinking.POST("/understanding", thinkinghandler.NewStreamReply(understandingHandler))
 			}
 
 			// SSE routes

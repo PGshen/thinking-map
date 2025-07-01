@@ -64,9 +64,8 @@ type Message interface {
 	Update(ctx context.Context, message *model.Message) error
 	Delete(ctx context.Context, id string) error
 	FindByID(ctx context.Context, id string) (*model.Message, error)
-	FindByNodeID(ctx context.Context, nodeID string, offset, limit int) ([]*model.Message, int64, error)
 	FindByParentID(ctx context.Context, parentID string) ([]*model.Message, error)
-	UpdateVersion(ctx context.Context, id string, version int) error
+	FindByChatID(ctx context.Context, chatID string) ([]*model.Message, error)
 }
 
 // RAGRecord RAG检索记录仓储接口

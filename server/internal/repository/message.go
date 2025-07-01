@@ -44,32 +44,6 @@ func (r *messageRepository) FindByID(ctx context.Context, id string) (*model.Mes
 	return &message, nil
 }
 
-func (r *messageRepository) FindByNodeID(ctx context.Context, nodeID string, offset, limit int) ([]*model.Message, int64, error) {
-	var messages []*model.Message
-	var total int64
-
-	err := r.db.WithContext(ctx).Model(&model.Message{}).Where("node_id = ?", nodeID).Count(&total).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	err = r.db.WithContext(ctx).Where("node_id = ?", nodeID).Offset(offset).Limit(limit).Find(&messages).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return messages, total, nil
-}
-
-func (r *messageRepository) FindByNodeIDAndType(ctx context.Context, nodeID string, messageType string) ([]*model.Message, error) {
-	var messages []*model.Message
-	err := r.db.WithContext(ctx).Where("node_id = ? AND message_type = ?", nodeID, messageType).Find(&messages).Error
-	if err != nil {
-		return nil, err
-	}
-	return messages, nil
-}
-
 func (r *messageRepository) FindByParentID(ctx context.Context, parentID string) ([]*model.Message, error) {
 	var messages []*model.Message
 	err := r.db.WithContext(ctx).Where("parent_id = ?", parentID).Find(&messages).Error
@@ -77,10 +51,6 @@ func (r *messageRepository) FindByParentID(ctx context.Context, parentID string)
 		return nil, err
 	}
 	return messages, nil
-}
-
-func (r *messageRepository) UpdateVersion(ctx context.Context, id string, version int) error {
-	return r.db.WithContext(ctx).Model(&model.Message{}).Where("id = ?", id).Update("version", version).Error
 }
 
 func (r *messageRepository) List(ctx context.Context, offset, limit int) ([]*model.Message, int64, error) {
@@ -98,4 +68,13 @@ func (r *messageRepository) List(ctx context.Context, offset, limit int) ([]*mod
 	}
 
 	return messages, total, nil
+}
+
+func (r *messageRepository) FindByChatID(ctx context.Context, chatID string) ([]*model.Message, error) {
+	var messages []*model.Message
+	err := r.db.WithContext(ctx).Where("chat_id = ?", chatID).Find(&messages).Error
+	if err != nil {
+		return nil, err
+	}
+	return messages, nil
 }

@@ -59,9 +59,9 @@ const (
 
 // 消息类型
 const (
-	MessageTypeText   = 1 // 文本
-	MessageTypeRag    = 2 // RAG
-	MessageTypeNotice = 3 // 通知
+	MessageTypeText   = "text"   // 文本
+	MessageTypeRag    = "rag"    // RAG
+	MessageTypeNotice = "notice" // 通知
 )
 
 // RAG 记录状态

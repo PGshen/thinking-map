@@ -568,9 +568,11 @@ CREATE INDEX idx_node_details_deleted_at ON "node_details"(deleted_at);
 CREATE TABLE "messages" (
     serial_id BIGSERIAL PRIMARY KEY,
     id UUID NOT NULL UNIQUE,
-    node_id UUID NOT NULL,
     parent_id UUID,
-    message_type VARCHAR(20) NOT NULL DEFAULT '1',
+    chat_id UUID,
+    user_id UUID,
+    message_type VARCHAR(20) NOT NULL DEFAULT 'text',
+    role VARCHAR(48),
     content JSONB NOT NULL,
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -579,6 +581,7 @@ CREATE TABLE "messages" (
 );
 CREATE INDEX idx_messages_node_id ON "messages"(node_id);
 CREATE INDEX idx_messages_parent_id ON "messages"(parent_id);
+CREATE INDEX idx_messages_parent_id ON "messages"(chat_id);
 CREATE INDEX idx_messages_deleted_at ON "messages"(deleted_at);
 ```
 > content 字段结构

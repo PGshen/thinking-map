@@ -4,13 +4,14 @@ import (
 	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/model"
+	"github.com/cloudwego/eino/schema"
 )
 
 // CreateMessageRequest represents the request body for creating a message
 type CreateMessageRequest struct {
-	NodeID      string               `json:"node_id" binding:"required,uuid"`
 	ParentID    string               `json:"parent_id" binding:"omitempty,uuid"`
 	MessageType string               `json:"message_type" binding:"required,oneof=text rag notice"`
+	Role        schema.RoleType      `json:"role" binding:"required,oneof=system assistant user"`
 	Content     model.MessageContent `json:"content" binding:"required"`
 	Metadata    interface{}          `json:"metadata"`
 }
@@ -26,9 +27,10 @@ type UpdateMessageRequest struct {
 // MessageResponse represents the message data in responses
 type MessageResponse struct {
 	ID          string               `json:"id"`
-	NodeID      string               `json:"node_id"`
 	ParentID    string               `json:"parent_id"`
+	ChatID      string               `json:"chat_id"`
 	MessageType string               `json:"message_type"`
+	Role        schema.RoleType      `json:"role"`
 	Content     model.MessageContent `json:"content"`
 	Metadata    interface{}          `json:"metadata"`
 	CreatedAt   time.Time            `json:"created_at"`
@@ -47,9 +49,10 @@ type MessageListResponse struct {
 func ToMessageResponse(m *model.Message) MessageResponse {
 	return MessageResponse{
 		ID:          m.ID,
-		NodeID:      m.NodeID,
 		ParentID:    m.ParentID,
+		ChatID:      m.ChatID,
 		MessageType: m.MessageType,
+		Role:        m.Role,
 		Content:     m.Content,
 		Metadata:    m.Metadata,
 		CreatedAt:   m.CreatedAt,

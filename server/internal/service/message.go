@@ -2,11 +2,21 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
+	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
+	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/PGshen/thinking-map/server/internal/repository"
+	"github.com/cloudwego/eino/schema"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type MessageService struct {
@@ -20,13 +30,26 @@ func NewMessageService(messageRepo repository.Message) *MessageService {
 }
 
 // CreateMessage 创建消息
-func (s *MessageService) CreateMessage(ctx context.Context, req dto.CreateMessageRequest) (*dto.MessageResponse, error) {
+func (s *MessageService) CreateMessage(ctx context.Context, userID string, req dto.CreateMessageRequest) (*dto.MessageResponse, error) {
+	// 获取chatID
+	var chatID string
+	if req.ParentID == "" {
+		chatID = uuid.NewString()
+	} else {
+		// 通过parentID获取
+		if parentMsg, err := s.messageRepo.FindByID(ctx, req.ParentID); err == nil {
+			chatID = parentMsg.ChatID
+		} else {
+			chatID = uuid.NewString()
+		}
+	}
 	msg := &model.Message{
-		NodeID:      req.NodeID,
 		ParentID:    req.ParentID,
+		ChatID:      chatID,
+		UserID:      userID,
 		MessageType: req.MessageType,
+		Role:        req.Role,
 		Content:     req.Content,
-		Metadata:    nil, // 这里可以根据需要序列化 req.Metadata
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -35,6 +58,52 @@ func (s *MessageService) CreateMessage(ctx context.Context, req dto.CreateMessag
 	}
 	resp := dto.ToMessageResponse(msg)
 	return &resp, nil
+}
+
+func (s *MessageService) SaveStreamMessage(ctx *gin.Context, sr *schema.StreamReader[*schema.Message], parentID string) {
+	useID := ctx.GetString("user_id")
+
+	fullMsgs := make([]*schema.Message, 0)
+	defer func() {
+		sr.Close()
+		fullMsg, err := schema.ConcatMessages(fullMsgs)
+		if err != nil {
+			logger.Warn("concat message failed", zap.Error(err))
+			return
+		}
+		fullMsg.Content = strings.ReplaceAll(fullMsg.Content, "&nbsp;", " ")
+		createMessageRequest := dto.CreateMessageRequest{
+			ParentID:    parentID,
+			MessageType: comm.MessageTypeText,
+			Role:        schema.Assistant,
+			Content: model.MessageContent{
+				Text: fullMsg.Content,
+			},
+			Metadata: map[string]any{
+				"creater": "ai",
+			},
+		}
+		if _, err := s.CreateMessage(ctx, useID, createMessageRequest); err != nil {
+			logger.Error("save message failed", zap.Error(err))
+		}
+	}()
+outer:
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("context done", ctx.Err())
+			return
+		default:
+			chunk, err := sr.Recv()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break outer
+				}
+			}
+
+			fullMsgs = append(fullMsgs, chunk)
+		}
+	}
 }
 
 // UpdateMessage 更新消息
@@ -75,23 +144,43 @@ func (s *MessageService) GetMessageByID(ctx context.Context, id string) (*dto.Me
 	return &resp, nil
 }
 
-// ListMessagesByNodeID 根据节点ID分页获取消息
-func (s *MessageService) ListMessagesByNodeID(ctx context.Context, nodeID string, page, limit int) (*dto.MessageListResponse, error) {
-	offset := (page - 1) * limit
-	msgs, total, err := s.messageRepo.FindByNodeID(ctx, nodeID, offset, limit)
+func (s *MessageService) GetMessageByChatID(ctx context.Context, chatID string) ([]*dto.MessageResponse, error) {
+	msgs, err := s.messageRepo.FindByChatID(ctx, chatID)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]dto.MessageResponse, len(msgs))
-	for i, m := range msgs {
-		items[i] = dto.ToMessageResponse(m)
+	responses := make([]*dto.MessageResponse, 0, len(msgs))
+	for _, msg := range msgs {
+		resp := dto.ToMessageResponse(msg)
+		responses = append(responses, &resp)
 	}
-	return &dto.MessageListResponse{
-		Total: int(total),
-		Page:  page,
-		Limit: limit,
-		Items: items,
-	}, nil
+	return responses, nil
+}
+
+// GetMessageByParentID
+func (s *MessageService) GetMessageByParentID(ctx context.Context, parentID string) ([]*dto.MessageResponse, error) {
+	var result []*dto.MessageResponse
+	var fetch func(ctx context.Context, pid string) error
+	fetch = func(ctx context.Context, pid string) error {
+		if pid == uuid.Nil.String() {
+			return nil
+		}
+		msg, err := s.messageRepo.FindByID(ctx, pid)
+		if err != nil {
+			return err
+		}
+		resp := dto.ToMessageResponse(msg)
+		result = append([]*dto.MessageResponse{&resp}, result...)
+		// 递归查找消息
+		if err := fetch(ctx, msg.ParentID); err != nil {
+			return err
+		}
+		return nil
+	}
+	if err := fetch(ctx, parentID); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // isZeroMessageContent 判断 MessageContent 是否为零值

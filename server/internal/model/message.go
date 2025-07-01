@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cloudwego/eino/schema"
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -19,16 +20,18 @@ import (
 
 // Message 消息模型
 type Message struct {
-	SerialID    int64          `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
-	ID          string         `gorm:"type:uuid;uniqueIndex"`
-	NodeID      string         `gorm:"type:uuid;not null;index"`
-	ParentID    string         `gorm:"type:uuid;index"`
-	MessageType string         `gorm:"type:varchar(20);not null;default:1"` // text, rag, notice
-	Content     MessageContent `gorm:"type:jsonb;not null"`
-	Metadata    datatypes.JSON `gorm:"type:jsonb;default:'{}'"`
-	CreatedAt   time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
-	UpdatedAt   time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+	SerialID    int64           `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
+	ID          string          `gorm:"type:uuid;uniqueIndex"`
+	ParentID    string          `gorm:"type:uuid;index"`
+	ChatID      string          `gorm:"type:uuid;index"`
+	UserID      string          `json:"user_id" gorm:"type:uuid;not null"`
+	MessageType string          `gorm:"type:varchar(20);not null;default:text"` // text, rag, notice
+	Role        schema.RoleType `gorm:"type:varchar(48)"`
+	Content     MessageContent  `gorm:"type:jsonb;not null"`
+	Metadata    datatypes.JSON  `gorm:"type:jsonb;default:'{}'"`
+	CreatedAt   time.Time       `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+	UpdatedAt   time.Time       `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+	DeletedAt   gorm.DeletedAt  `gorm:"index" json:"-"`
 }
 
 func (m *Message) BeforeCreate(tx *gorm.DB) error {
@@ -71,4 +74,9 @@ func (m *MessageContent) Scan(value interface{}) error {
 // MessageContent 实现 Valuer 接口
 func (m MessageContent) Value() (driver.Value, error) {
 	return json.Marshal(m)
+}
+
+// String()
+func (m MessageContent) String() string {
+	return m.Text
 }
