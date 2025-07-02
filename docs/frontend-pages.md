@@ -1,3 +1,9 @@
+<!--
+ * @Date: 2025-07-01 09:33:59
+ * @LastEditors: peng pgs1108pgs@gmail.com
+ * @LastEditTime: 2025-07-01 23:49:22
+ * @FilePath: /thinking-map/docs/frontend-pages.md
+-->
 # ThinkingMap 前端：页面与路由
 
 ## 1. 路由结构

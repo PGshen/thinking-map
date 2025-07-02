@@ -1,3 +1,9 @@
+<!--
+ * @Date: 2025-07-01 09:33:55
+ * @LastEditors: peng pgs1108pgs@gmail.com
+ * @LastEditTime: 2025-07-01 23:38:21
+ * @FilePath: /thinking-map/docs/frontend-structure.md
+-->
 # ThinkingMap 前端：目录结构与技术栈
 
 ## 1. 技术栈说明
@@ -10,6 +16,7 @@
 - **Tailwind CSS**：原子化 CSS，灵活高效的样式方案。
 - **ReactFlow**：强大的可视化流程图/节点图组件库。
 - **Zustand**：轻量、易用的全局状态管理库。
+- **pnpm**：包管理器。
 
 > 以上技术栈为前端开发的基础，建议团队成员熟悉相关文档与最佳实践。
 
