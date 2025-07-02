@@ -1,5 +1,5 @@
 import Image from "next/image";
-import SidebarLayout from '../layouts/sidebar-layout';
+import SidebarLayout from '@/layouts/sidebar-layout';
 
 export default function HomePage() {
   return (

@@ -4,7 +4,7 @@
  * @LastEditTime: 2025-07-02 00:30:25
  * @FilePath: /thinking-map/web/src/app/map/[id]/page.tsx
  */
-import WorkspaceLayout from '../../../layouts/workspace-layout';
+import WorkspaceLayout from '@/layouts/workspace-layout';
 
 export default function MapWorkspacePage({ params }: { params: { id: string } }) {
   return (
