@@ -24,16 +24,6 @@ interface MapStore {
   // ...更多action
 }
 
-// store/panelStore.ts
-interface PanelStore {
-  isOpen: boolean;
-  activeTab: 'info' | 'decompose' | 'conclusion';
-  formState: InfoFormState;
-  chatMessages: ChatMessage[];
-  setActiveTab: (tab: PanelTab) => void;
-  // ...
-}
-
 // store/globalStore.ts
 interface GlobalStore {
   user: User | null;
