@@ -15,6 +15,7 @@ import { useState } from "react"
 import { registerUser } from "@/api/auth"
 import { useGlobalStore } from "@/store/globalStore"
 import { useRouter } from "next/navigation"
+import { setToken } from "@/lib/auth"
 
 export function RegisterForm({
   className,
@@ -49,14 +50,17 @@ export function RegisterForm({
         fullName,
         password,
       });
-      const data = response.data?.data || {};
-      // 存储token和用户信息
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('token', data.access_token || "");
-        localStorage.setItem('refreshToken', data.refresh_token || "");
+      if (response.code === 200 && response.data) {
+        const data = response.data;
+        // 存储token和用户信息
+        if (typeof window !== 'undefined') {
+          setToken(data.accessToken || '', data.refreshToken || '');
+        }
+        setUser({ id: data.userId, name: data.username });
+        router.push("/");
+      } else {
+        setError(response.message || "注册失败");
       }
-      setUser({ id: data.user_id, name: data.username });
-      router.push("/");
     } catch (err: any) {
       setError(err?.message || "注册失败");
     } finally {

@@ -9,8 +9,8 @@ import (
 
 // CreateMessageRequest represents the request body for creating a message
 type CreateMessageRequest struct {
-	ParentID    string               `json:"parent_id" binding:"omitempty,uuid"`
-	MessageType string               `json:"message_type" binding:"required,oneof=text rag notice"`
+	ParentID    string               `json:"parentId" binding:"omitempty,uuid"`
+	MessageType string               `json:"messageType" binding:"required,oneof=text rag notice"`
 	Role        schema.RoleType      `json:"role" binding:"required,oneof=system assistant user"`
 	Content     model.MessageContent `json:"content" binding:"required"`
 	Metadata    interface{}          `json:"metadata"`
@@ -19,7 +19,7 @@ type CreateMessageRequest struct {
 // UpdateMessageRequest represents the request body for updating a message
 type UpdateMessageRequest struct {
 	ID          string               `json:"id" binding:"required,uuid"`
-	MessageType string               `json:"message_type" binding:"omitempty,oneof=text rag notice"`
+	MessageType string               `json:"messageType" binding:"omitempty,oneof=text rag notice"`
 	Content     model.MessageContent `json:"content" binding:"omitempty"`
 	Metadata    interface{}          `json:"metadata"`
 }
@@ -27,14 +27,14 @@ type UpdateMessageRequest struct {
 // MessageResponse represents the message data in responses
 type MessageResponse struct {
 	ID          string               `json:"id"`
-	ParentID    string               `json:"parent_id"`
-	ChatID      string               `json:"chat_id"`
-	MessageType string               `json:"message_type"`
+	ParentID    string               `json:"parentId"`
+	ChatID      string               `json:"chatId"`
+	MessageType string               `json:"messageType"`
 	Role        schema.RoleType      `json:"role"`
 	Content     model.MessageContent `json:"content"`
 	Metadata    interface{}          `json:"metadata"`
-	CreatedAt   time.Time            `json:"created_at"`
-	UpdatedAt   time.Time            `json:"updated_at"`
+	CreatedAt   time.Time            `json:"createdAt"`
+	UpdatedAt   time.Time            `json:"updatedAt"`
 }
 
 // MessageListResponse represents the paginated list of messages

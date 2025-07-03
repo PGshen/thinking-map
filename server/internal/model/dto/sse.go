@@ -14,9 +14,9 @@ import (
 
 // NodeCreatedEvent represents the node creation event
 type NodeCreatedEvent struct {
-	NodeID    string         `json:"node_id"`
-	ParentID  string         `json:"parent_id"`
-	NodeType  string         `json:"node_type"`
+	NodeID    string         `json:"nodeId"`
+	ParentID  string         `json:"parentId"`
+	NodeType  string         `json:"nodeType"`
 	Question  string         `json:"question"`
 	Target    string         `json:"target"`
 	Position  model.Position `json:"position"`
@@ -25,14 +25,14 @@ type NodeCreatedEvent struct {
 
 // NodeUpdatedEvent represents the node update event
 type NodeUpdatedEvent struct {
-	NodeID    string                 `json:"node_id"`
+	NodeID    string                 `json:"nodeId"`
 	Updates   map[string]interface{} `json:"updates"`
 	Timestamp time.Time              `json:"timestamp"`
 }
 
 // ThinkingProgressEvent represents the thinking progress event
 type ThinkingProgressEvent struct {
-	NodeID    string    `json:"node_id"`
+	NodeID    string    `json:"nodeId"`
 	Stage     string    `json:"stage"`
 	Progress  int       `json:"progress"`
 	Message   string    `json:"message"`
@@ -41,23 +41,23 @@ type ThinkingProgressEvent struct {
 
 // ErrorEvent represents the error event
 type ErrorEvent struct {
-	NodeID       string    `json:"node_id"`
-	ErrorCode    string    `json:"error_code"`
-	ErrorMessage string    `json:"error_message"`
+	NodeID       string    `json:"nodeId"`
+	ErrorCode    string    `json:"errorCode"`
+	ErrorMessage string    `json:"errorMessage"`
 	Timestamp    time.Time `json:"timestamp"`
 }
 
 // TestEventRequest represents the request for testing SSE events
 type TestEventRequest struct {
-	EventType string                 `json:"event_type" binding:"required,oneof=node_created node_updated thinking_progress error custom"`
+	EventType string                 `json:"eventType" binding:"required,oneof=node_created node_updated thinking_progress error custom"`
 	Data      map[string]interface{} `json:"data" binding:"required"`
 	Delay     int                    `json:"delay" binding:"min=0,max=10000"` // 延迟发送时间（毫秒）
 }
 
 // TestEventResponse represents the response for testing SSE events
 type TestEventResponse struct {
-	EventID   string    `json:"event_id"`
-	EventType string    `json:"event_type"`
-	SentAt    time.Time `json:"sent_at"`
+	EventID   string    `json:"eventId"`
+	EventType string    `json:"eventType"`
+	SentAt    time.Time `json:"sentAt"`
 	Message   string    `json:"message"`
 }

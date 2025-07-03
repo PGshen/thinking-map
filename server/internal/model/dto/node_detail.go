@@ -16,7 +16,7 @@ import (
 // metadata用map[string]interface{}即可
 
 type CreateNodeDetailRequest struct {
-	DetailType string                 `json:"detail_type" binding:"required"`
+	DetailType string                 `json:"detailType" binding:"required"`
 	Content    model.DetailContent    `json:"content" binding:"required"`
 	Status     int                    `json:"status"`
 	Metadata   map[string]interface{} `json:"metadata"`
@@ -36,13 +36,13 @@ type UpdateNodeDetailRequest struct {
 // PUT /api/v1/node-details/{detailId}
 type NodeDetailResponse struct {
 	ID         string                 `json:"id"`
-	NodeID     string                 `json:"node_id"`
-	DetailType string                 `json:"detail_type"`
+	NodeID     string                 `json:"nodeId"`
+	DetailType string                 `json:"detailType"`
 	Content    model.DetailContent    `json:"content"`
 	Status     int                    `json:"status"`
 	Metadata   map[string]interface{} `json:"metadata"`
-	CreatedAt  time.Time              `json:"created_at"`
-	UpdatedAt  time.Time              `json:"updated_at"`
+	CreatedAt  time.Time              `json:"createdAt"`
+	UpdatedAt  time.Time              `json:"updatedAt"`
 }
 
 // NodeDetailListResponse 节点详情列表响应

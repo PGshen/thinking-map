@@ -14,8 +14,8 @@ import (
 
 // CreateNodeRequest represents the request body for creating a node
 type CreateNodeRequest struct {
-	ParentID string         `json:"parent_id" binding:"required,uuid"`
-	NodeType string         `json:"node_type" binding:"required"`
+	ParentID string         `json:"parentId" binding:"required,uuid"`
+	NodeType string         `json:"nodeType" binding:"required"`
 	Question string         `json:"question" binding:"required,max=500"`
 	Target   string         `json:"target" binding:"max=500"`
 	Position model.Position `json:"position" binding:"required"`
@@ -31,19 +31,19 @@ type UpdateNodeRequest struct {
 // NodeResponse represents the node data in responses
 type NodeResponse struct {
 	ID           string               `json:"id"`
-	MapID        string               `json:"map_id,omitempty"`
-	ParentID     string               `json:"parent_id"`
-	NodeType     string               `json:"node_type"`
+	MapID        string               `json:"mapId,omitempty"`
+	ParentID     string               `json:"parentId"`
+	NodeType     string               `json:"nodeType"`
 	Question     string               `json:"question"`
 	Target       string               `json:"target"`
 	Context      string               `json:"context"`
 	Status       int                  `json:"status"`
 	Position     model.Position       `json:"position"`
 	Dependencies model.Dependencies   `json:"dependencies"`
-	NodeDetails  []NodeDetailResponse `json:"node_details"`
+	NodeDetails  []NodeDetailResponse `json:"nodeDetails"`
 	Metadata     interface{}          `json:"metadata"`
-	CreatedAt    time.Time            `json:"created_at"`
-	UpdatedAt    time.Time            `json:"updated_at"`
+	CreatedAt    time.Time            `json:"createdAt"`
+	UpdatedAt    time.Time            `json:"updatedAt"`
 }
 
 // NodeListResponse represents the list of nodes in a map
@@ -53,21 +53,21 @@ type NodeListResponse struct {
 
 // DependencyInfo represents information about a node dependency
 type DependencyInfo struct {
-	NodeID         string `json:"node_id"`
-	DependencyType string `json:"dependency_type"`
+	NodeID         string `json:"nodeId"`
+	DependencyType string `json:"dependencyType"`
 	Required       bool   `json:"required"`
 }
 
 // DependencyResponse represents the dependencies of a node
 type DependencyResponse struct {
 	Dependencies   []DependencyInfo `json:"dependencies"`
-	DependentNodes []DependencyInfo `json:"dependent_nodes"`
+	DependentNodes []DependencyInfo `json:"dependentNodes"`
 }
 
 // AddDependencyRequest represents the request body for adding a dependency
 type AddDependencyRequest struct {
-	DependencyNodeID string `json:"dependency_node_id" binding:"required,uuid"`
-	DependencyType   string `json:"dependency_type" binding:"required,oneof=prerequisite dependent"`
+	DependencyNodeID string `json:"dependencyNodeId" binding:"required,uuid"`
+	DependencyType   string `json:"dependencyType" binding:"required,oneof=prerequisite dependent"`
 	Required         bool   `json:"required"`
 }
 

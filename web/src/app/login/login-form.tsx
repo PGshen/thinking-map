@@ -15,12 +15,13 @@ import { useState } from "react"
 import { loginUser } from "@/api/auth"
 import { useGlobalStore } from "@/store/globalStore"
 import { useRouter } from "next/navigation"
+import { setToken } from "@/lib/auth"
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -30,20 +31,23 @@ export function LoginForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!username || !password) {
-      setError("请输入用户名和密码");
+    if (!email || !password) {
+      setError("请输入邮箱和密码");
       return;
     }
     setLoading(true);
     try {
-      const response = await loginUser({ username, password });
-      const data = response.data?.data || {};
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('token', data.access_token || "");
-        localStorage.setItem('refreshToken', data.refresh_token || "");
+      const response = await loginUser({ email, password });
+      if (response.code === 200 && response.data) {
+        const data = response.data;
+        if (typeof window !== 'undefined') {
+          setToken(data.accessToken || '', data.refreshToken || '');
+        }
+        setUser({ id: data.userId, name: data.username });
+        router.push("/");
+      } else {
+        setError(response.message || "登录失败");
       }
-      setUser({ id: data.user_id, name: data.username });
-      router.push("/");
     } catch (err: any) {
       setError(err?.message || "登录失败");
     } finally {
@@ -55,33 +59,33 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle>Login to your account</CardTitle>
+          <CardTitle>欢迎登录</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            输入邮箱登录账号
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-3">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="email">邮箱</Label>
                 <Input
-                  id="username"
+                  id="email"
                   type="text"
-                  placeholder="用户名"
+                  placeholder="邮箱"
                   required
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
                 />
               </div>
               <div className="grid gap-3">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">密码</Label>
                   <a
                     href="#"
                     className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                   >
-                    Forgot your password?
+                    忘记密码?
                   </a>
                 </div>
                 <Input
@@ -95,14 +99,14 @@ export function LoginForm({
               {error && <div className="text-red-500 text-sm">{error}</div>}
               <div className="flex flex-col gap-3">
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "登录中..." : "Login"}
+                  {loading ? "登录中..." : "登录"}
                 </Button>
               </div>
             </div>
             <div className="mt-4 text-center text-sm">
-              Don&apos;t have an account?{" "}
+              没有账号?{" "}
               <a href="/register" className="underline underline-offset-4">
-                Sign up
+                注册
               </a>
             </div>
           </form>

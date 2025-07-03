@@ -1,9 +1,10 @@
 // 与后端 dto/node.go 对齐的节点类型定义
 import type { NodeDetailResponse } from './nodeDetail';
+import type { ApiResponse } from './response';
 
 export interface Position {
-  // 具体结构可根据 model.Position 细化
-  [key: string]: any;
+  x: number;
+  y: number;
 }
 
 export interface DependencyInfo {
@@ -19,24 +20,17 @@ export interface DependencyResponse {
 
 export interface NodeResponse {
   id: string;
-  mapId?: string;
   parentId: string;
   nodeType: string;
   question: string;
   target: string;
-  context: string;
   status: number;
   position: Position;
-  dependencies: any; // TODO: 可根据 model.Dependencies 进一步细化
-  nodeDetails: NodeDetailResponse[];
-  metadata: any;
-  createdAt: string;
-  updatedAt: string;
 }
 
-export interface NodeListResponse {
+export type NodeListResponse = ApiResponse<{
   nodes: NodeResponse[];
-}
+}>;
 
 export interface Node {
   id: string;

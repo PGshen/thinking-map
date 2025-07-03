@@ -17,9 +17,9 @@ import (
 // CreateMapRequest represents the request body for creating a mind map
 type CreateMapRequest struct {
 	Problem     string            `json:"problem" binding:"required,max=1000"`
-	ProblemType string            `json:"problem_type" binding:"max=50"`
+	ProblemType string            `json:"problemType" binding:"max=50"`
 	Target      string            `json:"target" binding:"max=1000"`
-	KeyPoints   model.KeyPoints   `json:"key_points"`
+	KeyPoints   model.KeyPoints   `json:"keyPoints"`
 	Constraints model.Constraints `json:"constraints"`
 }
 
@@ -27,9 +27,9 @@ type CreateMapRequest struct {
 type UpdateMapRequest struct {
 	Status      int               `json:"status" binding:"oneof=0 1 2"`
 	Problem     string            `json:"problem" binding:"max=1000"`
-	ProblemType string            `json:"problem_type" binding:"max=50"`
+	ProblemType string            `json:"problemType" binding:"max=50"`
 	Target      string            `json:"target" binding:"max=1000"`
-	KeyPoints   model.KeyPoints   `json:"key_points"`
+	KeyPoints   model.KeyPoints   `json:"keyPoints"`
 	Constraints model.Constraints `json:"constraints"`
 	Conclusion  string            `json:"conclusion" binding:"max=1000"`
 }
@@ -37,17 +37,17 @@ type UpdateMapRequest struct {
 // MapResponse represents the mind map data in responses
 type MapResponse struct {
 	ID          string            `json:"id"`
-	RootNodeID  string            `json:"root_node_id,omitempty"`
+	RootNodeID  string            `json:"rootNodeId,omitempty"`
 	Status      int               `json:"status"`
 	Problem     string            `json:"problem"`
-	ProblemType string            `json:"problem_type"`
+	ProblemType string            `json:"problemType"`
 	Target      string            `json:"target"`
-	KeyPoints   model.KeyPoints   `json:"key_points"`
+	KeyPoints   model.KeyPoints   `json:"keyPoints"`
 	Constraints model.Constraints `json:"constraints"`
 	Conclusion  string            `json:"conclusion"`
 	Metadata    interface{}       `json:"metadata"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
+	CreatedAt   time.Time         `json:"createdAt"`
+	UpdatedAt   time.Time         `json:"updatedAt"`
 }
 
 // MapListResponse represents the paginated list of mind maps

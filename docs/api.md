@@ -10,7 +10,7 @@ Request:
   "username": "string",
   "email": "string", 
   "password": "string",
-  "full_name": "string"
+  "fullName": "string"
 }
 
 Response 200 OK:
@@ -18,16 +18,16 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "user_id": "uuid",
+    "userId": "uuid",
     "username": "string",
     "email": "string",
-    "full_name": "string",
-    "access_token": "string",
-    "refresh_token": "string",
-    "expires_in": 900
+    "fullName": "string",
+    "accessToken": "string",
+    "refreshToken": "string",
+    "expiresIn": 900
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 Response 400 Bad Request:
@@ -39,7 +39,7 @@ Response 400 Bad Request:
     "error": "username already exists"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 用户登录
@@ -48,7 +48,7 @@ Content-Type: application/json
 
 Request:
 {
-  "username": "string",
+  "email": "string",
   "password": "string"
 }
 
@@ -57,16 +57,16 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "user_id": "uuid",
+    "userId": "uuid",
     "username": "string",
     "email": "string",
-    "full_name": "string",
-    "access_token": "string",
-    "refresh_token": "string",
-    "expires_in": 900
+    "fullName": "string",
+    "accessToken": "string",
+    "refreshToken": "string",
+    "expiresIn": 900
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 Response 401 Unauthorized:
@@ -75,7 +75,7 @@ Response 401 Unauthorized:
   "message": "invalid credentials",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 刷新Token
@@ -87,12 +87,12 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "access_token": "string",
-    "refresh_token": "string",
-    "expires_in": 900
+    "accessToken": "string",
+    "refreshToken": "string",
+    "expiresIn": 900
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 Response 401 Unauthorized:
@@ -101,7 +101,7 @@ Response 401 Unauthorized:
   "message": "invalid refresh token",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 登出
@@ -114,7 +114,7 @@ Response 200 OK:
   "message": "success",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 ```
 
@@ -129,7 +129,7 @@ Request:
 {
   "title": "string",
   "description": "string",
-  "root_question": "string"
+  "rootQuestion": "string"
 }
 
 Response 200 OK:
@@ -140,15 +140,15 @@ Response 200 OK:
     "id": "uuid",
     "title": "string",
     "description": "string",
-    "root_question": "string",
-    "root_node_id": "uuid",
+    "rootQuestion": "string",
+    "rootNodeId": "uuid",
     "status": 1,
     "metadata": {},
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 获取用户的思维导图列表
@@ -168,16 +168,16 @@ Response 200 OK:
         "id": "uuid",
         "title": "string",
         "description": "string",
-        "root_question": "string",
+        "rootQuestion": "string",
         "status": 1,
-        "node_count": 10,
-        "created_at": "2024-01-01T00:00:00Z",
-        "updated_at": "2024-01-01T00:00:00Z"
+        "nodeCount": 10,
+        "createdAt": "2024-01-01T00:00:00Z",
+        "updatedAt": "2024-01-01T00:00:00Z"
       }
     ]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 获取思维导图详情
@@ -192,16 +192,16 @@ Response 200 OK:
     "id": "uuid",
     "title": "string",
     "description": "string",
-    "root_question": "string",
-    "root_node_id": "uuid",
+    "rootQuestion": "string",
+    "rootNodeId": "uuid",
     "status": 1,
     "metadata": {},
-    "node_count": 10,
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
+    "nodeCount": 10,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 更新思维导图
@@ -225,10 +225,10 @@ Response 200 OK:
     "title": "string",
     "description": "string",
     "status": 1,
-    "updated_at": "2024-01-01T00:00:00Z"
+    "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 删除思维导图
@@ -241,7 +241,7 @@ Response 200 OK:
   "message": "success",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 ```
 
@@ -259,8 +259,8 @@ Response 200 OK:
     "nodes": [
       {
         "id": "uuid",
-        "parent_id": "uuid",
-        "node_type": "analysis",
+        "parentId": "uuid",
+        "nodeType": "analysis",
         "question": "string",
         "target": "string",
         "status": 0,
@@ -272,7 +272,7 @@ Response 200 OK:
     ]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 创建节点
@@ -282,8 +282,8 @@ Content-Type: application/json
 
 Request:
 {
-  "parent_id": "uuid",
-  "node_type": "analysis",
+  "parentId": "uuid",
+  "nodeType": "analysis",
   "question": "string",
   "target": "string",
   "context": "string",
@@ -296,9 +296,9 @@ Response 200 OK:
   "message": "success",
   "data": {
     "id": "uuid",
-    "map_id": "uuid",
-    "parent_id": "uuid",
-    "node_type": "analysis",
+    "mapId": "uuid",
+    "parentId": "uuid",
+    "nodeType": "analysis",
     "question": "string",
     "target": "string",
     "context": "string",
@@ -307,11 +307,11 @@ Response 200 OK:
       "x": 100,
       "y": 200
     },
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 更新节点
@@ -340,10 +340,10 @@ Response 200 OK:
       "x": 100,
       "y": 200
     },
-    "updated_at": "2024-01-01T00:00:00Z"
+    "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 删除节点
@@ -356,7 +356,7 @@ Response 200 OK:
   "message": "success",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 检查节点依赖
@@ -370,23 +370,23 @@ Response 200 OK:
   "data": {
     "dependencies": [
       {
-        "node_id": "uuid",
-        "dependency_type": "prerequisite",
+        "nodeId": "uuid",
+        "dependencyType": "prerequisite",
         "required": true,
         "status": 2
       }
     ],
-    "dependent_nodes": [
+    "dependentNodes": [
       {
-        "node_id": "uuid",
-        "dependency_type": "dependent",
+        "nodeId": "uuid",
+        "dependencyType": "dependent",
         "required": true,
         "status": 0
       }
     ]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 添加节点依赖
@@ -396,8 +396,8 @@ Content-Type: application/json
 
 Request:
 {
-  "dependency_node_id": "uuid", // 依赖的节点ID
-  "dependency_type": "prerequisite", // prerequisite | dependent
+  "dependencyNodeId": "uuid", // 依赖的节点ID
+  "dependencyType": "prerequisite", // prerequisite | dependent
   "required": true
 }
 
@@ -406,14 +406,14 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "node_id": "uuid",
-    "dependency_node_id": "uuid",
-    "dependency_type": "prerequisite",
+    "nodeId": "uuid",
+    "dependencyNodeId": "uuid",
+    "dependencyType": "prerequisite",
     "required": true,
     "status": 0
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 删除节点依赖
@@ -426,7 +426,7 @@ Response 200 OK:
   "message": "success",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 ```
 
@@ -444,12 +444,12 @@ Response 200 OK:
     "details": [
       {
         "id": "uuid",
-        "node_id": "uuid",
-        "detail_type": "string",
+        "nodeId": "uuid",
+        "detailType": "string",
         "content": {
           "context": [
             {
-              "node_id": "uuid",
+              "nodeId": "uuid",
               "type": "string",
               "question": "string",
               "target": "string",
@@ -459,7 +459,7 @@ Response 200 OK:
           "question": "string",
           "target": "string",
           "message": [[1,2],[3,4]],
-          "decompose_result": [
+          "decomposeResult": [
             {
               "question": "string",
               "target": "string"
@@ -469,13 +469,13 @@ Response 200 OK:
         },
         "status": 1,
         "metadata": {},
-        "created_at": "2024-01-01T00:00:00Z",
-        "updated_at": "2024-01-01T00:00:00Z"
+        "createdAt": "2024-01-01T00:00:00Z",
+        "updatedAt": "2024-01-01T00:00:00Z"
       }
     ]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 创建节点详情
@@ -485,11 +485,11 @@ Content-Type: application/json
 
 Request:
 {
-  "detail_type": "string",
+  "detailType": "string",
   "content": {
     "context": [
       {
-        "node_id": "uuid",
+        "nodeId": "uuid",
         "type": "string",
         "question": "string",
         "target": "string",
@@ -499,7 +499,7 @@ Request:
     "question": "string",
     "target": "string",
     "message": [[1,2],[3,4]],
-    "decompose_result": [
+    "decomposeResult": [
       {
         "question": "string",
         "target": "string"
@@ -517,16 +517,16 @@ Response 200 OK:
   "message": "success",
   "data": {
     "id": "uuid",
-    "node_id": "uuid",
-    "detail_type": "string",
+    "nodeId": "uuid",
+    "detailType": "string",
     "content": { ... },
     "status": 1,
     "metadata": {},
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 更新节点详情
@@ -547,15 +547,15 @@ Response 200 OK:
   "message": "success",
   "data": {
     "id": "uuid",
-    "node_id": "uuid",
-    "detail_type": "string",
+    "nodeId": "uuid",
+    "detailType": "string",
     "content": { ... },
     "status": 1,
     "metadata": {},
-    "updated_at": "2024-01-01T00:00:00Z"
+    "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 删除节点详情
@@ -568,7 +568,7 @@ Response 200 OK:
   "message": "success",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 ```
 
@@ -583,17 +583,17 @@ Authorization: Bearer <token>
 Response 200 OK:
 event: connection_established
 data: {
-  "map_id": "uuid",
-  "current_status": "ready",
-  "active_nodes": ["uuid"]
+  "mapId": "uuid",
+  "currentStatus": "ready",
+  "activeNodes": ["uuid"]
 }
 
 # SSE事件格式
 event: node_created
 data: {
-  "node_id": "uuid",
-  "parent_id": "uuid",
-  "node_type": "analysis",
+  "nodeId": "uuid",
+  "parentId": "uuid",
+  "nodeType": "analysis",
   "question": "string",
   "target": "string",
   "position": {"x": 100, "y": 200},
@@ -602,7 +602,7 @@ data: {
 
 event: node_updated
 data: {
-  "node_id": "uuid",
+  "nodeId": "uuid",
   "updates": {
     "status": "completed",
     "conclusion": "string"
@@ -611,7 +611,7 @@ data: {
 
 event: thinking_progress
 data: {
-  "node_id": "uuid",
+  "nodeId": "uuid",
   "stage": "analyzing|reasoning|synthesizing",
   "progress": 50,
   "message": "string"
@@ -626,8 +626,8 @@ Content-Type: application/json
 Request:
 {
   "question": "string",
-  "question_type": "research|creative|analysis|planning",
-  "user_id": "uuid"
+  "questionType": "research|creative|analysis|planning",
+  "userId": "uuid"
 }
 
 Response 200 OK:
@@ -636,18 +636,18 @@ Response 200 OK:
   "message": "success",
   "data": {
     "understanding": {
-      "core_question": "string",
+      "coreQuestion": "string",
       "target": "string",
-      "key_points": ["string"],
+      "keyPoints": ["string"],
       "constraints": ["string"],
       "context": "string",
       "complexity": "high|medium|low"
     },
     "suggestions": ["string"],
-    "clarification_questions": ["string"]
+    "clarificationQuestions": ["string"]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 问题澄清
@@ -657,10 +657,10 @@ Content-Type: application/json
 
 Request:
 {
-  "session_id": "uuid",
+  "sessionId": "uuid",
   "clarifications": {
     "answers": ["string"],
-    "additional_info": "string",
+    "additionalInfo": "string",
     "modifications": {
       "target": "string",
       "constraints": ["string"]
@@ -674,18 +674,18 @@ Response 200 OK:
   "message": "success",
   "data": {
     "understanding": {
-      "core_question": "string",
+      "coreQuestion": "string",
       "target": "string",
-      "key_points": ["string"],
+      "keyPoints": ["string"],
       "constraints": ["string"],
       "context": "string",
       "complexity": "high|medium|low"
     },
     "suggestions": ["string"],
-    "clarification_questions": ["string"]
+    "clarificationQuestions": ["string"]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 问题确认
@@ -695,11 +695,11 @@ Content-Type: application/json
 
 Request:
 {
-  "session_id": "uuid",
-  "final_understanding": {
+  "sessionId": "uuid",
+  "finalUnderstanding": {
     "problem": "string",
     "target": "string",
-    "key_points": ["string"],
+    "keyPoints": ["string"],
     "constraints": ["string"]
   }
 }
@@ -709,16 +709,16 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "map_id": "uuid",
-    "root_node": {
-      "node_id": "uuid",
+    "mapId": "uuid",
+    "rootNode": {
+      "nodeId": "uuid",
       "question": "string",
       "target": "string",
       "status": "pending"
     }
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 节点执行
@@ -728,7 +728,7 @@ Content-Type: application/json
 
 Request:
 {
-  "node_id": "uuid",
+  "nodeId": "uuid",
   "action": "start"
 }
 
@@ -739,10 +739,10 @@ Response 200 OK:
   "data": {
     "action": "decompose|conclude",
     "reason": "string",
-    "next_tab": "decompose|conclusion"
+    "nextTab": "decompose|conclusion"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 问题拆解
@@ -752,7 +752,7 @@ Content-Type: application/json
 
 Request:
 {
-  "node_id": "uuid",
+  "nodeId": "uuid",
   "question": "string",
   "context": "string"
 }
@@ -762,7 +762,7 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "sub_problems": [
+    "subProblems": [
       {
         "question": "string",
         "target": "string",
@@ -773,7 +773,7 @@ Response 200 OK:
     "strategy": "string"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 问题拆解反馈
@@ -783,13 +783,13 @@ Content-Type: application/json
 
 Request:
 {
-  "node_id": "节点ID",
+  "nodeId": "节点ID",
   "feedback": {
     "rating": 3,
     "comments": "拆解不够细致，缺少技术实现层面",
     "issues": [
       {
-        "sub_problem_id": "子问题ID",
+        "subProblemId": "子问题ID",
         "issue": "问题描述过于宽泛"
       }
     ],
@@ -803,12 +803,12 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "feedback_id": "反馈ID",
+    "feedbackId": "反馈ID",
     "status": "received",
-    "next_action": "regenerate"
+    "nextAction": "regenerate"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 
@@ -819,10 +819,10 @@ Content-Type: application/json
 
 Request:
 {
-  "node_id": "uuid",
+  "nodeId": "uuid",
   "question": "string",
   "context": "string",
-  "sub_conclusions": ["string"]
+  "subConclusions": ["string"]
 }
 
 Response 200 OK:
@@ -837,7 +837,7 @@ Response 200 OK:
     "recommendations": ["string"]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 # 用户反馈
@@ -847,7 +847,7 @@ Content-Type: application/json
 
 Request:
 {
-  "node_id": "uuid",
+  "nodeId": "uuid",
   "feedback": "string",
   "action": "adjust|confirm"
 }
@@ -864,7 +864,7 @@ Response 200 OK:
     "recommendations": ["string"]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "request_id": "uuid"
+  "requestId": "uuid"
 }
 
 ```

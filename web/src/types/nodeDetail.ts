@@ -1,3 +1,5 @@
+import type { ApiResponse } from './response';
+
 // 与后端 dto/node_detail.go 对齐的节点详情类型定义
 export interface NodeDetailResponse {
   id: string;
@@ -10,6 +12,6 @@ export interface NodeDetailResponse {
   updatedAt: string;
 }
 
-export interface NodeDetailListResponse {
+export type NodeDetailListResponse = ApiResponse<{
   details: NodeDetailResponse[];
-} 
+}>; 

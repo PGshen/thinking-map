@@ -1,3 +1,5 @@
+import type { ApiResponse } from './response';
+
 // 与后端 dto/message.go 对齐的消息类型定义
 export type RoleType = 'system' | 'assistant' | 'user';
 
@@ -13,9 +15,9 @@ export interface MessageResponse {
   updatedAt: string;
 }
 
-export interface MessageListResponse {
+export type MessageListResponse = ApiResponse<{
   total: number;
   page: number;
   limit: number;
   items: MessageResponse[];
-} 
+}>; 
