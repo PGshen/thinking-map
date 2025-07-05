@@ -9,25 +9,26 @@ import type { RegisterParams, RegisterResponse, LoginParams, LoginResponse, Refr
 import type { ApiResponse } from "@/types/response";
 import { AuthData, RefreshTokenData } from "@/types/auth";
 import { getRefreshToken } from "@/lib/auth";
+import { API_ENDPOINTS } from "@/api/endpoints";
 
 // 注册
 export async function registerUser(
   params: RegisterParams
 ): Promise<RegisterResponse> {
-  return await post<AuthData>("/v1/auth/register", params);
+  return await post<AuthData>(API_ENDPOINTS.AUTH.REGISTER, params);
 }
 
 // 登录
 export async function loginUser(
   params: LoginParams
 ): Promise<LoginResponse> {
-  return await post<AuthData>("/v1/auth/login", params);
+  return await post<AuthData>(API_ENDPOINTS.AUTH.LOGIN, params);
 }
 
 // 刷新Token
 export async function refreshToken(refreshToken: string): Promise<RefreshTokenResponse> {
   return await post<RefreshTokenData>(
-    "/v1/auth/refresh",
+    API_ENDPOINTS.AUTH.REFRESH,
     {},
     {
       headers: {
@@ -40,7 +41,7 @@ export async function refreshToken(refreshToken: string): Promise<RefreshTokenRe
 // 登出
 export async function logout(): Promise<ApiResponse<null>> {
   return await post<null>(
-    "/v1/auth/logout",
+    API_ENDPOINTS.AUTH.LOGOUT,
     {},
     {
       headers: {

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SseJsonStreamParser } from '@/lib/sse-parser'
-import SidebarLayout from '@/layouts/sidebar-layout'
+import API_ENDPOINTS from '@/api/endpoints'
 
 interface StreamData {
   [key: string]: any
@@ -16,7 +16,7 @@ interface StreamData {
 export default function Page() {
   const [input, setInput] = useState('')
   const [method, setMethod] = useState('POST')
-  const [uri, setUri] = useState('/api/v1/thinking/repeat')
+  const [uri, setUri] = useState(API_ENDPOINTS.THINKING.REPEAT)
   const [params, setParams] = useState('')
   const [keys, setKeys] = useState('')
   const [output, setOutput] = useState<Record<string, string[]>>({})
@@ -47,7 +47,9 @@ export default function Page() {
       console.error('Invalid JSON parameters:', e)
     }
 
-    jsonStream.connect(method as "GET" | "POST" | "PUT" | "DELETE", uri, requestParams, () => {
+    jsonStream.connect(method as "GET" | "POST" | "PUT" | "DELETE", uri, requestParams, (data) => {
+      // console.log(data)
+    }, () => {
       console.log('close')
       setIsStreaming(false)
     })
@@ -122,14 +124,17 @@ export default function Page() {
       </div>
 
       <div className="w-1/2 border rounded-lg p-4 overflow-auto">
-        {Object.entries(output).map(([key, values]) => (
-          <div key={key} className="mb-4">
-            <h3 className="font-medium mb-2">{key}:</h3>
-            <div className="whitespace-pre-wrap">
-              {values.join('')}
+        {Object.keys(output).map((key) => {
+          const values = output[key];
+          return (
+            <div key={key} className="mb-4">
+              <h3 className="font-medium mb-2">{key}:</h3>
+              <div className="whitespace-pre-wrap">
+                {Array.isArray(values) ? values.join('') : String(values)}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   )

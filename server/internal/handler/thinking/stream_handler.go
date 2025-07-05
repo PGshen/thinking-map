@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/cloudwego/eino/schema"
@@ -67,8 +66,9 @@ func NewStreamReply(handler StreamHandler) gin.HandlerFunc {
 
 				// 使用Gin的SSE方法发送数据
 				c.SSEvent("message", msg.Content)
+				c.Writer.Flush()
 
-				time.Sleep(35 * time.Millisecond)
+				// time.Sleep(100 * time.Millisecond)
 			}
 		}
 	}

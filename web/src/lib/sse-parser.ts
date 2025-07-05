@@ -100,14 +100,14 @@ class SimplePathMatcher {
    */
   checkPatterns(path: (string | number)[], value: any): void {
     // 使用requestAnimationFrame来创建一个微小的延迟
-    requestAnimationFrame(() => {
+    // requestAnimationFrame(() => {
       for (const pattern of this.patterns) {
         if (this.matchPath(path, pattern.tokens)) {
           // 如果匹配，调用回调函数
           pattern.callback(value, path);
         }
       }
-    });
+    // });
   }
 
   /**
@@ -635,6 +635,7 @@ export class SseJsonStreamParser {
     const finalUrl = config.method === 'GET' && config.param
       ? `${config.url}${config.url.includes('?') ? '&' : '?'}${new URLSearchParams(config.param as Record<string, string>)}`
       : config.url;
+    console.log('-----')
 
     fetchEventSource(finalUrl, {
       method: config.method || 'POST',
@@ -658,7 +659,7 @@ export class SseJsonStreamParser {
         if (config.message) config.message(data);
       },
       async onopen(response) {
-        if (!response.ok || response.headers.get('content-type') !== EventStreamContentType) {
+        if (!response.ok || response.headers.get('content-type')?.indexOf("text/event-stream") !== 0) {
           throw new Error('SSE connection failed');
         }
       },
