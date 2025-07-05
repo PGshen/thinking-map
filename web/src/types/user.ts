@@ -17,7 +17,8 @@ export interface TokenInfoDTO {
 }
 
 export interface User {
-  id: string;
-  name: string;
-  // 可根据实际需求扩展属性
+  userId: string;
+  username: string;
+  email: string;
+  fullName: string;
 } 

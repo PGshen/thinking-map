@@ -25,13 +25,14 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { useGlobalStore } from "@/store/globalStore"
 
 // This is sample data.
 const data = {
   user: {
     name: "shadcn",
     email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+    avatar: "/avatar.jpg",
   },
   teams: [
     {
@@ -52,33 +53,19 @@ const data = {
   ],
   navMain: [
     {
-      title: "Playground",
+      title: "思考一下",
       url: "#",
       icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
+      isActive: true
     },
     {
-      title: "Models",
+      title: "工具",
       url: "#",
       icon: Bot,
       items: [
         {
-          title: "Genesis",
-          url: "#",
+          title: "Debug",
+          url: "/tool/debug",
         },
         {
           title: "Explorer",
@@ -91,7 +78,7 @@ const data = {
       ],
     },
     {
-      title: "Documentation",
+      title: "文档",
       url: "#",
       icon: BookOpen,
       items: [
@@ -114,7 +101,7 @@ const data = {
       ],
     },
     {
-      title: "Settings",
+      title: "设置",
       url: "#",
       icon: Settings2,
       items: [
@@ -156,7 +143,20 @@ const data = {
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ onLogout, ...props }: React.ComponentProps<typeof Sidebar> & { onLogout?: () => void }) {
+  const user = useGlobalStore((s) => s.user);
+  // 兼容NavUser需要的user结构
+  const navUser = user
+    ? {
+        name: user.username || user.fullName || "用户",
+        email: user.email || "",
+        avatar: "/avatar.jpg", // 可根据实际user对象调整
+      }
+    : {
+        name: "未登录",
+        email: "",
+        avatar: "/avatar.jpg",
+      };
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -167,7 +167,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={navUser} onLogout={onLogout} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

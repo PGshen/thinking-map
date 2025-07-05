@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { useGlobalStore } from '@/store/globalStore';
 import {
   getToken,
@@ -10,6 +10,8 @@ import {
   onRefreshed,
   addRefreshSubscriber
 } from '@/lib/auth';
+import { toast } from 'sonner';
+import { ApiResponse } from '@/types/response';
 
 const apiBaseURL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
@@ -18,6 +20,31 @@ const instance: AxiosInstance = axios.create({
   timeout: 15000,
   withCredentials: true,
 });
+
+// 扩展 InternalAxiosRequestConfig 以支持 _retry
+interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
+
+// 泛型请求方法
+export async function request<T = any>(config: AxiosRequestConfig): Promise<ApiResponse<T>> {
+  const res = await instance.request<ApiResponse<T>>(config);
+  return res.data;
+}
+
+// 也可导出常用方法
+export function get<T = any>(url: string, config?: AxiosRequestConfig) {
+  return request<T>({ ...config, method: 'get', url });
+}
+export function post<T = any>(url: string, data?: any, config?: AxiosRequestConfig) {
+  return request<T>({ ...config, method: 'post', url, data });
+}
+export function put<T = any>(url: string, data?: any, config?: AxiosRequestConfig) {
+  return request<T>({ ...config, method: 'put', url, data });
+}
+export function del<T = any>(url: string, config?: AxiosRequestConfig) {
+  return request<T>({ ...config, method: 'delete', url });
+}
 
 // 请求拦截器：自动附加token、设置全局loading
 instance.interceptors.request.use(
@@ -45,25 +72,30 @@ instance.interceptors.request.use(
 
 // 响应拦截器：统一处理后端响应格式、全局loading/error
 instance.interceptors.response.use(
-  (response: AxiosResponse) => {
+  (response: AxiosResponse<ApiResponse<any>>) => {
     if (typeof window !== 'undefined') {
       const { setLoading } = useGlobalStore.getState();
       setLoading(false);
     }
-    // 假设后端返回 { code, message, data }
     const { code, message, data } = response.data;
     if (code !== 200) {
       if (typeof window !== 'undefined') {
         const { setError } = useGlobalStore.getState();
         setError(message || '请求错误');
+        toast.error(message || '请求错误');
       }
       return Promise.reject(new Error(message || '请求错误'));
     }
-    return data;
+    return response;
   },
-  async (error: any) => {
-    const originalRequest = error.config;
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+  async (error: AxiosError) => {
+    const originalRequest = error.config as CustomAxiosRequestConfig | undefined;
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry
+    ) {
       if (typeof window !== 'undefined') {
         const { setLoading, setError } = useGlobalStore.getState();
         setLoading(false);
@@ -72,6 +104,8 @@ instance.interceptors.response.use(
         // 队列等待token刷新完成
         return new Promise((resolve, reject) => {
           addRefreshSubscriber((token: string) => {
+            if (!originalRequest) return reject(new Error('No original request'));
+            originalRequest.headers = originalRequest.headers || {};
             originalRequest.headers['Authorization'] = 'Bearer ' + token;
             originalRequest._retry = true;
             resolve(instance(originalRequest));
@@ -84,8 +118,11 @@ instance.interceptors.response.use(
         const newToken = await refreshTokenApi();
         onRefreshed(newToken);
         refreshState.isRefreshing = false;
-        originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
-        return instance(originalRequest);
+        if (originalRequest) {
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
+          return instance(originalRequest);
+        }
       } catch (refreshErr) {
         refreshState.isRefreshing = false;
         if (typeof window !== 'undefined') {
@@ -99,7 +136,15 @@ instance.interceptors.response.use(
     if (typeof window !== 'undefined') {
       const { setLoading, setError } = useGlobalStore.getState();
       setLoading(false);
-      setError(error.message);
+      let message = '请求错误';
+      if (error.response && error.response.data) {
+        const data = error.response.data as Partial<ApiResponse<any>>;
+        message = data.message || error.message || '请求错误';
+      } else if (error.message) {
+        message = error.message;
+      }
+      setError(message);
+      toast.error(message);
     }
     return Promise.reject(error);
   }

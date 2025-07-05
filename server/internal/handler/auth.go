@@ -40,7 +40,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,
-			Message:   "failed to register user",
+			Message:   err.Error(),
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),
 			RequestID: uuid.New().String(),

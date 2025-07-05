@@ -16,6 +16,8 @@ import { loginUser } from "@/api/auth"
 import { useGlobalStore } from "@/store/globalStore"
 import { useRouter } from "next/navigation"
 import { setToken } from "@/lib/auth"
+import { toast } from "sonner"
+import { Eye, EyeOff } from "lucide-react"
 
 export function LoginForm({
   className,
@@ -23,6 +25,7 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const setUser = useGlobalStore((s) => s.setUser);
@@ -43,9 +46,11 @@ export function LoginForm({
         if (typeof window !== 'undefined') {
           setToken(data.accessToken || '', data.refreshToken || '');
         }
-        setUser({ id: data.userId, name: data.username });
+        setUser({ userId: data.userId, username: data.username, email: data.email, fullName: data.fullName });
+        toast.success("登录成功！")
         router.push("/");
       } else {
+        toast.error(response.message || "登录失败")
         setError(response.message || "登录失败");
       }
     } catch (err: any) {
@@ -88,23 +93,38 @@ export function LoginForm({
                     忘记密码?
                   </a>
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
-              {error && <div className="text-red-500 text-sm">{error}</div>}
               <div className="flex flex-col gap-3">
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
                   {loading ? "登录中..." : "登录"}
                 </Button>
               </div>
             </div>
             <div className="mt-4 text-center text-sm">
-              没有账号?{" "}
+              没有帐号?{" "}
               <a href="/register" className="underline underline-offset-4">
                 注册
               </a>
