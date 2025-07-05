@@ -48,6 +48,7 @@ func SetupRouter(
 	nodeHandler := handler.NewNodeHandler(nodeService)
 	nodeDetailHandler := handler.NewNodeDetailHandler(nodeDetailService)
 	understandingHandler := thinkinghandler.NewUnderstandingHandler(understandingService)
+	repeaterHandler := thinkinghandler.NewRepeaterHandler()
 
 	// 新增：创建 broker
 	store := sse.NewMemorySessionStore() // internal/sse/store.go
@@ -105,6 +106,7 @@ func SetupRouter(
 			thinking := protected.Group("/thinking")
 			{
 				thinking.POST("/understanding", thinkinghandler.NewStreamReply(understandingHandler))
+				thinking.POST("/repeat", thinkinghandler.NewStreamReply(repeaterHandler))
 			}
 
 			// SSE routes

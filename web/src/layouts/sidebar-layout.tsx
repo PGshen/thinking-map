@@ -32,9 +32,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <AppSidebar onLogout={handleLogout} />
-        <div className="relative">
+        {/* <div className="relative">
           <SidebarTrigger className="absolute left-0 top-4 -translate-y-1/2 z-20" />
-        </div>
+        </div> */}
         <main className="flex-1 min-w-0 bg-background">{children}</main>
       </div>
     </SidebarProvider>

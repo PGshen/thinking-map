@@ -29,3 +29,22 @@ log:
   maxAge: 7
   compress: false
   console: false 
+
+llm:
+  openai:
+    api_key: ${OPENAI_API_KEY}
+    base_url: ${OPENAI_BASE_URL}
+    model: ${OPENAI_MODEL}
+    timeout: 300s
+  deepseek:
+    api_key: ${DEEPSEEK_API_KEY}
+    model: ${DEEPSEEK_MODEL}
+    timeout: 300s
+  claude:
+    api_key: ${CLAUDE_API_KEY}
+    model: ${CLAUDE_MODEL}
+    timeout: 300s
+
+sse:
+  ping_interval: 15s  # 心跳包间隔
+  client_timeout: 60s  # 客户端超时时间 
