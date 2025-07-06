@@ -8,10 +8,12 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
 	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
+	"github.com/PGshen/thinking-map/server/internal/pkg/utils"
 	"github.com/PGshen/thinking-map/server/internal/repository"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type UnderstandingService struct {
@@ -24,50 +26,58 @@ func NewUnderstandingService(messageRepo repository.Message) *UnderstandingServi
 	}
 }
 
-func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.UnderstandingRequest) (*schema.StreamReader[*schema.Message], error) {
+func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.UnderstandingRequest) (event string, sr *schema.StreamReader[*schema.Message], err error) {
+	event = comm.EventJson
 	userID := ctx.GetString("user_id")
 	// 1. 构建理解agent
-	agent, err := understanding.BuildUnderstandingAgent(ctx)
+	var agent compose.Runnable[[]*schema.Message, *schema.Message]
+	agent, err = understanding.BuildUnderstandingAgent(ctx)
 	if err != nil {
-		return nil, err
+		return
+	}
+	var userContent string
+	if req.Supplementary != "" {
+		// 补充内容消息
+		userContent = req.Supplementary
+	} else if req.Problem != "" && req.ProblemType != "" {
+		userContent = fmt.Sprintf("问题：%s\n类型：%s", req.Problem, req.ProblemType)
 	}
 
 	// 2. 加载历史消息
 	msgService := NewMessageService(s.messageRepo)
-	msgs, err := msgService.GetMessageByParentID(ctx, req.ParentMsgID)
+	var msgs []*dto.MessageResponse
+	msgs, err = msgService.GetMessageByParentID(ctx, req.ParentMsgID)
 	if err != nil {
-		return nil, err
+		return
 	}
 	// 消息转换为schema.Message
-	schemaMsgs := make([]*schema.Message, len(msgs))
-	for i, msg := range msgs {
-		schemaMsgs[i] = &schema.Message{
-			Role:    msg.Role,
-			Content: msg.Content.Text,
-		}
-	}
+	schemaMsgs := ConvertToSchemaMsg(msgs)
+	schemaMsgs = append(schemaMsgs, schema.UserMessage(userContent))
 
 	// 3. 调用agent理解
-	sr, err := agent.Stream(ctx, schemaMsgs, compose.WithCallbacks(callback.LogCbHandler))
+	sr, err = agent.Stream(ctx, schemaMsgs, compose.WithCallbacks(callback.LogCbHandler))
 	// 4. 保存消息
 	// 4.2 保存用户消息
 	msgRequest := dto.CreateMessageRequest{
-		ParentID:    req.ParentMsgID,
+		ParentID:    utils.Ternary(req.ParentMsgID == "", uuid.Nil.String(), req.ParentMsgID),
 		MessageType: comm.MessageTypeText,
 		Role:        schema.User,
 		Content: model.MessageContent{
-			Text: fmt.Sprintf("problem: %s\nproblem_type: %s", req.Problem, req.ProblemType),
+			Text: userContent,
 		},
 		Metadata: map[string]any{
 			"agent": "Understanding",
 		},
 	}
-	msgResp, err := msgService.CreateMessage(ctx, userID, msgRequest)
+	var msgResp *dto.MessageResponse
+	msgResp, err = msgService.CreateMessage(ctx, userID, msgRequest)
 	if err != nil {
-		return sr, err
+		return
 	}
 	// 4.2 保存模型消息
 	srs := sr.Copy(2)
-	msgService.SaveStreamMessage(ctx, srs[1], msgResp.ID)
-	return srs[0], nil
+	sr = srs[0]
+	// 流式消息，提前确定消息ID
+	go msgService.SaveStreamMessage(ctx, srs[1], req.MsgID, msgResp.ID)
+	return
 }

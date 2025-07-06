@@ -35,7 +35,7 @@ type Message struct {
 }
 
 func (m *Message) BeforeCreate(tx *gorm.DB) error {
-	if m.ID == uuid.Nil.String() {
+	if m.ID == uuid.Nil.String() || m.ID == "" {
 		m.ID = uuid.NewString()
 	}
 	return nil

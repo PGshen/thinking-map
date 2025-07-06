@@ -70,3 +70,10 @@ const (
 	RAGStatusArchived = 0 // 归档
 	RAGStatusDeleted  = 2 // 删除
 )
+
+const (
+	EventText = "text"
+	EventJson = "json"
+	EventData = "data"
+	EventID   = "id"
+)

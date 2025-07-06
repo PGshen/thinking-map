@@ -44,6 +44,7 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID string, req d
 		}
 	}
 	msg := &model.Message{
+		ID:          req.ID,
 		ParentID:    req.ParentID,
 		ChatID:      chatID,
 		UserID:      userID,
@@ -60,7 +61,7 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID string, req d
 	return &resp, nil
 }
 
-func (s *MessageService) SaveStreamMessage(ctx *gin.Context, sr *schema.StreamReader[*schema.Message], parentID string) {
+func (s *MessageService) SaveStreamMessage(ctx *gin.Context, sr *schema.StreamReader[*schema.Message], ID, parentID string) {
 	useID := ctx.GetString("user_id")
 
 	fullMsgs := make([]*schema.Message, 0)
@@ -73,6 +74,7 @@ func (s *MessageService) SaveStreamMessage(ctx *gin.Context, sr *schema.StreamRe
 		}
 		fullMsg.Content = strings.ReplaceAll(fullMsg.Content, "&nbsp;", " ")
 		createMessageRequest := dto.CreateMessageRequest{
+			ID:          ID,
 			ParentID:    parentID,
 			MessageType: comm.MessageTypeText,
 			Role:        schema.Assistant,
@@ -162,7 +164,7 @@ func (s *MessageService) GetMessageByParentID(ctx context.Context, parentID stri
 	var result []*dto.MessageResponse
 	var fetch func(ctx context.Context, pid string) error
 	fetch = func(ctx context.Context, pid string) error {
-		if pid == uuid.Nil.String() {
+		if pid == uuid.Nil.String() || pid == "" {
 			return nil
 		}
 		msg, err := s.messageRepo.FindByID(ctx, pid)
@@ -181,6 +183,17 @@ func (s *MessageService) GetMessageByParentID(ctx context.Context, parentID stri
 		return nil, err
 	}
 	return result, nil
+}
+
+func ConvertToSchemaMsg(list []*dto.MessageResponse) []*schema.Message {
+	result := make([]*schema.Message, 0)
+	for _, item := range list {
+		result = append(result, &schema.Message{
+			Role:    item.Role,
+			Content: item.Content.String(),
+		})
+	}
+	return result
 }
 
 // isZeroMessageContent 判断 MessageContent 是否为零值

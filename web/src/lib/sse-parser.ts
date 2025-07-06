@@ -1,4 +1,4 @@
-import { EventStreamContentType, fetchEventSource } from '@microsoft/fetch-event-source'
+import { EventSourceMessage, EventStreamContentType, fetchEventSource } from '@microsoft/fetch-event-source'
 import { getToken } from "./auth"
 
 /**
@@ -559,7 +559,7 @@ interface SseConfig {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   url: string;
   param: Record<string, unknown>;
-  message?: (data: string) => void;
+  message?: (ev: EventSourceMessage) => void;
   close?: () => void;
   error?: (err: unknown) => void;
 }
@@ -595,7 +595,7 @@ export class SseJsonStreamParser {
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     url: string,
     param: Record<string, unknown>,
-    message?: (data: string) => void,
+    message?: (ev: EventSourceMessage) => void,
     close?: () => void,
     error?: (err: unknown) => void,
   ): this;
@@ -603,7 +603,7 @@ export class SseJsonStreamParser {
     methodOrConfig: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | SseConfig,
     url?: string,
     param?: Record<string, unknown>,
-    message?: (data: string) => void,
+    message?: (ev: EventSourceMessage) => void,
     close?: () => void,
     error?: (err: unknown) => void,
   ): this {
@@ -635,7 +635,6 @@ export class SseJsonStreamParser {
     const finalUrl = config.method === 'GET' && config.param
       ? `${config.url}${config.url.includes('?') ? '&' : '?'}${new URLSearchParams(config.param as Record<string, string>)}`
       : config.url;
-    console.log('-----')
 
     fetchEventSource(finalUrl, {
       method: config.method || 'POST',
@@ -655,8 +654,10 @@ export class SseJsonStreamParser {
         // 空格替换
         let data = ev.data;
         data = data.replaceAll('&nbsp;', ' ');
-        parser.write(data);
-        if (config.message) config.message(data);
+        if(ev.event == 'json') {  // 只解析json
+          parser.write(data);
+        }
+        if (config.message) config.message(ev);
       },
       async onopen(response) {
         if (!response.ok || response.headers.get('content-type')?.indexOf("text/event-stream") !== 0) {
@@ -701,7 +702,7 @@ export class SseMarkdownStreamParser {
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     url: string,
     param: Record<string, unknown>,
-    message?: (data: string) => void,
+    message?: (ev: EventSourceMessage) => void,
     close?: () => void,
     error?: (err: unknown) => void,
   ): this;
@@ -709,7 +710,7 @@ export class SseMarkdownStreamParser {
     methodOrConfig: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | SseConfig,
     url?: string,
     param?: Record<string, unknown>,
-    message?: (data: string) => void,
+    message?: (ev: EventSourceMessage) => void,
     close?: () => void,
     error?: (err: unknown) => void,
   ): this {
@@ -756,7 +757,7 @@ export class SseMarkdownStreamParser {
         // 确保空字符串和换行符的正确处理
         let data = ev.data;
         data = data.replaceAll('&nbsp;', ' ');
-        if (config.message) config.message(data);
+        if (config.message) config.message(ev);
       },
       async onopen(response) {
         if (!response.ok || response.headers.get('content-type') !== EventStreamContentType) {

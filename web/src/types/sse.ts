@@ -1,7 +1,7 @@
 // 与后端 dto/sse.go 对齐的 SSE 事件类型定义
 export interface NodeCreatedEvent {
   nodeId: string;
-  parentId: string;
+  parentID: string;
   nodeType: string;
   question: string;
   target: string;

@@ -1,0 +1,10 @@
+{
+  "go.toolsEnvVars": {
+    "GOSECEXCLUDE": "G404,G601"
+  },
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": [
+    "--disable=G404",
+    "--disable=G601"
+  ]
+} 

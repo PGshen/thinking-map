@@ -47,7 +47,7 @@ export default function Page() {
       console.error('Invalid JSON parameters:', e)
     }
 
-    jsonStream.connect(method as "GET" | "POST" | "PUT" | "DELETE", uri, requestParams, (data) => {
+    jsonStream.connect(method as "GET" | "POST" | "PUT" | "DELETE", uri, requestParams, (ev) => {
       // console.log(data)
     }, () => {
       console.log('close')

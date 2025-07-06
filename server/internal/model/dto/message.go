@@ -9,7 +9,8 @@ import (
 
 // CreateMessageRequest represents the request body for creating a message
 type CreateMessageRequest struct {
-	ParentID    string               `json:"parentId" binding:"omitempty,uuid"`
+	ID          string               `json:"ID"`
+	ParentID    string               `json:"parentID" binding:"omitempty,uuid"`
 	MessageType string               `json:"messageType" binding:"required,oneof=text rag notice"`
 	Role        schema.RoleType      `json:"role" binding:"required,oneof=system assistant user"`
 	Content     model.MessageContent `json:"content" binding:"required"`
@@ -27,7 +28,7 @@ type UpdateMessageRequest struct {
 // MessageResponse represents the message data in responses
 type MessageResponse struct {
 	ID          string               `json:"id"`
-	ParentID    string               `json:"parentId"`
+	ParentID    string               `json:"parentID"`
 	ChatID      string               `json:"chatId"`
 	MessageType string               `json:"messageType"`
 	Role        schema.RoleType      `json:"role"`

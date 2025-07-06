@@ -14,7 +14,7 @@ import (
 
 // CreateNodeRequest represents the request body for creating a node
 type CreateNodeRequest struct {
-	ParentID string         `json:"parentId" binding:"required,uuid"`
+	ParentID string         `json:"parentID" binding:"required,uuid"`
 	NodeType string         `json:"nodeType" binding:"required"`
 	Question string         `json:"question" binding:"required,max=500"`
 	Target   string         `json:"target" binding:"max=500"`
@@ -32,7 +32,7 @@ type UpdateNodeRequest struct {
 type NodeResponse struct {
 	ID           string               `json:"id"`
 	MapID        string               `json:"mapId,omitempty"`
-	ParentID     string               `json:"parentId"`
+	ParentID     string               `json:"parentID"`
 	NodeType     string               `json:"nodeType"`
 	Question     string               `json:"question"`
 	Target       string               `json:"target"`

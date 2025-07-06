@@ -201,7 +201,7 @@ ThinkingMap 是一款交互式AI问题解决可视化助手，将AI的思考和�
   "type": "node_created",
   "data": {
     "nodeId": "string",
-    "parentId": "string",
+    "parentID": "string",
     "nodeType": "string",
     "question": "string",
     "target": "string",

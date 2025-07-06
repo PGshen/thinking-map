@@ -127,9 +127,11 @@ Content-Type: application/json
 
 Request:
 {
-  "title": "string",
-  "description": "string",
-  "rootQuestion": "string"
+  "problem": "string",         // 必填，问题描述，最大1000字符
+  "problemType": "string",    // 可选，问题类型，最大50字符
+  "target": "string",         // 可选，目标，最大1000字符
+  "keyPoints": [ ... ],         // 可选，关键点（数组/对象，结构见下）
+  "constraints": [ ... ]        // 可选，约束条件（数组/对象，结构见下）
 }
 
 Response 200 OK:
@@ -137,19 +139,25 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "id": "uuid",
-    "title": "string",
-    "description": "string",
-    "rootQuestion": "string",
-    "rootNodeId": "uuid",
-    "status": 1,
-    "metadata": {},
-    "createdAt": "2024-01-01T00:00:00Z",
-    "updatedAt": "2024-01-01T00:00:00Z"
+    "id": "string",             // 导图ID（UUID）
+    "rootNodeId": "string",     // 根节点ID（UUID）
+    "status": 1,                 // 状态码
+    "problem": "string",        // 问题描述
+    "problemType": "string",    // 问题类型
+    "target": "string",         // 目标
+    "keyPoints": [ ... ],         // 关键点
+    "constraints": [ ... ],       // 约束条件
+    "conclusion": "string",      // 结论
+    "metadata": {},              // 元数据（对象）
+    "createdAt": "string",      // 创建时间（ISO8601）
+    "updatedAt": "string"       // 更新时间（ISO8601）
   },
-  "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "timestamp": "string",        // 响应时间（ISO8601）
+  "requestId": "string"         // 请求ID（UUID）
 }
+
+// 说明：
+// keyPoints、constraints 字段的具体结构请参考后端 model.KeyPoints、model.Constraints 的定义。
 
 # 获取用户的思维导图列表
 GET /api/v1/maps?page=1&limit=20&status=1
@@ -259,7 +267,7 @@ Response 200 OK:
     "nodes": [
       {
         "id": "uuid",
-        "parentId": "uuid",
+        "parentID": "uuid",
         "nodeType": "analysis",
         "question": "string",
         "target": "string",
@@ -282,7 +290,7 @@ Content-Type: application/json
 
 Request:
 {
-  "parentId": "uuid",
+  "parentID": "uuid",
   "nodeType": "analysis",
   "question": "string",
   "target": "string",
@@ -297,7 +305,7 @@ Response 200 OK:
   "data": {
     "id": "uuid",
     "mapId": "uuid",
-    "parentId": "uuid",
+    "parentID": "uuid",
     "nodeType": "analysis",
     "question": "string",
     "target": "string",
@@ -592,7 +600,7 @@ data: {
 event: node_created
 data: {
   "nodeId": "uuid",
-  "parentId": "uuid",
+  "parentID": "uuid",
   "nodeType": "analysis",
   "question": "string",
   "target": "string",

@@ -5,6 +5,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/service"
 	"github.com/cloudwego/eino/schema"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // 问题理解
@@ -18,10 +19,14 @@ func NewUnderstandingHandler(us *service.UnderstandingService) *UnderstandingHan
 	}
 }
 
-func (h *UnderstandingHandler) Handle(c *gin.Context) (*schema.StreamReader[*schema.Message], error) {
+func (h *UnderstandingHandler) Handle(c *gin.Context) (msgID string, event string, sr *schema.StreamReader[*schema.Message], err error) {
 	var req dto.UnderstandingRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		return nil, err
+	if err = c.ShouldBindJSON(&req); err != nil {
+		return
 	}
-	return h.understandingService.Understanding(c, req)
+	// 生产msgID
+	msgID = uuid.NewString()
+	req.MsgID = msgID
+	event, sr, err = h.understandingService.Understanding(c, req)
+	return
 }

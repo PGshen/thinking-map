@@ -12,7 +12,10 @@ export const API_ENDPOINTS = {
   },
   THINKING: {
     REPEAT: `${API_BASE}/v1/thinking/repeat`,
-    // 其他思维相关接口
+    UNDERSTANDING: `${API_BASE}/v1/thinking/understanding`
+  },
+  MAP: {
+    CREATE: `${API_BASE}/v1/maps`,
   },
   // 其他模块分组
 };

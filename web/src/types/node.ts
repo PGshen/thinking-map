@@ -20,7 +20,7 @@ export interface DependencyResponse {
 
 export interface NodeResponse {
   id: string;
-  parentId: string;
+  parentID: string;
   nodeType: string;
   question: string;
   target: string;

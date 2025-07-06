@@ -5,7 +5,7 @@ export type RoleType = 'system' | 'assistant' | 'user';
 
 export interface MessageResponse {
   id: string;
-  parentId: string;
+  parentID: string;
   chatId: string;
   messageType: string;
   role: RoleType;

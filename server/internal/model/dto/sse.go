@@ -15,7 +15,7 @@ import (
 // NodeCreatedEvent represents the node creation event
 type NodeCreatedEvent struct {
 	NodeID    string         `json:"nodeId"`
-	ParentID  string         `json:"parentId"`
+	ParentID  string         `json:"parentID"`
 	NodeType  string         `json:"nodeType"`
 	Question  string         `json:"question"`
 	Target    string         `json:"target"`

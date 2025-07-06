@@ -78,7 +78,7 @@ func SetupRouter(
 
 		// Protected routes (auth required)
 		protected := v1.Group("")
-		// protected.Use(middleware.AuthMiddleware(authService))
+		protected.Use(middleware.AuthMiddleware(authService))
 		{
 			// Map routes
 			maps := protected.Group("/maps")
