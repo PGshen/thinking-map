@@ -5,6 +5,7 @@ import {
   BookOpen,
   Bot,
   Frame,
+  History,
   Map,
   PieChart,
   Settings2,
@@ -38,6 +39,11 @@ const data = {
       url: "/",
       icon: SquareTerminal,
       isActive: true
+    },
+    {
+      title: "历史对话",
+      url: "/history",
+      icon: History
     },
     {
       title: "工具",

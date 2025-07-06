@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/model"
 
@@ -38,7 +39,7 @@ func (r *thinkingMapRepository) Create(ctx context.Context, thinkingMap *model.T
 }
 
 // ListMaps retrieves a list of thinking maps with pagination
-func (r *thinkingMapRepository) List(ctx context.Context, userID string, status int, page, limit int) ([]*model.ThinkingMap, int64, error) {
+func (r *thinkingMapRepository) List(ctx context.Context, userID string, status int, problemType, search string, startTime, endTime time.Time, page, limit int) ([]*model.ThinkingMap, int64, error) {
 	var maps []*model.ThinkingMap
 	var total int64
 
@@ -46,11 +47,21 @@ func (r *thinkingMapRepository) List(ctx context.Context, userID string, status 
 	if status > 0 {
 		dbQuery = dbQuery.Where("status = ?", status)
 	}
+	if problemType != "" {
+		dbQuery = dbQuery.Where("problem_type = ?", problemType)
+	}
+	if search != "" {
+		like := "%" + search + "%"
+		dbQuery = dbQuery.Where("problem LIKE ? OR target LIKE ?", like, like)
+	}
+
+	if !startTime.IsZero() && !endTime.IsZero() {
+		dbQuery = dbQuery.Where("created_at BETWEEN ? AND ?", startTime, endTime)
+	}
 
 	if err := dbQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-
 	offset := (page - 1) * limit
 	if err := dbQuery.Offset(offset).Limit(limit).Find(&maps).Error; err != nil {
 		return nil, 0, err

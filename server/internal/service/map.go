@@ -74,7 +74,40 @@ func (s *MapService) GetMap(ctx context.Context, mapID string) (*dto.MapResponse
 
 // ListMaps retrieves a list of thinking maps
 func (s *MapService) ListMaps(ctx context.Context, query dto.MapListQuery, userID string) (*dto.MapListResponse, error) {
-	maps, total, err := s.mapRepo.List(ctx, userID, query.Status, query.Page, query.Limit)
+	// Get current time in UTC+8 (China Standard Time)
+	now := time.Now().In(time.FixedZone("CST", 8*60*60))
+	var startTime, endTime time.Time
+	if query.DateRange != "" {
+		switch query.DateRange {
+		case "this-week":
+			// Calculate the start of this week (Monday)
+			weekday := int(now.Weekday())
+			if weekday == 0 { // Sunday
+				weekday = 7
+			}
+			startTime = now.AddDate(0, 0, -weekday+1).Truncate(24 * time.Hour)
+			endTime = now
+		case "last-week":
+			// Calculate the start of last week
+			weekday := int(now.Weekday())
+			if weekday == 0 { // Sunday
+				weekday = 7
+			}
+			startTime = now.AddDate(0, 0, -weekday-6).Truncate(24 * time.Hour)
+			endTime = now.AddDate(0, 0, -weekday+1).Truncate(24 * time.Hour)
+		case "this-month":
+			// Calculate the start of this month
+			startTime = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.FixedZone("CST", 8*60*60))
+			endTime = now
+		case "all-time":
+			// No time filter needed
+			break
+		default:
+			// Invalid date range, ignore the filter
+			break
+		}
+	}
+	maps, total, err := s.mapRepo.List(ctx, userID, query.Status, query.ProblemType, query.Search, startTime, endTime, query.Page, query.Limit)
 	if err != nil {
 		return nil, err
 	}

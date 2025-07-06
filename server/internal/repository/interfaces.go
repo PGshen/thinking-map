@@ -8,6 +8,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/model"
 )
@@ -31,7 +32,7 @@ type ThinkingMap interface {
 	Update(ctx context.Context, mapID string, updates map[string]interface{}) error
 	Delete(ctx context.Context, id string) error
 	FindByID(ctx context.Context, id string) (*model.ThinkingMap, error)
-	List(ctx context.Context, userID string, status int, page, limit int) ([]*model.ThinkingMap, int64, error)
+	List(ctx context.Context, userID string, status int, problemType, search string, startTime, endTime time.Time, page, limit int) ([]*model.ThinkingMap, int64, error)
 }
 
 // ThinkingNode 节点仓储接口

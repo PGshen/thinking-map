@@ -45,6 +45,7 @@ type MapResponse struct {
 	KeyPoints   model.KeyPoints   `json:"keyPoints"`
 	Constraints model.Constraints `json:"constraints"`
 	Conclusion  string            `json:"conclusion"`
+	Progress    float64           `json:"progress"`
 	Metadata    interface{}       `json:"metadata"`
 	CreatedAt   time.Time         `json:"createdAt"`
 	UpdatedAt   time.Time         `json:"updatedAt"`
@@ -60,9 +61,12 @@ type MapListResponse struct {
 
 // MapListQuery represents the query parameters for listing mind maps
 type MapListQuery struct {
-	Page   int `form:"page" binding:"required,min=1"`
-	Limit  int `form:"limit" binding:"required,min=1,max=100"`
-	Status int `form:"status" binding:"omitempty,oneof=0 1 2"`
+	Page        int    `form:"page" binding:"required,min=1"`
+	Limit       int    `form:"limit" binding:"required,min=1,max=100"`
+	Status      int    `form:"status" binding:"oneof=0 1 2"` // 0:全部, 1:进行中, 2:已完成
+	ProblemType string `form:"problemType"`
+	DateRange   string `form:"dateRange"` // this-week, last-week, this-month, all-time
+	Search      string `form:"search"`
 }
 
 // ToMapResponse converts a model.ThinkingMap to a MapResponse

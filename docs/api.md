@@ -175,10 +175,10 @@ Response 200 OK:
       {
         "id": "uuid",
         "title": "string",
-        "description": "string",
-        "rootQuestion": "string",
+        "problem": "string",        // 问题描述
+        "problemType": "string",    // 问题类型
+        "target": "string",         // 目标
         "status": 1,
-        "nodeCount": 10,
         "createdAt": "2024-01-01T00:00:00Z",
         "updatedAt": "2024-01-01T00:00:00Z"
       }

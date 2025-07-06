@@ -31,12 +31,12 @@ export type CreateMapResponse = ApiResponse<MapDetail>;
 export interface MapResponse {
   id: string;
   title: string;
-  description: string;
-  rootQuestion: string;
-  rootNodeId: string;
+  problem: string;
+  problemType: string;
+  target: string;
+  progress: number;
   status: number;
   metadata: any;
-  nodeCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,4 +46,14 @@ export type MapListResponse = ApiResponse<{
   page: number;
   limit: number;
   items: MapResponse[];
-}>; 
+}>;
+
+// 查询思维导图列表参数（与后端dto.MapListQuery保持一致）
+export interface MapListQuery {
+  page: number;
+  limit: number;
+  status?: number; // 0:全部, 1:进行中, 2:已完成
+  problemType?: string;
+  dateRange?: string;
+  search?: string;
+} 
