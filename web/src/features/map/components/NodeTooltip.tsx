@@ -1,4 +1,16 @@
+/*
+ * @Date: 2025-07-07 22:05:27
+ * @LastEditors: peng pgs1108pgs@gmail.com
+ * @LastEditTime: 2025-07-07 23:51:23
+ * @FilePath: /thinking-map/web/src/features/map/components/NodeTooltip.tsx
+ */
 import React from 'react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface NodeTooltipProps {
   content: string;
@@ -6,15 +18,24 @@ interface NodeTooltipProps {
 }
 
 export const NodeTooltip: React.FC<NodeTooltipProps> = ({ content, children }) => {
-  // 简单实现，后续可用 shadcn/ui Tooltip 替换
   return (
-    <span className="relative group">
-      {children}
-      {content && (
-        <span className="absolute z-10 left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-black text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-pre-line min-w-[120px] max-w-[260px]">
-          {content}
-        </span>
-      )}
-    </span>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {children}
+        </TooltipTrigger>
+        {content && (
+          <TooltipContent 
+            className="
+              whitespace-pre-line text-xs
+              min-w-[160px] max-w-[320px] max-h-[240px] overflow-y-auto
+              leading-relaxed
+            "
+          >
+            {content}
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
   );
-}; 
+};

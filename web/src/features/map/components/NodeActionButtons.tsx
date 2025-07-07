@@ -1,4 +1,5 @@
 import React from 'react';
+import { Pencil, Trash2, Plus } from 'lucide-react';
 
 interface NodeActionButtonsProps {
   id: string;
@@ -9,10 +10,25 @@ interface NodeActionButtonsProps {
 
 export const NodeActionButtons: React.FC<NodeActionButtonsProps> = ({ id, onEdit, onDelete, onAddChild }) => {
   return (
-    <div className="flex gap-2 mt-2 justify-end">
-      <button className="text-blue-500 hover:underline text-xs" onClick={e => { e.stopPropagation(); onEdit?.(id); }}>✏️</button>
-      <button className="text-red-500 hover:underline text-xs" onClick={e => { e.stopPropagation(); onDelete?.(id); }}>🗑️</button>
-      <button className="text-green-500 hover:underline text-xs" onClick={e => { e.stopPropagation(); onAddChild?.(id); }}>➕</button>
+    <div className="flex gap-1.5 bg-white/80 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border border-gray-100">
+      <button 
+        className="p-1.5 rounded-md hover:bg-blue-50 text-blue-500 transition-colors"
+        onClick={e => { e.stopPropagation(); onEdit?.(id); }}
+      >
+        <Pencil className="w-3.5 h-3.5" />
+      </button>
+      <button 
+        className="p-1.5 rounded-md hover:bg-red-50 text-red-500 transition-colors"
+        onClick={e => { e.stopPropagation(); onDelete?.(id); }}
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+      <button 
+        className="p-1.5 rounded-md hover:bg-green-50 text-green-500 transition-colors"
+        onClick={e => { e.stopPropagation(); onAddChild?.(id); }}
+      >
+        <Plus className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
-}; 
+};

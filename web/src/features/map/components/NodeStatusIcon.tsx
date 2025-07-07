@@ -1,21 +1,21 @@
 import React from 'react';
-import type { CustomNodeModel } from './CustomNodeModel';
+import { Clock, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface NodeStatusIconProps {
-  status: CustomNodeModel['status'];
+  status: 'pending' | 'running' | 'completed' | 'error'
 }
 
 export const NodeStatusIcon: React.FC<NodeStatusIconProps> = ({ status }) => {
   switch (status) {
     case 'pending':
-      return <span title="待执行" className="text-gray-400">⏸</span>;
+      return <Clock className="w-4 h-4 text-gray-400" />;
     case 'running':
-      return <span title="执行中" className="text-blue-400 animate-spin">🔄</span>;
+      return <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />;
     case 'completed':
-      return <span title="已完成" className="text-green-500">✅</span>;
+      return <CheckCircle2 className="w-4 h-4 text-green-500" />;
     case 'error':
-      return <span title="错误" className="text-red-500">⚠️</span>;
+      return <AlertCircle className="w-4 h-4 text-red-500" />;
     default:
       return null;
   }
-}; 
+};

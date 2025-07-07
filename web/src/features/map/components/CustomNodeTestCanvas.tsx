@@ -1,5 +1,5 @@
 "use client"
-import React, { useCallback, useMemo } from 'react';
+import React, { JSX, useCallback, useMemo } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   addEdge,
@@ -15,7 +15,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { CustomNode } from './CustomNode';
-import type { CustomNodeModel } from './CustomNodeModel';
+import type { CustomNodeModel } from '@/types/node';
 
 // 示例节点数据
 const initialNodes: Node<CustomNodeModel>[] = [
@@ -25,12 +25,11 @@ const initialNodes: Node<CustomNodeModel>[] = [
     position: { x: 100, y: 100 },
     data: {
       id: '1',
-      nodeType: '根节点',
+      nodeType: 'problem',
       question: '如何设计用户友好的移动应用界面？',
       target: '制定完整的UI/UX设计方案',
       status: 'running',
       selected: false,
-      childCount: 2,
     },
   },
   {
@@ -40,13 +39,26 @@ const initialNodes: Node<CustomNodeModel>[] = [
     data: {
       id: '2',
       parentId: '1',
-      nodeType: '分析',
+      nodeType: 'analysis',
       question: '用户研究与需求分析',
-      target: '了解用户需求和行为',
+      target: '团队内部保持一致：最重要的是团队约定统一考虑后端风格：如果后端使用下划线，前端可以考虑保持一致使用转换工具',
       status: 'completed',
-      conclusion: '已完成用户调研',
+      conclusion: '团队内部保持一致：最重要的是团队约定统一考虑后端风格：如果后端使用下划线，前端可以考虑保持一致使用转换工具：可以使用 lodash 等工具库进行风格转换文档明确规定：在 API 文档中明确说明使用的命名风格',
+      dependencies: [
+        {
+          name: "用户分析",
+          status: "completed"
+        },
+        {
+          name: "生成方案",
+          status: "running"
+        },
+        {
+          name: "评估",
+          status: "pending"
+        }
+      ],
       selected: false,
-      childCount: 0,
     },
   },
   {
@@ -56,13 +68,11 @@ const initialNodes: Node<CustomNodeModel>[] = [
     data: {
       id: '3',
       parentId: '1',
-      nodeType: '分析',
+      nodeType: 'information',
       question: '界面设计与原型',
       target: '设计界面布局和元素',
       status: 'pending',
       selected: false,
-      childCount: 0,
-      hasUnmetDependencies: true,
     },
   },
 ];
@@ -72,12 +82,12 @@ const initialEdges: Edge[] = [
   { id: 'e1-3', source: '1', target: '3', type: 'smoothstep' },
 ];
 
-// 组件外部常量，nodeTypes永远不变
-export const nodeTypes = {
-  custom: CustomNode,
-};
 
-export const CustomNodeTestCanvas: React.FC = () => {
+const nodeTypes = {
+  'custom': CustomNode
+}
+
+export function CustomNodeTestCanvas(): JSX.Element {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
@@ -117,7 +127,7 @@ export const CustomNodeTestCanvas: React.FC = () => {
 
   return (
     <ReactFlowProvider>
-      <div style={{ width: '100%', height: 500, background: '#f8fafc' }}>
+      <div style={{ width: '100%', height: 850, background: '#f8fafc' }}>
         <ReactFlow
           nodes={nodesWithHandlers}
           edges={edges}

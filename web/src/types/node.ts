@@ -1,3 +1,9 @@
+/*
+ * @Date: 2025-07-07 22:05:27
+ * @LastEditors: peng pgs1108pgs@gmail.com
+ * @LastEditTime: 2025-07-08 00:39:50
+ * @FilePath: /thinking-map/web/src/types/node.ts
+ */
 // 与后端 dto/node.go 对齐的节点类型定义
 import type { NodeDetailResponse } from './nodeDetail';
 import type { ApiResponse } from './response';
@@ -8,9 +14,8 @@ export interface Position {
 }
 
 export interface DependencyInfo {
-  nodeId: string;
-  dependencyType: string;
-  required: boolean;
+  name: string;
+  status: string;
 }
 
 export interface DependencyResponse {
@@ -43,4 +48,26 @@ export interface Edge {
   source: string;
   target: string;
   // 可根据实际需求扩展属性
-} 
+}
+
+export interface CustomNodeModel {
+  id: string;
+  parentId?: string;
+  nodeType: string;
+  question: string;
+  target: string;
+  conclusion?: string;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  dependencies?: DependencyInfo[];
+  context?: any;
+  metadata?: any;
+  selected?: boolean;
+  childCount?: number;
+  // 交互事件（由外部注入，非持久数据）
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onAddChild?: (id: string) => void;
+  onSelect?: (id: string) => void;
+  onDoubleClick?: (id: string) => void;
+  onContextMenu?: (id: string, e: React.MouseEvent) => void;
+}

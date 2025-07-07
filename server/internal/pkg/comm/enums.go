@@ -39,7 +39,7 @@ const (
 // 思维节点状态
 const (
 	NodeStatusPending   = 1 // 待执行
-	NodeStatusExecuting = 2 // 执行中
+	NodeStatusRunning   = 2 // 执行中
 	NodeStatusCompleted = 3 // 已完成
 )
 
