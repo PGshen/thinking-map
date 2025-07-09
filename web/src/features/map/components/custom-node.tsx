@@ -8,8 +8,8 @@
 import React from 'react';
 import { HelpCircle, Search, Brain, Lightbulb, Scale } from 'lucide-react';
 import type { CustomNodeModel } from '@/types/node';
-import { NodeStatusIcon } from './NodeStatusIcon';
-import { NodeActionButtons } from './NodeActionButtons';
+import { NodeStatusIcon } from './node-status-icon';
+import { NodeActionButtons } from './node-action-buttons';
 import { Handle, Position } from 'reactflow';
 import { MarkdownContent } from '@/components/ui/markdown-content';
 import { Badge } from '@/components/ui/badge';

@@ -38,12 +38,12 @@ const nodeTypes: NodeTypes = {
 };
 
 function MapCanvas({ taskId }: VisualizationAreaProps) {
-  const { nodes: storeNodes, edges: storeEdges, selectedNodeIds, actions } = useWorkspaceStore();
+  const { selectedNodeIds, actions } = useWorkspaceStore();
   const { nodesData, edgesData, isLoading } = useWorkspaceData(taskId);
   const { handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu } = useNodeSelection();
   
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
 
   // 转换数据格式为ReactFlow需要的格式
   const convertToReactFlowNodes = useCallback((nodeData: any[]): Node[] => {

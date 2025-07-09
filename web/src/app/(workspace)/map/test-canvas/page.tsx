@@ -1,5 +1,5 @@
 import React from 'react';
-import { CustomNodeTestCanvas } from '@/features/map/components/CustomNodeTestCanvas';
+import { CustomNodeTestCanvas } from '@/features/map/components/custom-node-test-canvas';
 
 export default function MapTestCanvasPage() {
   return (

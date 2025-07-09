@@ -14,7 +14,7 @@ import ReactFlow, {
   useEdgesState,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { CustomNode } from './CustomNode';
+import { CustomNode } from './custom-node';
 import type { CustomNodeModel } from '@/types/node';
 
 // 示例节点数据
