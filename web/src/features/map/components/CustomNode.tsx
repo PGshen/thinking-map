@@ -1,4 +1,5 @@
 /*
+ * @Author: peng pgs1108pgs@gmail.com
  * @Date: 2025-07-07 22:05:27
  * @LastEditors: peng pgs1108pgs@gmail.com
  * @LastEditTime: 2025-07-07 23:52:59
@@ -9,7 +10,6 @@ import { HelpCircle, Search, Brain, Lightbulb, Scale } from 'lucide-react';
 import type { CustomNodeModel } from '@/types/node';
 import { NodeStatusIcon } from './NodeStatusIcon';
 import { NodeActionButtons } from './NodeActionButtons';
-import { NodeTooltip } from './NodeTooltip';
 import { Handle, Position } from 'reactflow';
 import { MarkdownContent } from '@/components/ui/markdown-content';
 import { Badge } from '@/components/ui/badge';
@@ -17,13 +17,6 @@ import { Badge } from '@/components/ui/badge';
 interface CustomNodeProps {
   data: CustomNodeModel
 }
-
-const statusColor: Record<CustomNodeModel['status'], string> = {
-  pending: 'border-gray-300',
-  running: 'border-blue-400 animate-pulse',
-  completed: 'border-green-400',
-  error: 'border-red-400',
-};
 
 export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
   return (
@@ -47,17 +40,17 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
       </div>
 
       {/* Content: 问题/目标/结论 */}
-      <div className="space-y-2 mb-2">
+      <div className="space-y-1 mb-2">
         <div className="text-sm font-medium text-gray-900 line-clamp-2 overflow-hidden text-ellipsis">{data.question}</div>
         <div className="text-xs text-gray-600 overflow-hidden">
           <MarkdownContent 
-            id={'conclusion' + data.id}
+            id={'target' + data.id}
             content={data.target} 
             className="max-w-full overflow-hidden text-ellipsis line-clamp-5"
           />
         </div>
         {data.status === 'completed' && data.conclusion && (
-          <div className="text-xs text-green-700 overflow-hidden">
+          <div className="text-xs text-green-700 overflow-hidden leading-tight">
             <MarkdownContent 
               id={'conclusion' + data.id}
               content={data.conclusion} 
@@ -68,7 +61,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
       </div>
 
       {/* Footer: 依赖/分支 */}
-      <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+      <div className="flex items-center justify-between text-xs text-gray-500">
         <div className="flex items-center gap-1 flex-wrap">
           {data.dependencies && data.dependencies.length > 0 && (
             data.dependencies.map((dep, index) => {
@@ -77,7 +70,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
                 <Badge
                   key={index}
                   variant={variant}
-                  className={`text-xs px-1.5 py-0.5 h-5 ${statusClassName}`}
+                  className={`text-md px-1.5 py-0.5 h-5 rounded-sm font-medium! ${statusClassName}`}
                 >
                   {dep.name}
                 </Badge>
@@ -124,33 +117,33 @@ const getDependencyStatusStyle = (status: string): { variant: 'default' | 'secon
     case 'resolved':
       return {
         variant: 'outline',
-        className: 'bg-green-400 hover:bg-green-500 text-white'
-      }; // 绿色，表示已完成
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+      }; // 柔和的绿色，表示已完成
     case 'pending':
     case 'waiting':
     case 'blocked':
       return {
         variant: 'outline',
-        className: 'bg-yellow-400 hover:bg-yellow-500 text-white'
-      }; // 黄色，表示等待中
+        className: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+      }; // 柔和的琥珀色，表示等待中
     case 'error':
     case 'failed':
     case 'unmet':
       return {
         variant: 'outline',
-        className: 'bg-red-400 hover:bg-red-500 text-white'
-      }; // 红色，表示错误或未满足
+        className: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+      }; // 柔和的玫瑰色，表示错误或未满足
     case 'running':
     case 'processing':
     case 'active':
       return {
         variant: 'outline',
-        className: 'bg-blue-400 hover:bg-blue-500 text-white'
-      }; // 蓝色，表示进行中
+        className: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+      }; // 柔和的蓝色，表示进行中
     default:
       return {
         variant: 'outline',
-        className: 'bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200'
-      }; // 默认为灰色
+        className: 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+      }; // 默认为柔和的灰色
   }
 };

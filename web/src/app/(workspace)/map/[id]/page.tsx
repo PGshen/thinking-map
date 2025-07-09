@@ -6,8 +6,6 @@ export default function MapWorkspacePage({ params }: { params: Promise<{ id: str
   const { id } = React.use(params);
 
   return (
-    <WorkspaceLayout>
-      <div className="p-8">工作区内容区（TODO），mapId: {id}</div>
-    </WorkspaceLayout>
+    <WorkspaceLayout taskId={id} />
   );
-} 
+}

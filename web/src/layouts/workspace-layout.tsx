@@ -1,17 +1,27 @@
 /*
- * @Date: 2025-07-01 23:48:33
- * @LastEditors: peng pgs1108pgs@gmail.com
- * @LastEditTime: 2025-07-02 00:29:20
- * @FilePath: /thinking-map/web/src/layouts/WorkspaceLayout.tsx
+ * @Date: 2025-01-27
+ * @LastEditors: AI Assistant
+ * @LastEditTime: 2025-01-27
+ * @FilePath: /thinking-map/web/src/layouts/workspace-layout.tsx
  */
 import React from 'react';
-import WorkspaceHeader from '../components/workspace-header';
+import { WorkspaceLayout as NewWorkspaceLayout } from '@/features/workspace';
 
-export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
+interface WorkspaceLayoutProps {
+  children?: React.ReactNode;
+  taskId?: string;
+}
+
+export default function WorkspaceLayout({ children, taskId }: WorkspaceLayoutProps) {
+  // 如果提供了taskId，使用新的工作区布局
+  if (taskId) {
+    return <NewWorkspaceLayout taskId={taskId} />;
+  }
+  
+  // 否则保持原有的简单布局（向后兼容）
   return (
     <div className="w-full h-full min-h-screen bg-background flex flex-col">
-      <WorkspaceHeader />
       <main className="flex-1 min-w-0">{children}</main>
     </div>
   );
-} 
+}
