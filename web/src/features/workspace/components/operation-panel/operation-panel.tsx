@@ -1,7 +1,7 @@
 /*
  * @Date: 2025-01-27
- * @LastEditors: AI Assistant
- * @LastEditTime: 2025-01-27
+ * @LastEditors: peng pgs1108pgs@gmail.com
+ * @LastEditTime: 2025-07-10 09:44:51
  * @FilePath: /thinking-map/web/src/features/workspace/components/operation-panel/operation-panel.tsx
  */
 'use client';
@@ -94,7 +94,6 @@ export function OperationPanel() {
         className={cn(
           "fixed right-0 top-16 bottom-0 bg-background border-l shadow-lg z-50",
           "lg:relative lg:top-0 lg:shadow-none",
-          "transition-all duration-300 ease-in-out",
           panelOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
         )}
         style={{
@@ -111,20 +110,6 @@ export function OperationPanel() {
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
             <GripVertical className="w-3 h-3 text-muted-foreground" />
           </div>
-        </div>
-        
-        {/* 面板头部 */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">节点详情</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => actions.closePanel()}
-            className="h-8 w-8 p-0"
-            aria-label="关闭面板"
-          >
-            <X className="w-4 h-4" />
-          </Button>
         </div>
         
         {/* 面板内容 */}

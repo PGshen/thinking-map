@@ -27,7 +27,7 @@ export { default as ConclusionTab } from './components/operation-panel/conclusio
 // Store
 export {
   useWorkspaceStore,
-  useWorkspaceData as useWorkspaceStoreData,
+  useWorkspaceStoreData,
   usePanelState,
   useWorkspaceSettings,
 } from './store/workspace-store';

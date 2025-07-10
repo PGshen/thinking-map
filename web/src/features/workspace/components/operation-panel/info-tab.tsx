@@ -157,7 +157,6 @@ export function InfoTab({ nodeId, node }: InfoTabProps) {
   };
 
   // 检查依赖是否满足
-  const nodeData = node.data as any;
   const unmetDependencies = nodeData?.dependencies?.filter(
     (dep: any) => dep.status !== 'completed'
   ) || [];

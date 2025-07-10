@@ -25,7 +25,7 @@ export function TaskTitle({ title, taskId, isLoading }: TaskTitleProps) {
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { updateTaskInfo } = useWorkspaceStore();
+  const { actions } = useWorkspaceStore();
 
   useEffect(() => {
     setEditValue(title);
@@ -61,7 +61,7 @@ export function TaskTitle({ title, taskId, isLoading }: TaskTitleProps) {
       // await updateTaskTitle(taskId, editValue.trim());
       
       // 更新本地状态
-      updateTaskInfo({ title: editValue.trim() });
+      actions.updateTaskTitle(editValue.trim());
       setIsEditing(false);
       
       toast({
@@ -130,7 +130,7 @@ export function TaskTitle({ title, taskId, isLoading }: TaskTitleProps) {
   return (
     <div className="flex items-center gap-2 group">
       <h1 
-        className="text-lg font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+        className="text-sm text-foreground cursor-pointer hover:text-primary transition-colors"
         onClick={handleStartEdit}
         title={title}
       >

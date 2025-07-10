@@ -132,7 +132,7 @@ export function useWorkspaceData(taskId?: string) {
     } finally {
       actions.setLoading(false);
     }
-  }, [actions, toast]);
+  }, []); // 移除actions和toast依赖，避免无限循环
 
   // 加载节点数据
   const loadNodes = useCallback(async (id: string) => {
@@ -201,7 +201,7 @@ export function useWorkspaceData(taskId?: string) {
     } finally {
       actions.setLoading(false);
     }
-  }, [actions, toast]);
+  }, []); // 移除actions和toast依赖，避免无限循环
 
   // 保存任务标题
   const saveTaskTitle = useCallback(async (title: string) => {
@@ -226,7 +226,7 @@ export function useWorkspaceData(taskId?: string) {
       });
       return false;
     }
-  }, [taskId, actions, toast]);
+  }, [taskId]); // 移除actions和toast依赖，避免无限循环
 
   // 保存节点信息
   const saveNodeInfo = useCallback(async (nodeId: string, updates: any) => {
@@ -248,7 +248,7 @@ export function useWorkspaceData(taskId?: string) {
       });
       return false;
     }
-  }, [actions, toast]);
+  }, []); // 移除actions和toast依赖，避免无限循环
 
   // 保存整个工作区
   const saveWorkspace = useCallback(async () => {
@@ -287,18 +287,18 @@ export function useWorkspaceData(taskId?: string) {
     } finally {
       actions.setLoading(false);
     }
-  }, [taskId, hasUnsavedChanges, nodes, actions, toast]);
+  }, [taskId, hasUnsavedChanges, nodes]);
 
   // 自动保存
-  useEffect(() => {
-    if (!hasUnsavedChanges || !taskId) return;
+  // useEffect(() => {
+  //   if (!hasUnsavedChanges || !taskId) return;
     
-    const autoSaveTimer = setTimeout(() => {
-      saveWorkspace();
-    }, 30000); // 30秒后自动保存
+  //   const autoSaveTimer = setTimeout(() => {
+  //     saveWorkspace();
+  //   }, 30000); // 30秒后自动保存
     
-    return () => clearTimeout(autoSaveTimer);
-  }, [hasUnsavedChanges, taskId, saveWorkspace]);
+  //   return () => clearTimeout(autoSaveTimer);
+  // }, [hasUnsavedChanges, taskId]);
 
   // 初始化数据
   useEffect(() => {
@@ -306,7 +306,7 @@ export function useWorkspaceData(taskId?: string) {
       loadTaskInfo(taskId);
       loadNodes(taskId);
     }
-  }, [taskId, loadTaskInfo, loadNodes]);
+  }, [taskId]);
 
   // 页面卸载前保存
   useEffect(() => {

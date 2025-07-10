@@ -13,10 +13,10 @@ export const useNodeSelection = () => {
 
   const handleNodeDoubleClick = useCallback(
     (nodeId: string) => {
-      // TODO: 实现节点编辑功能
-      console.log('Double click node:', nodeId);
+      // 双击节点时展开侧边面板
+      actions.openPanel(nodeId);
     },
-    []
+    [actions]
   );
 
   const handleNodeContextMenu = useCallback(

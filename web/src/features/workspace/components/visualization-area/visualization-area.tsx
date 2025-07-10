@@ -22,7 +22,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-import { CustomNode } from '@/features/map/components/custom-node';
+import { CustomNode } from '@/features/workspace/components/custome-node/custom-node';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { useWorkspaceData } from '@/features/workspace/hooks/use-workspace-data';
 import { useNodeSelection } from '@/features/workspace/hooks/use-node-selection';
@@ -39,7 +39,7 @@ const nodeTypes: NodeTypes = {
 
 function MapCanvas({ taskId }: VisualizationAreaProps) {
   const { selectedNodeIds, actions } = useWorkspaceStore();
-  const { nodesData, edgesData, isLoading } = useWorkspaceData(taskId);
+  const { nodes: nodesData, edges: edgesData, isLoading } = useWorkspaceData(taskId);
   const { handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu } = useNodeSelection();
   
   const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
@@ -163,11 +163,7 @@ function MapCanvas({ taskId }: VisualizationAreaProps) {
       >
         <Background color="#e2e8f0" gap={20} size={1} />
         <Controls className="bg-white border border-gray-200 rounded-lg shadow-sm" />
-        <MiniMap 
-          className="bg-white border border-gray-200 rounded-lg shadow-sm"
-          nodeColor="#3b82f6"
-          maskColor="rgba(0, 0, 0, 0.1)"
-        />
+        <MiniMap />
       </ReactFlow>
     </div>
   );

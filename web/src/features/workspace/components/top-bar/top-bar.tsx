@@ -17,15 +17,15 @@ interface TopBarProps {
 }
 
 export function TopBar({ taskId }: TopBarProps) {
-  const { taskInfo, isLoading } = useWorkspaceData(taskId);
+  const { taskTitle, isLoading } = useWorkspaceData(taskId);
 
   return (
-    <header className="h-16 flex items-center justify-between px-6 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+    <header className="h-12 flex items-center justify-between px-6 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       {/* 左侧区域 */}
       <div className="flex items-center gap-4">
         <ExitButton />
         <TaskTitle 
-          title={taskInfo?.title || '加载中...'} 
+          title={taskTitle || '加载中...'} 
           taskId={taskId}
           isLoading={isLoading}
         />

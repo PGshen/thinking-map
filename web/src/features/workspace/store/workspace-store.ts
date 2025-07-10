@@ -411,7 +411,7 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
 export type { WorkspaceState, WorkspaceActions };
 
 // 选择器函数
-export const useWorkspaceData = () => {
+export const useWorkspaceStoreData = () => {
   const store = useWorkspaceStore();
   return {
     taskId: store.taskId,
