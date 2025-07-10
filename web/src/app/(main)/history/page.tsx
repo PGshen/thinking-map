@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchMapList } from "@/api/map";
-import type { MapResponse } from "@/types/map";
+import type { MapDetail } from "@/types/map";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { AlertDialogHeader, AlertDialogFooter, AlertDialog, AlertDialogTrigger, 
 
 export default function Page() {
   // Placeholder state for future data
-  const [maps, setMaps] = useState<MapResponse[]>([]);
+  const [maps, setMaps] = useState<MapDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -120,7 +120,7 @@ export default function Page() {
               <p className="text-sm text-muted-foreground mb-2">{map.target}</p>
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="secondary">{map.problemType}</Badge>
-                <Badge variant="outline">{`完成度: ${map.progress}%`}</Badge>
+                <Badge variant="outline">{`完成度: ${map.metadata?.progress}%`}</Badge>
               </div>
               <div className="text-sm text-muted-foreground">
                 {map.createdAt}

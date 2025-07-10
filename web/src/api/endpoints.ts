@@ -16,6 +16,10 @@ export const API_ENDPOINTS = {
   },
   MAP: {
     CREATE: `${API_BASE}/v1/maps`,
+    GET: `${API_BASE}/v1/maps`,
+    LIST: `${API_BASE}/v1/maps`,
+    UPDATE: `${API_BASE}/v1/maps`,
+    DELETE: `${API_BASE}/v1/maps`,
   },
   // 其他模块分组
 };

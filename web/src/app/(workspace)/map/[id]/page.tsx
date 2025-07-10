@@ -1,11 +1,9 @@
 "use client";
 import React from "react";
-import WorkspaceLayout from '@/layouts/workspace-layout';
+import { WorkspaceLayout } from '@/features/workspace';
 
-export default function MapWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = React.use(params);
-
+export default function TestWorkspacePage() {
   return (
-    <WorkspaceLayout taskId={id} />
+    <WorkspaceLayout taskId="test-task-123" />
   );
 }

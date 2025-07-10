@@ -36,7 +36,6 @@ func TestMapService_CRUD(t *testing.T) {
 	assert.ElementsMatch(t, createReq.KeyPoints, mapResp.KeyPoints)
 	assert.ElementsMatch(t, createReq.Constraints, mapResp.Constraints)
 	assert.NotEmpty(t, mapResp.ID)
-	assert.NotEmpty(t, mapResp.RootNodeID)
 
 	mapID := mapResp.ID
 

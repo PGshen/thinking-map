@@ -29,6 +29,7 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 	thinkingMap := &model.ThinkingMap{
 		ID:          mapID,
 		UserID:      userID,
+		Title:       req.Title,
 		Problem:     req.Problem,
 		ProblemType: req.ProblemType,
 		Target:      req.Target,
@@ -58,7 +59,6 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 	}
 
 	resp := dto.ToMapResponse(thinkingMap)
-	resp.RootNodeID = rootNodeID
 	return &resp, nil
 }
 

@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Node, Edge } from 'reactflow';
+import { MapDetail } from '@/types/map';
 
 // 扩展Node类型以包含自定义属性
 interface CustomNodeData {
@@ -37,15 +38,11 @@ interface WorkspaceState {
   nodesData: Node[]; // 别名，保持兼容性
   edgesData: Edge[]; // 别名，保持兼容性
   
-  // 任务信息
-  taskId: string | null;
-  taskTitle: string;
-  taskDescription: string;
-  taskInfo: {
-    id: string | null;
-    title: string;
-    description: string;
-  };
+  // 思维导图信息
+  mapId: string | null;
+  mapTitle: string;
+  mapProblem: string;
+  mapDetail: MapDetail | null;
   
   // UI状态
   isLoading: boolean;
@@ -79,6 +76,7 @@ interface WorkspaceActions {
   // 节点操作
   setNodes: (nodes: Node[]) => void;
   addNode: (node: Node) => void;
+  addChildNode: (parentId: string, childNode: Node) => void;
   updateNode: (nodeId: string, updates: Partial<Node & CustomNodeData>) => void;
   deleteNode: (nodeId: string) => void;
   selectNode: (nodeId: string | null) => void;
@@ -89,10 +87,10 @@ interface WorkspaceActions {
   addEdge: (edge: Edge) => void;
   deleteEdge: (edgeId: string) => void;
   
-  // 任务操作
-  setTaskInfo: (taskId: string, title: string, description?: string) => void;
-  updateTaskTitle: (title: string) => void;
-  updateTaskInfo: (info: { id: string; title: string; description: string }) => void;
+  // 思维导图操作
+  setMapInfo: (mapId: string, title: string, problem?: string) => void;
+  updateMapTitle: (title: string) => void;
+  updateMapDetail: (detail: WorkspaceState['mapDetail']) => void;
   
   // 状态操作
   setLoading: (loading: boolean) => void;
@@ -123,15 +121,11 @@ const initialState: WorkspaceState = {
   nodesData: [],
   edgesData: [],
   
-  // 任务信息
-  taskId: null,
-  taskTitle: '未命名任务',
-  taskDescription: '',
-  taskInfo: {
-    id: null,
-    title: '未命名任务',
-    description: '',
-  },
+  // 思维导图信息
+  mapId: null,
+  mapTitle: '未命名导图',
+  mapProblem: '',
+  mapDetail: null,
   
   // UI状态
   isLoading: false,
@@ -217,6 +211,41 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
             }),
             false,
             'addNode'
+          );
+        },
+
+        addChildNode: (parentId: string, childNode: Node) => {
+          const parentNode = get().nodes.find(node => node.id === parentId);
+          if (!parentNode) return;
+
+          // 计算子节点位置（在父节点右下方）
+          const childPosition = {
+            x: parentNode.position.x + 200,
+            y: parentNode.position.y + 100
+          };
+
+          // 创建新节点
+          const newNode = {
+            ...childNode,
+            position: childPosition,
+          };
+
+          // 创建连接边
+          const newEdge = {
+            id: `${parentId}-${childNode.id}`,
+            source: parentId,
+            target: childNode.id,
+            type: 'smoothstep',
+          };
+
+          set(
+            (state) => ({
+              nodes: [...state.nodes, newNode],
+              edges: [...state.edges, newEdge],
+              hasUnsavedChanges: true,
+            }),
+            false,
+            'addChildNode'
           );
         },
         
@@ -308,42 +337,45 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           );
         },
         
-        // 任务操作
-        setTaskInfo: (taskId: string, title: string, description = '') => {
+        // 思维导图操作
+        setMapInfo: (mapId: string, title: string, problem = '') => {
           set(
             (state) => ({
-              taskId,
-              taskTitle: title,
-              taskDescription: description,
+              ...state,
+              mapId,
+              mapTitle: title,
+              mapProblem: problem,
             }),
             false,
-            'setTaskInfo'
+            'setMapInfo'
           );
         },
         
-        updateTaskTitle: (title: string) => {
+        updateMapTitle: (title: string) => {
           set(
             (state) => ({
-              taskTitle: title,
-              taskInfo: { ...state.taskInfo, title },
+              ...state,
+              mapTitle: title,
+              mapDetail: state.mapDetail ? { ...state.mapDetail, title } : null,
               hasUnsavedChanges: true,
             }),
             false,
-            'updateTaskTitle'
+            'updateMapTitle'
           );
         },
         
-        updateTaskInfo: (info: { id: string; title: string; description: string }) => {
+        updateMapDetail: (detail: MapDetail) => {
           set(
             (state) => ({
-              taskId: info.id,
-              taskTitle: info.title,
-              taskDescription: info.description,
-              taskInfo: info,
+              ...state,
+              mapId: detail.id,
+              mapTitle: detail.title,
+              mapProblem: detail.problem,
+              mapDetail: detail,
               hasUnsavedChanges: true,
             }),
             false,
-            'updateTaskInfo'
+            'updateMapDetail'
           );
         },
         
@@ -414,9 +446,10 @@ export type { WorkspaceState, WorkspaceActions };
 export const useWorkspaceStoreData = () => {
   const store = useWorkspaceStore();
   return {
-    taskId: store.taskId,
-    taskTitle: store.taskTitle,
-    taskDescription: store.taskDescription,
+    mapId: store.mapId,
+    mapTitle: store.mapTitle,
+    mapProblem: store.mapProblem,
+    mapDetail: store.mapDetail,
     nodes: store.nodes,
     edges: store.edges,
     isLoading: store.isLoading,

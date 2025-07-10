@@ -16,6 +16,7 @@ import (
 
 // CreateMapRequest represents the request body for creating a mind map
 type CreateMapRequest struct {
+	Title       string            `json:"title" binding:"required,max=256"`
 	Problem     string            `json:"problem" binding:"required,max=1000"`
 	ProblemType string            `json:"problemType" binding:"max=50"`
 	Target      string            `json:"target" binding:"max=1000"`
@@ -26,6 +27,7 @@ type CreateMapRequest struct {
 // UpdateMapRequest represents the request body for updating a mind map
 type UpdateMapRequest struct {
 	Status      int               `json:"status" binding:"oneof=0 1 2"`
+	Title       string            `json:"title" binding:"max=256"`
 	Problem     string            `json:"problem" binding:"max=1000"`
 	ProblemType string            `json:"problemType" binding:"max=50"`
 	Target      string            `json:"target" binding:"max=1000"`
@@ -37,8 +39,8 @@ type UpdateMapRequest struct {
 // MapResponse represents the mind map data in responses
 type MapResponse struct {
 	ID          string            `json:"id"`
-	RootNodeID  string            `json:"rootNodeId,omitempty"`
 	Status      int               `json:"status"`
+	Title       string            `json:"title"`
 	Problem     string            `json:"problem"`
 	ProblemType string            `json:"problemType"`
 	Target      string            `json:"target"`
@@ -46,7 +48,7 @@ type MapResponse struct {
 	Constraints model.Constraints `json:"constraints"`
 	Conclusion  string            `json:"conclusion"`
 	Progress    float64           `json:"progress"`
-	Metadata    interface{}       `json:"metadata"`
+	Metadata    model.JSONB       `json:"metadata"`
 	CreatedAt   time.Time         `json:"createdAt"`
 	UpdatedAt   time.Time         `json:"updatedAt"`
 }
@@ -71,13 +73,14 @@ type MapListQuery struct {
 
 // ToMapResponse converts a model.ThinkingMap to a MapResponse
 func ToMapResponse(m *model.ThinkingMap) MapResponse {
-	var meta interface{}
+	var meta model.JSONB
 	if m.Metadata != nil {
 		_ = json.Unmarshal(m.Metadata, &meta)
 	}
 	return MapResponse{
 		ID:          m.ID,
 		Status:      m.Status,
+		Title:       m.Title,
 		Problem:     m.Problem,
 		ProblemType: m.ProblemType,
 		Target:      m.Target,

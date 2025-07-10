@@ -26,6 +26,7 @@ import { CustomNode } from '@/features/workspace/components/custome-node/custom-
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { useWorkspaceData } from '@/features/workspace/hooks/use-workspace-data';
 import { useNodeSelection } from '@/features/workspace/hooks/use-node-selection';
+import { useNodeOperations } from '@/features/workspace/hooks/use-node-operations';
 import { CustomNodeModel } from '@/types/node';
 
 interface VisualizationAreaProps {
@@ -41,6 +42,7 @@ function MapCanvas({ taskId }: VisualizationAreaProps) {
   const { selectedNodeIds, actions } = useWorkspaceStore();
   const { nodes: nodesData, edges: edgesData, isLoading } = useWorkspaceData(taskId);
   const { handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu } = useNodeSelection();
+  const { handleNodeEdit, handleNodeDelete, handleAddChild } = useNodeOperations();
   
   const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
@@ -54,18 +56,9 @@ function MapCanvas({ taskId }: VisualizationAreaProps) {
       data: {
         ...node,
         selected: selectedNodeIds.includes(node.id),
-        onEdit: (id: string) => {
-          // TODO: 实现编辑功能
-          console.log('Edit node:', id);
-        },
-        onDelete: (id: string) => {
-          // TODO: 实现删除功能
-          console.log('Delete node:', id);
-        },
-        onAddChild: (id: string) => {
-          // TODO: 实现添加子节点功能
-          console.log('Add child to node:', id);
-        },
+        onEdit: handleNodeEdit,
+        onDelete: handleNodeDelete,
+        onAddChild: handleAddChild,
         onSelect: handleNodeClick,
         onDoubleClick: handleNodeDoubleClick,
         onContextMenu: handleNodeContextMenu,

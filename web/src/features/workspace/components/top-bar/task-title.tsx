@@ -61,7 +61,7 @@ export function TaskTitle({ title, taskId, isLoading }: TaskTitleProps) {
       // await updateTaskTitle(taskId, editValue.trim());
       
       // 更新本地状态
-      actions.updateTaskTitle(editValue.trim());
+      actions.updateMapTitle(editValue.trim());
       setIsEditing(false);
       
       toast({

@@ -9,14 +9,9 @@ import { useWorkspaceStore } from '../store/workspace-store';
 import { useToast } from '@/hooks/use-toast';
 
 // TODO: 替换为实际的API调用
-interface TaskInfo {
-  id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  createdAt: string;
-  updatedAt: string;
-}
+import { MapDetail } from '@/types/map';
+
+// 节点数据接口
 
 interface NodeData {
   id: string;
@@ -36,21 +31,21 @@ interface NodeData {
 
 // 模拟API调用
 const mockApi = {
-  // 获取任务信息
-  getTaskInfo: async (taskId: string): Promise<TaskInfo> => {
+  // 获取思维导图信息
+  getMapDetail: async (mapId: string): Promise<MapDetail> => {
     await new Promise(resolve => setTimeout(resolve, 500));
     return {
-      id: taskId,
-      title: '示例思维导图任务',
-      description: '这是一个示例任务，用于演示工作区功能',
-      status: 'running',
+      id: mapId,
+      title: '示例思维导图',
+      problem: '这是一个示例思维导图，用于演示工作区功能',
+      status: 1,
       createdAt: '2025-01-27T10:00:00Z',
       updatedAt: '2025-01-27T10:30:00Z',
     };
   },
   
   // 获取节点数据
-  getNodes: async (taskId: string): Promise<NodeData[]> => {
+  getNodes: async (mapId: string): Promise<NodeData[]> => {
     await new Promise(resolve => setTimeout(resolve, 300));
     return [
       {
@@ -82,8 +77,8 @@ const mockApi = {
     ];
   },
   
-  // 更新任务标题
-  updateTaskTitle: async (taskId: string, title: string): Promise<void> => {
+  // 更新思维导图详细信息
+  updateMapDetail: async (mapId: string, detail: Partial<MapDetail>): Promise<void> => {
     await new Promise(resolve => setTimeout(resolve, 200));
     // 模拟API调用
   },
@@ -95,17 +90,18 @@ const mockApi = {
   },
   
   // 保存工作区状态
-  saveWorkspace: async (taskId: string, nodes: NodeData[]): Promise<void> => {
+  saveWorkspace: async (mapId: string, nodes: NodeData[]): Promise<void> => {
     await new Promise(resolve => setTimeout(resolve, 500));
     // 模拟API调用
   },
 };
 
 // 工作区数据管理hook
-export function useWorkspaceData(taskId?: string) {
+export function useWorkspaceData(mapId?: string) {
   const {
-    taskTitle,
-    taskDescription,
+    mapTitle,
+    mapProblem,
+    mapDetail,
     nodes,
     edges,
     isLoading,
@@ -115,18 +111,19 @@ export function useWorkspaceData(taskId?: string) {
   
   const { toast } = useToast();
 
-  // 加载任务信息
-  const loadTaskInfo = useCallback(async (id: string) => {
+  // 加载思维导图信息
+  const loadMapDetail = useCallback(async (id: string) => {
     if (!id) return;
     
     actions.setLoading(true);
     try {
-      const taskInfo = await mockApi.getTaskInfo(id);
-      actions.setTaskInfo(taskInfo.id, taskInfo.title, taskInfo.description);
+      const mapDetail = await mockApi.getMapDetail(id);
+      actions.setMapInfo(mapDetail.id, mapDetail.title, mapDetail.problem);
+      actions.updateMapDetail(mapDetail);
     } catch (error) {
       toast({
         title: '加载失败',
-        description: '无法加载任务信息，请重试',
+        description: '无法加载思维导图信息，请重试',
         variant: 'destructive',
       });
     } finally {
@@ -203,30 +200,33 @@ export function useWorkspaceData(taskId?: string) {
     }
   }, []); // 移除actions和toast依赖，避免无限循环
 
-  // 保存任务标题
-  const saveTaskTitle = useCallback(async (title: string) => {
-    if (!taskId) return false;
+  // 保存思维导图详细信息
+  const saveMapDetail = useCallback(async (detail: Partial<Omit<MapDetail, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    if (!mapId || !mapDetail) return false;
     
     try {
-      await mockApi.updateTaskTitle(taskId, title);
-      actions.updateTaskTitle(title);
+      await mockApi.updateMapDetail(mapId, detail);
+      actions.updateMapDetail({
+        ...mapDetail,
+        ...detail
+      });
       actions.setUnsavedChanges(false);
       
       toast({
         title: '保存成功',
-        description: '任务标题已更新',
+        description: '思维导图信息已更新',
       });
       
       return true;
     } catch (error) {
       toast({
         title: '保存失败',
-        description: '更新任务标题时出错，请重试',
+        description: '更新思维导图信息时出错，请重试',
         variant: 'destructive',
       });
       return false;
     }
-  }, [taskId]); // 移除actions和toast依赖，避免无限循环
+  }, [mapId, mapDetail]); // 移除actions和toast依赖，避免无限循环
 
   // 保存节点信息
   const saveNodeInfo = useCallback(async (nodeId: string, updates: any) => {
@@ -252,7 +252,7 @@ export function useWorkspaceData(taskId?: string) {
 
   // 保存整个工作区
   const saveWorkspace = useCallback(async () => {
-    if (!taskId || !hasUnsavedChanges) return true;
+    if (!mapId || !hasUnsavedChanges) return true;
     
     actions.setLoading(true);
     try {
@@ -268,7 +268,7 @@ export function useWorkspaceData(taskId?: string) {
         dependencies: node.data.dependencies,
       }));
       
-      await mockApi.saveWorkspace(taskId, nodeData);
+      await mockApi.saveWorkspace(mapId, nodeData);
       actions.setUnsavedChanges(false);
       
       toast({
@@ -287,26 +287,26 @@ export function useWorkspaceData(taskId?: string) {
     } finally {
       actions.setLoading(false);
     }
-  }, [taskId, hasUnsavedChanges, nodes]);
+  }, [mapId, hasUnsavedChanges, nodes]);
 
   // 自动保存
   // useEffect(() => {
-  //   if (!hasUnsavedChanges || !taskId) return;
+  //   if (!hasUnsavedChanges || !mapId) return;
     
   //   const autoSaveTimer = setTimeout(() => {
   //     saveWorkspace();
   //   }, 30000); // 30秒后自动保存
     
   //   return () => clearTimeout(autoSaveTimer);
-  // }, [hasUnsavedChanges, taskId]);
+  // }, [hasUnsavedChanges, mapId]);
 
   // 初始化数据
   useEffect(() => {
-    if (taskId) {
-      loadTaskInfo(taskId);
-      loadNodes(taskId);
+    if (mapId) {
+      loadMapDetail(mapId);
+      loadNodes(mapId);
     }
-  }, [taskId]);
+  }, [mapId]);
 
   // 页面卸载前保存
   useEffect(() => {
@@ -323,17 +323,18 @@ export function useWorkspaceData(taskId?: string) {
 
   return {
     // 数据
-    taskTitle,
-    taskDescription,
+    mapTitle,
+    mapProblem,
+    mapDetail,
     nodes,
     edges,
     isLoading,
     hasUnsavedChanges,
     
     // 操作
-    loadTaskInfo,
+    loadMapDetail,
     loadNodes,
-    saveTaskTitle,
+    saveMapDetail,
     saveNodeInfo,
     saveWorkspace,
     

@@ -36,7 +36,8 @@ func TestNodeDetailService_CRUD(t *testing.T) {
 
 	// 2. 创建一个节点以便挂载节点详情
 	createNodeReq := dto.CreateNodeRequest{
-		ParentID: mapResp.RootNodeID,
+		MapID:    mapResp.ID,
+		ParentID: "",
 		NodeType: "analysis",
 		Question: "分析问题?",
 		Target:   "分析目标",
@@ -166,7 +167,7 @@ func TestNodeDetailService_CreateMultipleDetails(t *testing.T) {
 	mapID := mapResp.ID
 
 	createNodeReq := dto.CreateNodeRequest{
-		ParentID: mapResp.RootNodeID,
+		MapID:    mapResp.ID,
 		NodeType: "analysis",
 		Question: "多详情分析问题?",
 		Target:   "多详情分析目标",
@@ -239,7 +240,7 @@ func TestNodeDetailService_UpdateContentOnly(t *testing.T) {
 	mapID := mapResp.ID
 
 	createNodeReq := dto.CreateNodeRequest{
-		ParentID: mapResp.RootNodeID,
+		MapID:    mapResp.ID,
 		NodeType: "analysis",
 		Question: "内容更新分析问题?",
 		Target:   "内容更新分析目标",

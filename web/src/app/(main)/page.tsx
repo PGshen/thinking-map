@@ -116,6 +116,7 @@ export default function HomePage() {
       return;
     }
     const params: CreateMapRequest = {
+      title: title.trim(),
       problem: problem.trim(),
       problemType: problemType || undefined,
       target: goal.trim() || undefined,

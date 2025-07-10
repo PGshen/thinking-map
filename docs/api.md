@@ -174,11 +174,16 @@ Response 200 OK:
     "items": [
       {
         "id": "uuid",
-        "title": "string",
-        "problem": "string",        // 问题描述
-        "problemType": "string",    // 问题类型
-        "target": "string",         // 目标
         "status": 1,
+        "title": "string",
+        "problem": "string",
+        "problemType": "string",
+        "target": "string",
+        "keyPoints": ["string"],
+        "constraints": ["string"],
+        "conclusion": "string",
+        "progress": 0.5,
+        "metadata": {},
         "createdAt": "2024-01-01T00:00:00Z",
         "updatedAt": "2024-01-01T00:00:00Z"
       }
@@ -198,13 +203,16 @@ Response 200 OK:
   "message": "success",
   "data": {
     "id": "uuid",
-    "title": "string",
-    "description": "string",
-    "rootQuestion": "string",
-    "rootNodeId": "uuid",
     "status": 1,
+    "title": "string",
+    "problem": "string",
+    "problemType": "string",
+    "target": "string",
+    "keyPoints": ["string"],
+    "constraints": ["string"],
+    "conclusion": "string",
+    "progress": 0.5,
     "metadata": {},
-    "nodeCount": 10,
     "createdAt": "2024-01-01T00:00:00Z",
     "updatedAt": "2024-01-01T00:00:00Z"
   },
@@ -219,9 +227,14 @@ Content-Type: application/json
 
 Request:
 {
+  "status": 1,
   "title": "string",
-  "description": "string",
-  "status": 1
+  "problem": "string",
+  "problemType": "string",
+  "target": "string",
+  "keyPoints": ["string"],
+  "constraints": ["string"],
+  "conclusion": "string"
 }
 
 Response 200 OK:
@@ -230,9 +243,17 @@ Response 200 OK:
   "message": "success",
   "data": {
     "id": "uuid",
-    "title": "string",
-    "description": "string",
     "status": 1,
+    "title": "string",
+    "problem": "string",
+    "problemType": "string",
+    "target": "string",
+    "keyPoints": [],
+    "constraints": [],
+    "conclusion": "string",
+    "progress": 0.5,
+    "metadata": {},
+    "createdAt": "2024-01-01T00:00:00Z",
     "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",

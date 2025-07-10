@@ -22,6 +22,7 @@ type ThinkingMap struct {
 	SerialID    int64          `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
 	ID          string         `gorm:"type:uuid;uniqueIndex" json:"id"`
 	UserID      string         `json:"user_id" gorm:"type:uuid;not null"`
+	Title       string         `json:"title" gorm:"type:varchar;not null"`
 	Problem     string         `json:"problem" gorm:"type:text;not null"`
 	ProblemType string         `json:"problem_type" gorm:"type:varchar(50)"`
 	Target      string         `json:"target" gorm:"type:text"`

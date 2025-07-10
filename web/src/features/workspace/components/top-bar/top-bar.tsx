@@ -10,6 +10,7 @@ import React from 'react';
 import { ExitButton } from './exit-button';
 import { TaskTitle } from './task-title';
 import { SettingsButton } from './settings-button';
+import { MapInfo } from './map-info';
 import { useWorkspaceData } from '@/features/workspace/hooks/use-workspace-data';
 
 interface TopBarProps {
@@ -17,7 +18,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ taskId }: TopBarProps) {
-  const { taskTitle, isLoading } = useWorkspaceData(taskId);
+  const { mapTitle, isLoading } = useWorkspaceData(taskId);
 
   return (
     <header className="h-12 flex items-center justify-between px-6 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -25,14 +26,15 @@ export function TopBar({ taskId }: TopBarProps) {
       <div className="flex items-center gap-4">
         <ExitButton />
         <TaskTitle 
-          title={taskTitle || '加载中...'} 
+          title={mapTitle || '加载中...'} 
           taskId={taskId}
           isLoading={isLoading}
         />
       </div>
       
       {/* 右侧区域 */}
-      <div className="flex items-center">
+      <div className="flex items-center gap-2">
+        <MapInfo taskId={taskId} />
         <SettingsButton taskId={taskId} />
       </div>
     </header>

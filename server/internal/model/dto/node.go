@@ -14,6 +14,7 @@ import (
 
 // CreateNodeRequest represents the request body for creating a node
 type CreateNodeRequest struct {
+	MapID    string         `json:"parentID" binding:"required,uuid"`
 	ParentID string         `json:"parentID" binding:"required,uuid"`
 	NodeType string         `json:"nodeType" binding:"required"`
 	Question string         `json:"question" binding:"required,max=500"`

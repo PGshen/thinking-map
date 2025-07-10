@@ -36,7 +36,7 @@ func TestNodeService_CRUD(t *testing.T) {
 
 	// 2. CreateNode
 	createNodeReq := dto.CreateNodeRequest{
-		ParentID: mapResp.RootNodeID,
+		MapID:    mapResp.ID,
 		NodeType: "analysis",
 		Question: "分析问题?",
 		Target:   "分析目标",
