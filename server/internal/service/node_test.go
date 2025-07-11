@@ -6,9 +6,9 @@
 package service
 
 import (
-	"context"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
@@ -18,7 +18,7 @@ import (
 
 func TestNodeService_CRUD(t *testing.T) {
 
-	ctx := context.Background()
+	ctx := &gin.Context{}
 	userID := uuid.NewString()
 
 	// 1. 先创建一个 map 以便挂载节点

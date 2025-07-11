@@ -8,6 +8,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
 	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
 	"github.com/PGshen/thinking-map/server/internal/repository"
+	"github.com/gin-gonic/gin"
 
 	"github.com/google/uuid"
 )
@@ -27,27 +28,37 @@ func NewNodeService(nodeRepo repository.ThinkingNode, nodeDetailRepo repository.
 }
 
 // ListNodes 获取某个map下的所有节点
-func (s *NodeService) ListNodes(ctx context.Context, mapID string) ([]dto.NodeResponse, error) {
+func (s *NodeService) ListNodes(ctx *gin.Context, mapID string) ([]dto.NodeResponse, error) {
 	nodes, err := s.nodeRepo.FindByMapID(ctx, mapID)
 	if err != nil {
 		return nil, err
 	}
 	var res []dto.NodeResponse
 	for _, n := range nodes {
-		details, err := s.nodeDetailRepo.FindByNodeID(ctx, n.ID)
-		if err != nil {
-			return nil, err
+		if len(n.Context.ParentProblem) == 0 && len(n.Context.SubProblem) == 0 {
+			n.Context = s.GetNodeContext(ctx, n.ID)
 		}
 		resp := dto.ToNodeResponse(n)
-		if details != nil {
-			resp.NodeDetails = make([]dto.NodeDetailResponse, len(details))
-			for i, d := range details {
-				resp.NodeDetails[i] = dto.ToNodeDetailResponse(d)
-			}
-		}
 		res = append(res, resp)
 	}
 	return res, nil
+}
+
+func (s *NodeService) GetNodeContext(ctx *gin.Context, nodeID string) model.NodeContext {
+	// 获取节点上下文，parentProblem是所有祖先节点的问题和目标，subProblem是所有直接子节点的问题、目标和结论
+	var parentProblems []model.Problem
+	var subProblems []model.SubProblem
+
+	// 获取所有祖先节点的问题和目标
+	parentProblems = s.getAncestorProblems(ctx, nodeID)
+
+	// 获取所有直接子节点的问题、目标和结论
+	subProblems = s.getChildrenProblems(ctx, nodeID)
+
+	return model.NodeContext{
+		ParentProblem: parentProblems,
+		SubProblem:    subProblems,
+	}
 }
 
 // CreateNode 创建节点
@@ -72,38 +83,7 @@ func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.Crea
 	if err := s.nodeRepo.Create(ctx, node); err != nil {
 		return nil, err
 	}
-	// 创建node同时创建node_detail记录，默认创建info, conclusion两种类型的节点详情，decompose类型在执行过程中有需要再创建
-	infoDetail := &model.NodeDetail{
-		ID:         uuid.NewString(),
-		NodeID:     node.ID,
-		DetailType: comm.DetailTypeInfo,
-		Content: model.DetailContent{
-			Question: req.Question,
-			Target:   req.Target,
-		},
-		Status:    comm.DetailStatusPending,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-	conclusionDetail := &model.NodeDetail{
-		ID:         uuid.NewString(),
-		NodeID:     node.ID,
-		DetailType: comm.DetailTypeConclusion,
-		Content:    model.DetailContent{},
-		Status:     comm.DetailStatusPending,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-	}
-	if err := s.nodeDetailRepo.Create(ctx, infoDetail); err != nil {
-		return nil, err
-	}
-	if err := s.nodeDetailRepo.Create(ctx, conclusionDetail); err != nil {
-		return nil, err
-	}
 	resp := dto.ToNodeResponse(node)
-	resp.NodeDetails = make([]dto.NodeDetailResponse, 0)
-	resp.NodeDetails = append(resp.NodeDetails, dto.ToNodeDetailResponse(infoDetail))
-	resp.NodeDetails = append(resp.NodeDetails, dto.ToNodeDetailResponse(conclusionDetail))
 	return &resp, nil
 }
 
@@ -140,48 +120,56 @@ func (s *NodeService) DeleteNode(ctx context.Context, nodeID string) error {
 	return s.nodeRepo.Delete(ctx, nodeID)
 }
 
-// AddDependency 添加节点依赖
-func (s *NodeService) AddDependency(ctx context.Context, nodeID string, req dto.AddDependencyRequest) (*dto.DependencyInfo, error) {
+// getAncestorProblems 递归获取所有祖先节点的问题和目标
+func (s *NodeService) getAncestorProblems(ctx *gin.Context, nodeID string) []model.Problem {
+	var problems []model.Problem
+
+	// 获取当前节点
 	node, err := s.nodeRepo.FindByID(ctx, nodeID)
+	if err != nil || node.ParentID == "" {
+		return problems
+	}
+
+	// 获取父节点
+	parentNode, err := s.nodeRepo.FindByID(ctx, node.ParentID)
 	if err != nil {
-		return nil, err
+		return problems
 	}
-	// 检查是否已存在该依赖
-	for _, dep := range node.Dependencies {
-		if dep.NodeID == req.DependencyNodeID && dep.DependencyType == req.DependencyType {
-			return nil, nil // 已存在，直接返回
-		}
+
+	// 添加父节点的问题和目标
+	problem := model.Problem{
+		Question: parentNode.Question,
+		Target:   parentNode.Target,
+		Abstract: "", // 可以根据需要添加摘要逻辑
 	}
-	dep := model.Dependency{
-		NodeID:         req.DependencyNodeID,
-		DependencyType: req.DependencyType,
-		Required:       req.Required,
-	}
-	node.Dependencies = append(node.Dependencies, dep)
-	node.UpdatedAt = time.Now()
-	if err := s.nodeRepo.Update(ctx, node); err != nil {
-		return nil, err
-	}
-	return &dto.DependencyInfo{
-		NodeID:         dep.NodeID,
-		DependencyType: dep.DependencyType,
-		Required:       dep.Required,
-	}, nil
+	problems = append(problems, problem)
+
+	// 递归获取更上层的祖先节点
+	ancestorProblems := s.getAncestorProblems(ctx, parentNode.ID)
+	problems = append(ancestorProblems, problem)
+
+	return problems
 }
 
-// DeleteDependency 删除节点依赖
-func (s *NodeService) DeleteDependency(ctx context.Context, nodeID string, dependencyNodeID string) error {
-	node, err := s.nodeRepo.FindByID(ctx, nodeID)
+// getChildrenProblems 获取所有直接子节点的问题、目标和结论
+func (s *NodeService) getChildrenProblems(ctx *gin.Context, nodeID string) []model.SubProblem {
+	var subProblems []model.SubProblem
+
+	// 获取所有直接子节点
+	childNodes, err := s.nodeRepo.FindByParentID(ctx, nodeID)
 	if err != nil {
-		return err
+		return subProblems
 	}
-	newDeps := make(model.Dependencies, 0, len(node.Dependencies))
-	for _, dep := range node.Dependencies {
-		if dep.NodeID != dependencyNodeID {
-			newDeps = append(newDeps, dep)
+
+	for _, childNode := range childNodes {
+		subProblem := model.SubProblem{
+			Question:   childNode.Question,
+			Target:     childNode.Target,
+			Conclusion: childNode.Conclusion,
+			Abstract:   "", // 可以根据需要添加摘要逻辑
 		}
+		subProblems = append(subProblems, subProblem)
 	}
-	node.Dependencies = newDeps
-	node.UpdatedAt = time.Now()
-	return s.nodeRepo.Update(ctx, node)
+
+	return subProblems
 }

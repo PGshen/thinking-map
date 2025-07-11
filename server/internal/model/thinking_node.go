@@ -26,7 +26,7 @@ type ThinkingNode struct {
 	NodeType     string         `gorm:"type:varchar(50);not null"` // root, analysis, conclusion, custom
 	Question     string         `gorm:"type:text;not null"`
 	Target       string         `gorm:"type:text"`
-	Context      string         `gorm:"type:text;default:'[]'"` // 上下文
+	Context      NodeContext    `gorm:"type:text;default:'{}'"` // 上下文
 	Conclusion   string         `gorm:"type:text"`
 	Status       int            `gorm:"type:int;default:0"` // 0:pending, 1:processing, 2:completed, -1:failed
 	Position     Position       `gorm:"type:jsonb;default:'{\"x\":0,\"y\":0}'"`
@@ -57,13 +57,26 @@ type Position struct {
 }
 
 // Dependency 节点依赖信息
-type Dependency struct {
-	NodeID         string `json:"node_id"`
-	DependencyType string `json:"dependency_type"`
-	Required       bool   `json:"required"`
+type Dependencies []string
+
+// Context 上下文
+type NodeContext struct {
+	ParentProblem []Problem    `json:"parentProblem,omitempty"`
+	SubProblem    []SubProblem `json:"subProblem,omitempty"`
 }
 
-type Dependencies []Dependency
+type Problem struct {
+	Question string `json:"question"`
+	Target   string `json:"target"`
+	Abstract string `json:"abstract"` // 摘要
+}
+
+type SubProblem struct {
+	Question   string `json:"question"`
+	Target     string `json:"target"`
+	Conclusion string `json:"conclusion"`
+	Abstract   string `json:"abstract"`
+}
 
 // Position 实现 Scanner 接口
 func (p *Position) Scan(value interface{}) error {
@@ -102,4 +115,22 @@ func (d Dependencies) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return json.Marshal(d)
+}
+
+// Scan implements the Scanner interface for Context
+func (c *NodeContext) Scan(value interface{}) error {
+	if value == nil {
+		*c = NodeContext{}
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal JSON value: %v", value)
+	}
+	return json.Unmarshal(bytes, c)
+}
+
+// Value implements the Valuer interface for Context
+func (c NodeContext) Value() (driver.Value, error) {
+	return json.Marshal(c)
 }
