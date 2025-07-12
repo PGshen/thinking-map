@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchMapList } from "@/api/map";
-import type { MapDetail } from "@/types/map";
+import type { MapInfo } from "@/types/map";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { AlertDialogHeader, AlertDialogFooter, AlertDialog, AlertDialogTrigger, 
 
 export default function Page() {
   // Placeholder state for future data
-  const [maps, setMaps] = useState<MapDetail[]>([]);
+  const [maps, setMaps] = useState<MapInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);

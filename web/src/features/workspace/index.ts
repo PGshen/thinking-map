@@ -8,14 +8,11 @@
 // 主要组件
 export { default as WorkspaceLayout } from './components/workspace-layout';
 
-// 顶部栏组件
-export { default as TopBar } from './components/top-bar/top-bar';
-export { default as ExitButton } from './components/top-bar/exit-button';
-export { default as TaskTitle } from './components/top-bar/task-title';
-export { default as SettingsButton } from './components/top-bar/settings-button';
-
 // 可视化区域组件
 export { default as VisualizationArea } from './components/visualization-area/visualization-area';
+
+export { default as Settings } from './components/side-bar/settings'
+export { default as MapInfo } from './components/side-bar/map-info'
 
 // 操作面板组件
 export { default as OperationPanel } from './components/operation-panel/operation-panel';

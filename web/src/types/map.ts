@@ -34,15 +34,15 @@ export interface UpdateMapRequest {
 
 
 // 创建思维导图响应数据
-export interface MapDetail {
+export interface Map {
   id: string;
   status: number;
   title: string;
   problem: string;
   problemType?: string;
   target?: string;
-  keyPoints?: string;
-  constraints?: string;
+  keyPoints?: string[];
+  constraints?: string[];
   conclusion?: string;
   metadata?: Record<string, any>;
   createdAt: string;
@@ -53,11 +53,11 @@ export interface MapList {
   total: number;
   page: number;
   limit: number;
-  items: MapDetail[];
+  items: Map[];
 }
 
 // API响应类型
-export type CreateMapResponse = ApiResponse<MapDetail>;
+export type CreateMapResponse = ApiResponse<Map>;
 export type MapListResponse = ApiResponse<MapList>;
-export type MapDetailResponse = ApiResponse<MapDetail>;
-export type UpdateMapResponse = ApiResponse<MapDetail>;
+export type MapDetailResponse = ApiResponse<Map>;
+export type UpdateMapResponse = ApiResponse<Map>;

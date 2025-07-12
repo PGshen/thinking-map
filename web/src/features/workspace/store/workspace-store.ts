@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Node, Edge } from 'reactflow';
-import { MapDetail } from '@/types/map';
+import { Map } from '@/types/map';
 
 // 扩展Node类型以包含自定义属性
 interface CustomNodeData {
@@ -32,6 +32,9 @@ interface WorkspaceState {
   activeNodeId: string | null;
   selectedNodeIds: string[];
   
+  // 侧边栏状态
+  sidebarOpen: boolean;
+  
   // 节点和边数据
   nodes: Node[];
   edges: Edge[];
@@ -40,9 +43,7 @@ interface WorkspaceState {
   
   // 思维导图信息
   mapId: string | null;
-  mapTitle: string;
-  mapProblem: string;
-  mapDetail: MapDetail | null;
+  mapInfo: Map | null;
   
   // UI状态
   isLoading: boolean;
@@ -73,6 +74,9 @@ interface WorkspaceActions {
   closePanel: () => void;
   setPanelWidth: (width: number) => void;
   
+  // 侧边栏操作
+  toggleSidebar: () => void;
+  
   // 节点操作
   setNodes: (nodes: Node[]) => void;
   addNode: (node: Node) => void;
@@ -88,9 +92,9 @@ interface WorkspaceActions {
   deleteEdge: (edgeId: string) => void;
   
   // 思维导图操作
-  setMapInfo: (mapId: string, title: string, problem?: string) => void;
+  setMap: (mapId: string, title: string, problem?: string) => void;
   updateMapTitle: (title: string) => void;
-  updateMapDetail: (detail: WorkspaceState['mapDetail']) => void;
+  updateMap: (info: WorkspaceState['mapInfo']) => void;
   
   // 状态操作
   setLoading: (loading: boolean) => void;
@@ -115,6 +119,9 @@ const initialState: WorkspaceState = {
   activeNodeId: null,
   selectedNodeIds: [],
   
+  // 侧边栏状态
+  sidebarOpen: true,
+  
   // 节点和边数据
   nodes: [],
   edges: [],
@@ -123,9 +130,7 @@ const initialState: WorkspaceState = {
   
   // 思维导图信息
   mapId: null,
-  mapTitle: '未命名导图',
-  mapProblem: '',
-  mapDetail: null,
+  mapInfo: null,
   
   // UI状态
   isLoading: false,
@@ -156,6 +161,17 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
       ...initialState,
       
       actions: {
+        // 侧边栏操作
+        toggleSidebar: () => {
+          set(
+            (state) => ({
+              sidebarOpen: !state.sidebarOpen,
+            }),
+            false,
+            'toggleSidebar'
+          );
+        },
+
         // 面板操作
         openPanel: (nodeId: string) => {
           set(
@@ -338,7 +354,7 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
         },
         
         // 思维导图操作
-        setMapInfo: (mapId: string, title: string, problem = '') => {
+        setMap: (mapId: string, title: string, problem = '') => {
           set(
             (state) => ({
               ...state,
@@ -347,35 +363,22 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
               mapProblem: problem,
             }),
             false,
-            'setMapInfo'
+            'setMap'
           );
         },
         
-        updateMapTitle: (title: string) => {
+        updateMap: (info: Map) => {
           set(
             (state) => ({
               ...state,
-              mapTitle: title,
-              mapDetail: state.mapDetail ? { ...state.mapDetail, title } : null,
+              mapId: info.id,
+              mapTitle: info.title,
+              mapProblem: info.problem,
+              mapInfo: info,
               hasUnsavedChanges: true,
             }),
             false,
-            'updateMapTitle'
-          );
-        },
-        
-        updateMapDetail: (detail: MapDetail) => {
-          set(
-            (state) => ({
-              ...state,
-              mapId: detail.id,
-              mapTitle: detail.title,
-              mapProblem: detail.problem,
-              mapDetail: detail,
-              hasUnsavedChanges: true,
-            }),
-            false,
-            'updateMapDetail'
+            'updateMap'
           );
         },
         
@@ -447,9 +450,7 @@ export const useWorkspaceStoreData = () => {
   const store = useWorkspaceStore();
   return {
     mapId: store.mapId,
-    mapTitle: store.mapTitle,
-    mapProblem: store.mapProblem,
-    mapDetail: store.mapDetail,
+    mapInfo: store.mapInfo,
     nodes: store.nodes,
     edges: store.edges,
     isLoading: store.isLoading,

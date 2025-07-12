@@ -9,7 +9,7 @@ import { useWorkspaceStore } from '../store/workspace-store';
 import { useToast } from '@/hooks/use-toast';
 
 // TODO: 替换为实际的API调用
-import { MapDetail } from '@/types/map';
+import { Map } from '@/types/map';
 
 // 节点数据接口
 
@@ -32,7 +32,7 @@ interface NodeData {
 // 模拟API调用
 const mockApi = {
   // 获取思维导图信息
-  getMapDetail: async (mapId: string): Promise<MapDetail> => {
+  getMap: async (mapId: string): Promise<Map> => {
     await new Promise(resolve => setTimeout(resolve, 500));
     return {
       id: mapId,
@@ -78,7 +78,7 @@ const mockApi = {
   },
   
   // 更新思维导图详细信息
-  updateMapDetail: async (mapId: string, detail: Partial<MapDetail>): Promise<void> => {
+  updateMap: async (mapId: string, info: Partial<Map>): Promise<void> => {
     await new Promise(resolve => setTimeout(resolve, 200));
     // 模拟API调用
   },
@@ -99,9 +99,7 @@ const mockApi = {
 // 工作区数据管理hook
 export function useWorkspaceData(mapId?: string) {
   const {
-    mapTitle,
-    mapProblem,
-    mapDetail,
+    mapInfo,
     nodes,
     edges,
     isLoading,
@@ -112,14 +110,14 @@ export function useWorkspaceData(mapId?: string) {
   const { toast } = useToast();
 
   // 加载思维导图信息
-  const loadMapDetail = useCallback(async (id: string) => {
+  const loadMap = useCallback(async (id: string) => {
     if (!id) return;
     
     actions.setLoading(true);
     try {
-      const mapDetail = await mockApi.getMapDetail(id);
-      actions.setMapInfo(mapDetail.id, mapDetail.title, mapDetail.problem);
-      actions.updateMapDetail(mapDetail);
+      const mapInfo = await mockApi.getMap(id);
+      actions.setMap(mapInfo.id, mapInfo.title, mapInfo.problem);
+      actions.updateMap(mapInfo);
     } catch (error) {
       toast({
         title: '加载失败',
@@ -201,14 +199,14 @@ export function useWorkspaceData(mapId?: string) {
   }, []); // 移除actions和toast依赖，避免无限循环
 
   // 保存思维导图详细信息
-  const saveMapDetail = useCallback(async (detail: Partial<Omit<MapDetail, 'id' | 'createdAt' | 'updatedAt'>>) => {
-    if (!mapId || !mapDetail) return false;
+  const saveMap = useCallback(async (info: Partial<Omit<Map, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    if (!mapId || !mapInfo) return false;
     
     try {
-      await mockApi.updateMapDetail(mapId, detail);
-      actions.updateMapDetail({
-        ...mapDetail,
-        ...detail
+      await mockApi.updateMap(mapId, info);
+      actions.updateMap({
+        ...mapInfo,
+        ...info
       });
       actions.setUnsavedChanges(false);
       
@@ -226,7 +224,7 @@ export function useWorkspaceData(mapId?: string) {
       });
       return false;
     }
-  }, [mapId, mapDetail]); // 移除actions和toast依赖，避免无限循环
+  }, [mapId, mapInfo]); // 移除actions和toast依赖，避免无限循环
 
   // 保存节点信息
   const saveNodeInfo = useCallback(async (nodeId: string, updates: any) => {
@@ -303,7 +301,7 @@ export function useWorkspaceData(mapId?: string) {
   // 初始化数据
   useEffect(() => {
     if (mapId) {
-      loadMapDetail(mapId);
+      loadMap(mapId);
       loadNodes(mapId);
     }
   }, [mapId]);
@@ -323,18 +321,16 @@ export function useWorkspaceData(mapId?: string) {
 
   return {
     // 数据
-    mapTitle,
-    mapProblem,
-    mapDetail,
+    mapInfo,
     nodes,
     edges,
     isLoading,
     hasUnsavedChanges,
     
     // 操作
-    loadMapDetail,
+    loadMap,
     loadNodes,
-    saveMapDetail,
+    saveMap,
     saveNodeInfo,
     saveWorkspace,
     
