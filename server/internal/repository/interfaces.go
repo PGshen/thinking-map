@@ -41,6 +41,7 @@ type ThinkingNode interface {
 	Update(ctx context.Context, node *model.ThinkingNode) error
 	Delete(ctx context.Context, id string) error
 	FindByID(ctx context.Context, id string) (*model.ThinkingNode, error)
+	FindByIDs(ctx context.Context, ids []string) ([]*model.ThinkingNode, error)
 	FindByMapID(ctx context.Context, mapID string) ([]*model.ThinkingNode, error)
 	FindByParentID(ctx context.Context, parentID string) ([]*model.ThinkingNode, error)
 	UpdatePosition(ctx context.Context, id string, position model.JSONB) error

@@ -84,6 +84,12 @@ instance.interceptors.response.use(
         setError(message || '请求错误');
         toast.error(message || '请求错误');
       }
+      if (code == 401) {
+        // 重定向到登录页
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+      }
       return Promise.reject(new Error(message || '请求错误'));
     }
     return response;
@@ -128,6 +134,7 @@ instance.interceptors.response.use(
         if (typeof window !== 'undefined') {
           const { setError } = useGlobalStore.getState();
           setError('登录已过期，请重新登录');
+          window.location.href = '/login';
         }
         removeToken();
         return Promise.reject(refreshErr);

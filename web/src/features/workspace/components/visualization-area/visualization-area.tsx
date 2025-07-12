@@ -30,7 +30,7 @@ import { useNodeOperations } from '@/features/workspace/hooks/use-node-operation
 import { CustomNodeModel } from '@/types/node';
 
 interface VisualizationAreaProps {
-  taskId: string;
+  mapId: string;
 }
 
 // 定义节点类型
@@ -38,9 +38,9 @@ const nodeTypes: NodeTypes = {
   custom: CustomNode,
 };
 
-function MapCanvas({ taskId }: VisualizationAreaProps) {
+function MapCanvas({ mapId }: VisualizationAreaProps) {
   const { selectedNodeIds, actions } = useWorkspaceStore();
-  const { nodes: nodesData, edges: edgesData, isLoading } = useWorkspaceData(taskId);
+  const { nodes: nodesData, edges: edgesData, isLoading } = useWorkspaceData(mapId);
   const { handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu } = useNodeSelection();
   const { handleNodeEdit, handleNodeDelete, handleAddChild } = useNodeOperations();
   
@@ -162,10 +162,10 @@ function MapCanvas({ taskId }: VisualizationAreaProps) {
   );
 }
 
-export function VisualizationArea({ taskId }: VisualizationAreaProps) {
+export function VisualizationArea({ mapId }: VisualizationAreaProps) {
   return (
     <ReactFlowProvider>
-      <MapCanvas taskId={taskId} />
+      <MapCanvas mapId={mapId} />
     </ReactFlowProvider>
   );
 }

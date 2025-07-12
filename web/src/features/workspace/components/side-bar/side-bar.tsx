@@ -29,7 +29,7 @@ import {
 import MapInfo from "./map-info"
 import Settings from "./settings"
 
-export function AppSidebar({ taskId, ...props }: React.ComponentProps<typeof Sidebar> & { taskId: string }) {
+export function AppSidebar({ mapId, ...props }: React.ComponentProps<typeof Sidebar> & { mapId: string }) {
   const router = useRouter()
   const [showConfirm, setShowConfirm] = React.useState(false)
   const { hasUnsavedChanges } = useWorkspaceStore()

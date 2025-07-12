@@ -19,22 +19,22 @@ import (
 
 // ThinkingNode 思维节点模型
 type ThinkingNode struct {
-	SerialID     int64          `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
-	ID           string         `gorm:"type:uuid;uniqueIndex"`
-	MapID        string         `gorm:"type:uuid;not null;index"`
-	ParentID     string         `gorm:"type:uuid;index"`
-	NodeType     string         `gorm:"type:varchar(50);not null"` // root, analysis, conclusion, custom
-	Question     string         `gorm:"type:text;not null"`
-	Target       string         `gorm:"type:text"`
-	Context      NodeContext    `gorm:"type:text;default:'{}'"` // 上下文
-	Conclusion   string         `gorm:"type:text"`
-	Status       int            `gorm:"type:int;default:0"` // 0:pending, 1:processing, 2:completed, -1:failed
-	Position     Position       `gorm:"type:jsonb;default:'{\"x\":0,\"y\":0}'"`
-	Metadata     datatypes.JSON `gorm:"type:jsonb;default:'{}'"`
-	Dependencies Dependencies   `gorm:"type:jsonb;default:'[]'"`
-	CreatedAt    time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
-	UpdatedAt    time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
-	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
+	SerialID     int64            `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
+	ID           string           `gorm:"type:uuid;uniqueIndex"`
+	MapID        string           `gorm:"type:uuid;not null;index"`
+	ParentID     string           `gorm:"type:uuid;index"`
+	NodeType     string           `gorm:"type:varchar(50);not null"` // root, analysis, conclusion, custom
+	Question     string           `gorm:"type:text;not null"`
+	Target       string           `gorm:"type:text"`
+	Context      DependentContext `gorm:"type:text;default:'{}'"` // 上下文
+	Conclusion   string           `gorm:"type:text"`
+	Status       int              `gorm:"type:int;default:0"` // 0:pending, 1:processing, 2:completed, -1:failed
+	Position     Position         `gorm:"type:jsonb;default:'{\"x\":0,\"y\":0}'"`
+	Metadata     datatypes.JSON   `gorm:"type:jsonb;default:'{}'"`
+	Dependencies Dependencies     `gorm:"type:jsonb;default:'[]'"`
+	CreatedAt    time.Time        `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+	UpdatedAt    time.Time        `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+	DeletedAt    gorm.DeletedAt   `gorm:"index" json:"-"`
 }
 
 func (t *ThinkingNode) BeforeCreate(tx *gorm.DB) error {
@@ -59,19 +59,15 @@ type Position struct {
 // Dependency 节点依赖信息
 type Dependencies []string
 
-// Context 上下文
+// DependentContext 依赖上下文
+type DependentContext struct {
+	Ancestor    []NodeContext `json:"ancestor,omitempty"`    // 祖先节点
+	PrevSibling []NodeContext `json:"prevSibling,omitempty"` // 前置兄弟节点
+	Children    []NodeContext `json:"children,omitempty"`    // 子节点
+}
+
+// NodeContext 节点上下文
 type NodeContext struct {
-	ParentProblem []Problem    `json:"parentProblem,omitempty"`
-	SubProblem    []SubProblem `json:"subProblem,omitempty"`
-}
-
-type Problem struct {
-	Question string `json:"question"`
-	Target   string `json:"target"`
-	Abstract string `json:"abstract"` // 摘要
-}
-
-type SubProblem struct {
 	Question   string `json:"question"`
 	Target     string `json:"target"`
 	Conclusion string `json:"conclusion"`
@@ -118,9 +114,9 @@ func (d Dependencies) Value() (driver.Value, error) {
 }
 
 // Scan implements the Scanner interface for Context
-func (c *NodeContext) Scan(value interface{}) error {
+func (c *DependentContext) Scan(value interface{}) error {
 	if value == nil {
-		*c = NodeContext{}
+		*c = DependentContext{}
 		return nil
 	}
 	bytes, ok := value.([]byte)
@@ -131,6 +127,6 @@ func (c *NodeContext) Scan(value interface{}) error {
 }
 
 // Value implements the Valuer interface for Context
-func (c NodeContext) Value() (driver.Value, error) {
+func (c DependentContext) Value() (driver.Value, error) {
 	return json.Marshal(c)
 }

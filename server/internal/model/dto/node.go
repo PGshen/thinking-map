@@ -29,20 +29,25 @@ type UpdateNodeRequest struct {
 	Position model.Position `json:"position"`
 }
 
+type UpdateNodeContextRequest struct {
+	Context model.DependentContext `json:"context"`
+}
+
 // NodeResponse represents the node data in responses
 type NodeResponse struct {
-	ID        string            `json:"id"`
-	MapID     string            `json:"mapID,omitempty"`
-	ParentID  string            `json:"parentID"`
-	NodeType  string            `json:"nodeType"`
-	Question  string            `json:"question"`
-	Target    string            `json:"target"`
-	Context   model.NodeContext `json:"context"`
-	Status    int               `json:"status"`
-	Position  model.Position    `json:"position"`
-	Metadata  interface{}       `json:"metadata"`
-	CreatedAt time.Time         `json:"createdAt"`
-	UpdatedAt time.Time         `json:"updatedAt"`
+	ID         string                 `json:"id"`
+	MapID      string                 `json:"mapID,omitempty"`
+	ParentID   string                 `json:"parentID"`
+	NodeType   string                 `json:"nodeType"`
+	Question   string                 `json:"question"`
+	Target     string                 `json:"target"`
+	Context    model.DependentContext `json:"context"`
+	Conclusion string                 `json:"conclusion"`
+	Status     int                    `json:"status"`
+	Position   model.Position         `json:"position"`
+	Metadata   interface{}            `json:"metadata"`
+	CreatedAt  time.Time              `json:"createdAt"`
+	UpdatedAt  time.Time              `json:"updatedAt"`
 }
 
 // NodeListResponse represents the list of nodes in a map
@@ -53,17 +58,18 @@ type NodeListResponse struct {
 // modelToNodeResponse 将model.ThinkingNode转为dto.NodeResponse
 func ToNodeResponse(n *model.ThinkingNode) NodeResponse {
 	return NodeResponse{
-		ID:        n.ID,
-		MapID:     n.MapID,
-		ParentID:  n.ParentID,
-		NodeType:  n.NodeType,
-		Question:  n.Question,
-		Target:    n.Target,
-		Context:   n.Context,
-		Status:    n.Status,
-		Position:  n.Position,
-		Metadata:  n.Metadata,
-		CreatedAt: n.CreatedAt,
-		UpdatedAt: n.UpdatedAt,
+		ID:         n.ID,
+		MapID:      n.MapID,
+		ParentID:   n.ParentID,
+		NodeType:   n.NodeType,
+		Question:   n.Question,
+		Target:     n.Target,
+		Context:    n.Context,
+		Conclusion: n.Conclusion,
+		Status:     n.Status,
+		Position:   n.Position,
+		Metadata:   n.Metadata,
+		CreatedAt:  n.CreatedAt,
+		UpdatedAt:  n.UpdatedAt,
 	}
 }

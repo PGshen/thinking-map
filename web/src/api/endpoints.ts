@@ -21,7 +21,14 @@ export const API_ENDPOINTS = {
     UPDATE: `${API_BASE}/v1/maps`,
     DELETE: `${API_BASE}/v1/maps`,
   },
+  NODE: {
+    CREATE: `${API_BASE}/v1/maps`,
+    GET: `${API_BASE}/v1/maps`,
+    UPDATE: `${API_BASE}/v1/maps`,
+    DELETE: `${API_BASE}/v1/maps`,
+    CONTEXT: `${API_BASE}/v1/maps`,
+  },
   // 其他模块分组
 };
 
-export default API_ENDPOINTS; 
+export default API_ENDPOINTS;

@@ -35,30 +35,59 @@ func (s *NodeService) ListNodes(ctx *gin.Context, mapID string) ([]dto.NodeRespo
 	}
 	var res []dto.NodeResponse
 	for _, n := range nodes {
-		if len(n.Context.ParentProblem) == 0 && len(n.Context.SubProblem) == 0 {
-			n.Context = s.GetNodeContext(ctx, n.ID)
-		}
+		n.Context = s.GetNodeContext(ctx, n)
 		resp := dto.ToNodeResponse(n)
 		res = append(res, resp)
 	}
 	return res, nil
 }
 
-func (s *NodeService) GetNodeContext(ctx *gin.Context, nodeID string) model.NodeContext {
+func (s *NodeService) GetNodeContext(ctx *gin.Context, node *model.ThinkingNode) model.DependentContext {
 	// 获取节点上下文，parentProblem是所有祖先节点的问题和目标，subProblem是所有直接子节点的问题、目标和结论
-	var parentProblems []model.Problem
-	var subProblems []model.SubProblem
+	ancestor := node.Context.Ancestor
+	prevSibling := node.Context.PrevSibling
+	children := node.Context.Children
 
 	// 获取所有祖先节点的问题和目标
-	parentProblems = s.getAncestorProblems(ctx, nodeID)
-
-	// 获取所有直接子节点的问题、目标和结论
-	subProblems = s.getChildrenProblems(ctx, nodeID)
-
-	return model.NodeContext{
-		ParentProblem: parentProblems,
-		SubProblem:    subProblems,
+	if len(ancestor) == 0 {
+		ancestor = s.getAncestor(ctx, node.ID)
 	}
+	// 获取所有前一个兄弟节点的问题、目标和结论
+	if len(prevSibling) == 0 {
+		prevSibling = s.getPreSibling(ctx, node)
+	}
+	// 获取所有直接子节点的问题、目标和结论
+	if len(children) == 0 {
+		children = s.getChildren(ctx, node.ID)
+	}
+
+	return model.DependentContext{
+		Ancestor:    ancestor,
+		PrevSibling: prevSibling,
+		Children:    children,
+	}
+}
+
+// UpdateNodeContext 更新节点上下文
+func (s *NodeService) UpdateNodeContext(ctx *gin.Context, nodeID string, req dto.UpdateNodeContextRequest) (*dto.NodeResponse, error) {
+	node, err := s.nodeRepo.FindByID(ctx, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	if len(req.Context.Ancestor) > 0 {
+		node.Context.Ancestor = req.Context.Ancestor
+	}
+	if len(req.Context.PrevSibling) > 0 {
+		node.Context.PrevSibling = req.Context.PrevSibling
+	}
+	if len(req.Context.Children) > 0 {
+		node.Context.Children = req.Context.Children
+	}
+	if err := s.nodeRepo.Update(ctx, node); err != nil {
+		return nil, err
+	}
+	resp := dto.ToNodeResponse(node)
+	return &resp, nil
 }
 
 // CreateNode 创建节点
@@ -121,55 +150,81 @@ func (s *NodeService) DeleteNode(ctx context.Context, nodeID string) error {
 }
 
 // getAncestorProblems 递归获取所有祖先节点的问题和目标
-func (s *NodeService) getAncestorProblems(ctx *gin.Context, nodeID string) []model.Problem {
-	var problems []model.Problem
+func (s *NodeService) getAncestor(ctx *gin.Context, nodeID string) []model.NodeContext {
+	var nodeContexts []model.NodeContext
 
 	// 获取当前节点
 	node, err := s.nodeRepo.FindByID(ctx, nodeID)
 	if err != nil || node.ParentID == "" {
-		return problems
+		return nodeContexts
 	}
 
 	// 获取父节点
 	parentNode, err := s.nodeRepo.FindByID(ctx, node.ParentID)
 	if err != nil {
-		return problems
+		return nodeContexts
 	}
 
 	// 添加父节点的问题和目标
-	problem := model.Problem{
+	nodeContext := model.NodeContext{
 		Question: parentNode.Question,
 		Target:   parentNode.Target,
 		Abstract: "", // 可以根据需要添加摘要逻辑
 	}
-	problems = append(problems, problem)
-
 	// 递归获取更上层的祖先节点
-	ancestorProblems := s.getAncestorProblems(ctx, parentNode.ID)
-	problems = append(ancestorProblems, problem)
+	ancestor := s.getAncestor(ctx, parentNode.ID)
+	ancestor = append(ancestor, nodeContext)
 
-	return problems
+	return ancestor
 }
 
-// getChildrenProblems 获取所有直接子节点的问题、目标和结论
-func (s *NodeService) getChildrenProblems(ctx *gin.Context, nodeID string) []model.SubProblem {
-	var subProblems []model.SubProblem
+// getPreSibling 获取所有前一个兄弟节点的问题、目标和结论
+func (s *NodeService) getPreSibling(ctx *gin.Context, node *model.ThinkingNode) []model.NodeContext {
+	var nodeContexts []model.NodeContext
+
+	// node.Dependencies 是当前节点依赖的节点id，通过这个查询依赖节点的问题、目标和结论
+	if len(node.Dependencies) == 0 {
+		return nodeContexts
+	}
+
+	// 查找所有依赖节点
+	depNodes, err := s.nodeRepo.FindByIDs(ctx, node.Dependencies)
+	if err != nil {
+		return nodeContexts
+	}
+
+	for _, depNode := range depNodes {
+		nodeContext := model.NodeContext{
+			Question:   depNode.Question,
+			Target:     depNode.Target,
+			Conclusion: depNode.Conclusion,
+			Abstract:   "", // 可以根据需要添加摘要逻辑
+		}
+		nodeContexts = append(nodeContexts, nodeContext)
+	}
+
+	return nodeContexts
+}
+
+// getChildren 获取所有直接子节点的问题、目标和结论
+func (s *NodeService) getChildren(ctx *gin.Context, nodeID string) []model.NodeContext {
+	var nodeContexts []model.NodeContext
 
 	// 获取所有直接子节点
 	childNodes, err := s.nodeRepo.FindByParentID(ctx, nodeID)
 	if err != nil {
-		return subProblems
+		return nodeContexts
 	}
 
 	for _, childNode := range childNodes {
-		subProblem := model.SubProblem{
+		nodeContext := model.NodeContext{
 			Question:   childNode.Question,
 			Target:     childNode.Target,
 			Conclusion: childNode.Conclusion,
 			Abstract:   "", // 可以根据需要添加摘要逻辑
 		}
-		subProblems = append(subProblems, subProblem)
+		nodeContexts = append(nodeContexts, nodeContext)
 	}
 
-	return subProblems
+	return nodeContexts
 }

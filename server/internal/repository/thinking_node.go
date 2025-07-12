@@ -44,6 +44,16 @@ func (r *thinkingNodeRepository) FindByID(ctx context.Context, id string) (*mode
 	return &node, nil
 }
 
+// FindByIDs retrieves multiple ThinkingNode records by their IDs
+func (r *thinkingNodeRepository) FindByIDs(ctx context.Context, ids []string) ([]*model.ThinkingNode, error) {
+	var nodes []*model.ThinkingNode
+	err := r.db.WithContext(ctx).Where("id IN ?", ids).Find(&nodes).Error
+	if err != nil {
+		return nil, err
+	}
+	return nodes, nil
+}
+
 func (r *thinkingNodeRepository) FindByMapID(ctx context.Context, mapID string) ([]*model.ThinkingNode, error) {
 	var nodes []*model.ThinkingNode
 	err := r.db.WithContext(ctx).Where("map_id = ?", mapID).Find(&nodes).Error

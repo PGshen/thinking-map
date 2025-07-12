@@ -92,8 +92,6 @@ interface WorkspaceActions {
   deleteEdge: (edgeId: string) => void;
   
   // 思维导图操作
-  setMap: (mapId: string, title: string, problem?: string) => void;
-  updateMapTitle: (title: string) => void;
   updateMap: (info: WorkspaceState['mapInfo']) => void;
   
   // 状态操作
@@ -350,20 +348,6 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
             }),
             false,
             'deleteEdge'
-          );
-        },
-        
-        // 思维导图操作
-        setMap: (mapId: string, title: string, problem = '') => {
-          set(
-            (state) => ({
-              ...state,
-              mapId,
-              mapTitle: title,
-              mapProblem: problem,
-            }),
-            false,
-            'setMap'
           );
         },
         

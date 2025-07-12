@@ -288,15 +288,48 @@ Response 200 OK:
     "nodes": [
       {
         "id": "uuid",
+        "mapID": "uuid",
         "parentID": "uuid",
         "nodeType": "analysis",
         "question": "string",
         "target": "string",
+        "context": {
+          "ancestor": [
+            {
+              "question": "string",
+              "target": "string",
+              "conclusion": "string",
+              "abstract": "string"
+            }
+          ],
+          "prevSibling": [
+            {
+              "question": "string",
+              "target": "string",
+              "conclusion": "string",
+              "abstract": "string"
+            }
+          ],
+          "children": [
+            {
+              "question": "string",
+              "target": "string",
+              "conclusion": "string",
+              "abstract": "string"
+            }
+          ]
+        },
+        "conclusion": "string",
         "status": 0,
         "position": {
           "x": 100,
-          "y": 200
-        }
+          "y": 200,
+          "width": 0,
+          "height": 0
+        },
+        "metadata": {},
+        "createdAt": "2024-01-01T00:00:00Z",
+        "updatedAt": "2024-01-01T00:00:00Z"
       }
     ]
   },
@@ -311,12 +344,17 @@ Content-Type: application/json
 
 Request:
 {
+  "mapID": "uuid",
   "parentID": "uuid",
   "nodeType": "analysis",
   "question": "string",
   "target": "string",
-  "context": "string",
-  "position": {"x": 100, "y": 200}
+  "position": {
+    "x": 100,
+    "y": 200,
+    "width": 0,
+    "height": 0
+  }
 }
 
 Response 200 OK:
@@ -325,17 +363,25 @@ Response 200 OK:
   "message": "success",
   "data": {
     "id": "uuid",
-    "mapId": "uuid",
+    "mapID": "uuid",
     "parentID": "uuid",
     "nodeType": "analysis",
     "question": "string",
     "target": "string",
-    "context": "string",
+    "context": {
+      "ancestor": [],
+      "prevSibling": [],
+      "children": []
+    },
+    "conclusion": "string",
     "status": 0,
     "position": {
       "x": 100,
-      "y": 200
+      "y": 200,
+      "width": 0,
+      "height": 0
     },
+    "metadata": {},
     "createdAt": "2024-01-01T00:00:00Z",
     "updatedAt": "2024-01-01T00:00:00Z"
   },
@@ -344,7 +390,7 @@ Response 200 OK:
 }
 
 # 更新节点
-PUT /api/v1/nodes/{nodeId}
+PUT /api/v1/{mapId}/nodes/{nodeId}
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -352,8 +398,12 @@ Request:
 {
   "question": "string",
   "target": "string",
-  "context": "string",
-  "position": {"x": 100, "y": 200}
+  "position": {
+    "x": 100,
+    "y": 200,
+    "width": 0,
+    "height": 0
+  }
 }
 
 Response 200 OK:
@@ -362,13 +412,93 @@ Response 200 OK:
   "message": "success",
   "data": {
     "id": "uuid",
+    "mapID": "uuid",
+    "parentID": "uuid",
+    "nodeType": "analysis",
     "question": "string",
     "target": "string",
-    "context": "string",
+    "context": {
+      "ancestor": [],
+      "prevSibling": [],
+      "children": []
+    },
+    "conclusion": "string",
+    "status": 0,
     "position": {
       "x": 100,
-      "y": 200
+      "y": 200,
+      "width": 0,
+      "height": 0
     },
+    "metadata": {},
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  },
+  "timestamp": "2024-01-01T00:00:00Z",
+  "requestId": "uuid"
+}
+
+# 更新节点上下文
+PUT /api/v1/{mapId}/nodes/{nodeId}/context
+Authorization: Bearer <token>
+Content-Type: application/json
+
+Request:
+{
+  "context": {
+    "ancestor": [
+      {
+        "question": "string",
+        "target": "string",
+        "conclusion": "string",
+        "abstract": "string"
+      }
+    ],
+    "prevSibling": [
+      {
+        "question": "string",
+        "target": "string",
+        "conclusion": "string",
+        "abstract": "string"
+      }
+    ],
+    "children": [
+      {
+        "question": "string",
+        "target": "string",
+        "conclusion": "string",
+        "abstract": "string"
+      }
+    ]
+  }
+}
+
+Response 200 OK:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "uuid",
+    "mapID": "uuid",
+    "parentID": "uuid",
+    "nodeType": "analysis",
+    "question": "string",
+    "target": "string",
+    "context": {
+      "ancestor": [],
+      "prevSibling": [],
+      "children": []
+    },
+    "conclusion": "string",
+    "status": 0,
+    "position": {
+      "x": 100,
+      "y": 200,
+      "width": 0,
+      "height": 0
+    },
+    "metadata": {},
+    "createdAt": "2024-01-01T00:00:00Z",
     "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
@@ -376,7 +506,7 @@ Response 200 OK:
 }
 
 # 删除节点
-DELETE /api/v1/nodes/{nodeId}
+DELETE /api/v1/{mapId}/nodes/{nodeId}
 Authorization: Bearer <token>
 
 Response 200 OK:
@@ -388,81 +518,11 @@ Response 200 OK:
   "requestId": "uuid"
 }
 
-# 检查节点依赖
-GET /api/v1/nodes/{nodeId}/dependencies
-Authorization: Bearer <token>
-
-Response 200 OK:
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "dependencies": [
-      {
-        "nodeId": "uuid",
-        "dependencyType": "prerequisite",
-        "required": true,
-        "status": 2
-      }
-    ],
-    "dependentNodes": [
-      {
-        "nodeId": "uuid",
-        "dependencyType": "dependent",
-        "required": true,
-        "status": 0
-      }
-    ]
-  },
-  "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
-}
-
-# 添加节点依赖
-POST /api/v1/nodes/{nodeId}/dependencies
-Authorization: Bearer <token>
-Content-Type: application/json
-
-Request:
-{
-  "dependencyNodeId": "uuid", // 依赖的节点ID
-  "dependencyType": "prerequisite", // prerequisite | dependent
-  "required": true
-}
-
-Response 200 OK:
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "nodeId": "uuid",
-    "dependencyNodeId": "uuid",
-    "dependencyType": "prerequisite",
-    "required": true,
-    "status": 0
-  },
-  "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
-}
-
-# 删除节点依赖
-DELETE /api/v1/nodes/{nodeId}/dependencies/{dependencyNodeId}
-Authorization: Bearer <token>
-
-Response 200 OK:
-{
-  "code": 200,
-  "message": "success",
-  "data": null,
-  "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
-}
-```
 
 #### 6.3.4 节点详情接口
 ```yaml
 # 获取节点详情
-GET /api/v1/nodes/{nodeId}/details
+GET /api/v1/{mapId}/nodes/{nodeId}/details
 Authorization: Bearer <token>
 
 Response 200 OK:
@@ -508,7 +568,7 @@ Response 200 OK:
 }
 
 # 创建节点详情
-POST /api/v1/nodes/{nodeId}/details
+POST /api/v1/{mapId}/nodes/{nodeId}/details
 Authorization: Bearer <token>
 Content-Type: application/json
 

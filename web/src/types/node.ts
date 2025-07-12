@@ -5,37 +5,12 @@
  * @FilePath: /thinking-map/web/src/types/node.ts
  */
 // 与后端 dto/node.go 对齐的节点类型定义
-import type { NodeDetailResponse } from './nodeDetail';
 import type { ApiResponse } from './response';
 
 export interface Position {
   x: number;
   y: number;
 }
-
-export interface DependencyInfo {
-  name: string;
-  status: string;
-}
-
-export interface DependencyResponse {
-  dependencies: DependencyInfo[];
-  dependentNodes: DependencyInfo[];
-}
-
-export interface NodeResponse {
-  id: string;
-  parentID: string;
-  nodeType: string;
-  question: string;
-  target: string;
-  status: number;
-  position: Position;
-}
-
-export type NodeListResponse = ApiResponse<{
-  nodes: NodeResponse[];
-}>;
 
 export interface Node {
   id: string;
@@ -58,7 +33,7 @@ export interface CustomNodeModel {
   target: string;
   conclusion?: string;
   status: 'pending' | 'running' | 'completed' | 'error';
-  dependencies?: DependencyInfo[];
+  dependencies?: NodeContextItem[];
   context?: any;
   metadata?: any;
   selected?: boolean;
@@ -71,3 +46,65 @@ export interface CustomNodeModel {
   onDoubleClick?: (id: string) => void;
   onContextMenu?: (id: string, e: React.MouseEvent) => void;
 }
+
+// 节点上下文项类型
+export interface NodeContextItem {
+  question: string;
+  target: string;
+  conclusion: string;
+  abstract: string;
+}
+
+export interface NodeResponse {
+  id: string;
+  mapID: string;
+  parentID: string;
+  nodeType: string;
+  question: string;
+  target: string;
+  context: {
+    ancestor: NodeContextItem[];
+    prevSibling: NodeContextItem[];
+    children: NodeContextItem[];
+  };
+  conclusion: string;
+  status: number;
+  position: Position;
+  metadata: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 创建节点请求参数
+export interface CreateNodeRequest {
+  mapID: string;
+  parentID: string;
+  nodeType: string;
+  question: string;
+  target: string;
+  position: Position;
+}
+
+// 更新节点请求参数
+export interface UpdateNodeRequest {
+  question?: string;
+  target?: string;
+  position?: Position;
+}
+
+// 更新节点上下文请求参数
+export interface UpdateNodeContextRequest {
+  context: {
+    ancestor: NodeContextItem[];
+    prevSibling: NodeContextItem[];
+    children: NodeContextItem[];
+  };
+}
+
+export type NodeListResponse = ApiResponse<{
+  nodes: NodeResponse[];
+}>;
+export type CreateNodeResponse = ApiResponse<NodeResponse>;
+export type UpdateNodeResponse = ApiResponse<NodeResponse>;
+export type DeleteNodeResponse = ApiResponse<null>;
+export type UpdateNodeContextResponse = ApiResponse<NodeResponse>;

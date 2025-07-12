@@ -142,6 +142,51 @@ func (h *NodeHandler) UpdateNode(c *gin.Context) {
 		RequestID: uuid.New().String(),
 	})
 }
+func (h *NodeHandler) UpdateNodeContext(c *gin.Context) {
+	nodeID := c.Param("nodeId")
+	if nodeID == "" {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "node ID is required",
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+
+	var req dto.UpdateNodeContextRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "invalid request parameters",
+			Data:      dto.ErrorData{Error: err.Error()},
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+
+	resp, err := h.NodeService.UpdateNodeContext(c, nodeID, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
+		Message:   "success",
+		Data:      resp,
+		Timestamp: time.Now(),
+		RequestID: uuid.New().String(),
+	})
+}
 
 // DeleteNode handles deleting a node
 func (h *NodeHandler) DeleteNode(c *gin.Context) {
