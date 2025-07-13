@@ -6,34 +6,38 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store"
+import useWorkspaceData from "../../hooks/use-workspace-data"
 
 export default function MapInfo() {
-  const { mapDetail } = useWorkspaceStore()
+  const { mapInfo, saveMap } = useWorkspaceData()
+
   const { toast } = useToast()
   const [isEditing, setIsEditing] = React.useState(false)
   const [formData, setFormData] = React.useState({
-    title: mapDetail?.title || '',
-    problem: mapDetail?.problem || '',
-    target: mapDetail?.target || '',
-    keyPoints: mapDetail?.keyPoints || '',
-    constraints: mapDetail?.constraints || ''
+    title: mapInfo?.title || '',
+    problem: mapInfo?.problem || '',
+    target: mapInfo?.target || '',
+    keyPoints: mapInfo?.keyPoints || [],
+    constraints: mapInfo?.constraints || [],
   })
 
   React.useEffect(() => {
-    if (mapDetail) {
+    if (mapInfo) {
       setFormData({
-        title: mapDetail.title || '',
-        problem: mapDetail.problem || '',
-        target: mapDetail.target || '',
-        keyPoints: mapDetail.keyPoints || '',
-        constraints: mapDetail.constraints || ''
+        title: mapInfo.title || '',
+        problem: mapInfo.problem || '',
+        target: mapInfo.target || '',
+        keyPoints: mapInfo.keyPoints || [],
+        constraints: mapInfo.constraints || [],
       })
     }
-  }, [mapDetail])
+  }, [mapInfo])
 
   const handleSave = async () => {
     try {
-      // TODO: 调用API保存导图信息
+      await saveMap({
+        ...formData
+      })
       setIsEditing(false)
       toast({
         title: '保存成功',
@@ -49,10 +53,17 @@ export default function MapInfo() {
   }
 
   const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: e.target.value
-    }))
+    if (field === 'keyPoints' || field === 'constraints') {
+      setFormData(prev => ({
+        ...prev,
+        [field]: e.target.value.split('\n')
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: e.target.value
+      }))
+    }
   }
 
   return (
@@ -97,7 +108,7 @@ export default function MapInfo() {
               <label htmlFor="keyPoints" className="text-sm font-medium leading-none">关键点</label>
               <Textarea
                 id="keyPoints"
-                value={formData.keyPoints}
+                value={formData.keyPoints.join('\n')}
                 className="min-h-[60px]"
                 onChange={handleInputChange('keyPoints')}
               />
@@ -106,7 +117,7 @@ export default function MapInfo() {
               <label htmlFor="constraints" className="text-sm font-medium leading-none">约束</label>
               <Textarea
                 id="constraints"
-                value={formData.constraints}
+                value={formData.constraints.join('\n')}
                 className="min-h-[60px]"
                 onChange={handleInputChange('constraints')}
               />
@@ -126,30 +137,40 @@ export default function MapInfo() {
           </>
         ) : (
           <>
-            <div className="grid gap-1">
-              <span className="text-sm font-medium leading-none">标题</span>
-              <p className="text-sm">{formData.title}</p>
-            </div>
-            <div className="grid gap-1">
-              <span className="text-sm font-medium leading-none">问题</span>
-              <p className="text-sm">{formData.problem}</p>
-            </div>
-            <div className="grid gap-1">
-              <span className="text-sm font-medium leading-none">目标</span>
-              <p className="text-sm">{formData.target}</p>
-            </div>
-            <div className="grid gap-1">
-              <span className="text-sm font-medium leading-none">关键点</span>
-              <p className="text-sm">{formData.keyPoints}</p>
-            </div>
-            <div className="grid gap-1">
-              <span className="text-sm font-medium leading-none">约束</span>
-              <p className="text-sm">{formData.constraints}</p>
+            <div className="grid gap-3">
+              <div className="grid gap-1">
+                <span className="text-sm font-semibold text-foreground">标题</span>
+                <p className="text-base font-medium text-primary pl-2 border-l-2 border-primary/40 bg-muted/40 py-1">{formData.title}</p>
+              </div>
+              <div className="grid gap-1">
+                <span className="text-sm font-semibold text-foreground">问题</span>
+                <p className="text-sm text-muted-foreground pl-2 border-l border-muted/60 bg-muted/20 rounded-sm py-1 whitespace-pre-line">{formData.problem}</p>
+              </div>
+              <div className="grid gap-1">
+                <span className="text-sm font-semibold text-foreground">目标</span>
+                <p className="text-sm text-muted-foreground pl-2 border-l border-muted/60 bg-muted/20 rounded-sm py-1 whitespace-pre-line">{formData.target}</p>
+              </div>
+              <div className="grid gap-1">
+                <span className="text-sm font-semibold text-foreground">关键点</span>
+                <ul className="text-sm text-muted-foreground list-disc pl-7 bg-muted/10 rounded-sm py-1 min-h-[28px]">
+                  {formData.keyPoints?.length && formData.keyPoints.some(Boolean)
+                    ? formData.keyPoints.filter(Boolean).map((item, idx) => <li key={idx} className="mb-0.5">{item}</li>)
+                    : <li className="text-muted-foreground">无</li>}
+                </ul>
+              </div>
+              <div className="grid gap-1">
+                <span className="text-sm font-semibold text-foreground">约束</span>
+                <ul className="text-sm text-muted-foreground list-disc pl-7 bg-muted/10 rounded-sm py-1 min-h-[28px]">
+                  {formData.constraints?.length && formData.constraints.some(Boolean)
+                    ? formData.constraints.filter(Boolean).map((item, idx) => <li key={idx} className="mb-0.5">{item}</li>)
+                    : <li className="text-muted-foreground">无</li>}
+                </ul>
+              </div>
             </div>
             <Button
               variant="outline"
               size="sm"
-              className="justify-self-end"
+              className="justify-self-end mt-2"
               onClick={() => setIsEditing(true)}
             >
               编辑

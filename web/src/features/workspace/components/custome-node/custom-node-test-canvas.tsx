@@ -45,18 +45,6 @@ const initialNodes: Node<CustomNodeModel>[] = [
       status: 'completed',
       conclusion: '团队内部保持一致：最重要的是团队约定统一考虑后端风格：如果后端使用下划线，前端可以考虑保持一致使用转换工具：可以使用 lodash 等工具库进行风格转换文档明确规定：在 API 文档中明确说明使用的命名风格',
       dependencies: [
-        {
-          name: "用户分析",
-          status: "completed"
-        },
-        {
-          name: "生成方案",
-          status: "running"
-        },
-        {
-          name: "评估",
-          status: "pending"
-        }
       ],
       selected: false,
     },

@@ -6,7 +6,7 @@
  */
 'use client';
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   Background,
@@ -27,8 +27,6 @@ import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { useWorkspaceData } from '@/features/workspace/hooks/use-workspace-data';
 import { useNodeSelection } from '@/features/workspace/hooks/use-node-selection';
 import { useNodeOperations } from '@/features/workspace/hooks/use-node-operations';
-import { CustomNodeModel } from '@/types/node';
-
 interface VisualizationAreaProps {
   mapId: string;
 }
@@ -43,57 +41,45 @@ function MapCanvas({ mapId }: VisualizationAreaProps) {
   const { nodes: nodesData, edges: edgesData, isLoading } = useWorkspaceData(mapId);
   const { handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu } = useNodeSelection();
   const { handleNodeEdit, handleNodeDelete, handleAddChild } = useNodeOperations();
-  
+
   const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
 
-  // 转换数据格式为ReactFlow需要的格式
-  const convertToReactFlowNodes = useCallback((nodeData: any[]): Node[] => {
+  // 标记是否初始化完成
+  const initializedRef = useRef(false);
+
+  // 节点拖动结束时同步到 store
+  const onNodeDragStop = useCallback((event: any, node: any) => {
+    if (initializedRef.current) {
+      actions.setNodes(nodes.map(n => ({ ...n, data: { ...n.data } })));
+    }
+  }, [nodes, actions]);
+
+  // 注入事件到节点 data
+  const nodesWithHandlers = useCallback((nodeData: any[]): Node[] => {
     return nodeData.map((node) => ({
-      id: node.id,
-      type: 'custom',
-      position: node.position || { x: 0, y: 0 },
+      ...node,
       data: {
-        ...node,
-        selected: selectedNodeIds.includes(node.id),
+        ...node.data,
         onEdit: handleNodeEdit,
         onDelete: handleNodeDelete,
         onAddChild: handleAddChild,
         onSelect: handleNodeClick,
         onDoubleClick: handleNodeDoubleClick,
         onContextMenu: handleNodeContextMenu,
-      } as CustomNodeModel,
-    }));
-  }, [selectedNodeIds, handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu]);
-
-  const convertToReactFlowEdges = useCallback((edgeData: any[]): Edge[] => {
-    return edgeData.map((edge) => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      type: 'smoothstep',
-      animated: false,
-      style: {
-        stroke: '#94a3b8',
-        strokeWidth: 2,
       },
     }));
   }, []);
 
-  // 更新节点和边数据
+  // 只在首次加载执行
   useEffect(() => {
-    if (nodesData && edgesData) {
-      const reactFlowNodes = convertToReactFlowNodes(nodesData);
-      const reactFlowEdges = convertToReactFlowEdges(edgesData);
-      
-      setNodes(reactFlowNodes);
-      setEdges(reactFlowEdges);
-      
-      // 同步到store
-      actions.setNodes(nodesData);
-      actions.setEdges(edgesData);
+    if (initializedRef.current == false && nodesData.length > 0) {
+      setNodes(nodesWithHandlers(nodesData));
+      setEdges(edgesData);
+      initializedRef.current = true; // 标记初始化完成
+      console.log("init")
     }
-  }, [nodesData, edgesData, convertToReactFlowNodes, convertToReactFlowEdges, actions]);
+  }, [nodesData, edgesData]);
 
   // 当选中状态变化时更新节点
   useEffect(() => {
@@ -117,7 +103,7 @@ function MapCanvas({ mapId }: VisualizationAreaProps) {
         animated: false,
       };
       setEdges((eds) => addEdge(newEdge, eds));
-      
+
       // TODO: 同步到后端
       console.log('New connection:', newEdge);
     },
@@ -149,6 +135,7 @@ function MapCanvas({ mapId }: VisualizationAreaProps) {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onPaneClick={onPaneClick}
+        onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
         attributionPosition="bottom-left"

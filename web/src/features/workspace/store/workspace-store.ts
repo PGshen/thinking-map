@@ -356,8 +356,6 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
             (state) => ({
               ...state,
               mapId: info.id,
-              mapTitle: info.title,
-              mapProblem: info.problem,
               mapInfo: info,
               hasUnsavedChanges: true,
             }),

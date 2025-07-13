@@ -41,7 +41,7 @@ export function useWorkspaceData(mapId?: string) {
     } finally {
       actions.setLoading(false);
     }
-  }, []); // 移除actions和toast依赖，避免无限循环
+  }, []);
 
   // 加载节点数据
   const loadNodes = useCallback(async (id: string) => {
@@ -50,25 +50,20 @@ export function useWorkspaceData(mapId?: string) {
     actions.setLoading(true);
     try {
       const nodeDataResp = await getMapNodes(id);
-      const nodeData = nodeDataResp.data.nodes;
+      const nodes = nodeDataResp.data.nodes;
       
       // 转换为ReactFlow格式节点
-      const reactFlowNodes = nodeData.map((node) => ({
+      const reactFlowNodes = nodes.map((node) => ({
         id: node.id,
         type: 'custom',
         position: node.position,
         data: {
-          question: node.question,
-          target: node.target,
-          context: node.context,
-          conclusion: node.conclusion,
-          status: node.status,
-          dependencies: node.context?.ancestor || [], // 或根据实际需求调整
+          ...node
         },
       }));
       
       // 生成边（parentID存在且非空）
-      const reactFlowEdges = nodeData
+      const reactFlowEdges = nodes
         .filter(node => node.parentID)
         .map(node => ({
           id: `${node.parentID}-${node.id}`,
@@ -89,7 +84,7 @@ export function useWorkspaceData(mapId?: string) {
     } finally {
       actions.setLoading(false);
     }
-  }, []); // 移除actions和toast依赖，避免无限循环
+  }, []);
 
   // 保存思维导图详细信息
   const saveMap = useCallback(async (info: Partial<Omit<Map, 'id' | 'createdAt' | 'updatedAt'>>) => {
@@ -117,7 +112,7 @@ export function useWorkspaceData(mapId?: string) {
       });
       return false;
     }
-  }, [mapId, mapInfo]); // 移除actions和toast依赖，避免无限循环
+  }, [mapId, mapInfo]);
 
   // 保存节点信息
   const saveNodeInfo = useCallback(async (nodeId: string, updates: any) => {
@@ -141,7 +136,7 @@ export function useWorkspaceData(mapId?: string) {
       });
       return false;
     }
-  }, [mapId]); // 移除actions和toast依赖，避免无限循环
+  }, [mapId]);
 
   // 保存整个工作区
   const saveWorkspace = useCallback(async () => {

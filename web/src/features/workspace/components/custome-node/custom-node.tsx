@@ -27,8 +27,16 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
       onContextMenu={e => { e.preventDefault(); data.onContextMenu?.(data.id, e); }}
     >
       {/* ReactFlow Handles for edge connection */}
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
+      <Handle 
+        type="target" 
+        position={Position.Top} 
+        className="!w-2 !h-1 !rounded-none !border-blue-500 !bg-blue-500"
+      />
+      <Handle 
+        type="source" 
+        position={Position.Bottom} 
+        className="!w-2 !h-1 !rounded-none !border-blue-500 !bg-blue-500"
+      />
       
       {/* Header: 类型+状态 */}
       <div className="flex items-center justify-between mb-2 pb-2">
@@ -61,7 +69,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
       </div>
 
       {/* Footer: 依赖/分支 */}
-      <div className="flex items-center justify-between text-xs text-gray-500">
+      {/* <div className="flex items-center justify-between text-xs text-gray-500">
         <div className="flex items-center gap-1 flex-wrap">
           {data.dependencies && data.dependencies.length > 0 && (
             data.dependencies.map((dep, index) => {
@@ -78,7 +86,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
             })
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* 操作按钮组（悬浮在节点上方） */}
       <div className="absolute right-0 -top-12 flex justify-end">
