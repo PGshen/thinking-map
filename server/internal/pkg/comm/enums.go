@@ -14,9 +14,10 @@ const (
 
 // 思维导图状态
 const (
-	MapStatusExecuting = 1 // 进行中
-	MapStatusCompleted = 2 // 已完成
-	MapStatusDeleted   = 3 // 删除
+	MapStatusInitial   = "initial"   // 初始
+	MapStatusRunning   = "running"   // 进行中
+	MapStatusCompleted = "completed" // 已完成
+	MapStatusDeleted   = "deleted"   // 删除
 )
 
 const (
@@ -38,9 +39,11 @@ const (
 
 // 思维节点状态
 const (
-	NodeStatusPending   = 1 // 待执行
-	NodeStatusRunning   = 2 // 执行中
-	NodeStatusCompleted = 3 // 已完成
+	NodeStatusInitial   = "initial"   // 初始
+	NodeStatusPending   = "pending"   // 待执行
+	NodeStatusRunning   = "running"   // 执行中
+	NodeStatusCompleted = "completed" // 已完成
+	NodeStatusError     = "error"     // 错误
 )
 
 // 节点详情类型
@@ -48,13 +51,6 @@ const (
 	DetailTypeInfo       = "info"       // 信息
 	DetailTypeDecompose  = "decompose"  // 拆解
 	DetailTypeConclusion = "conclusion" // 结论
-)
-
-// 节点详情状态
-const (
-	DetailStatusPending   = 1 // 待执行
-	DetailStatusExecuting = 2 // 执行中
-	DetailStatusCompleted = 3 // 已完成
 )
 
 // 消息类型
@@ -66,9 +62,9 @@ const (
 
 // RAG 记录状态
 const (
-	RAGStatusActive   = 1 // 正常
-	RAGStatusArchived = 0 // 归档
-	RAGStatusDeleted  = 2 // 删除
+	RAGStatusActive   = "active"   // 正常
+	RAGStatusArchived = "archived" // 归档
+	RAGStatusDeleted  = "deleted"  // 删除
 )
 
 const (

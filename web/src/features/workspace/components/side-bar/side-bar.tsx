@@ -15,7 +15,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useRouter } from "next/navigation"
-import { useWorkspaceStore } from "@/features/workspace/store/workspace-store"
+import { useWorkspaceStore, useWorkspaceStoreData } from "@/features/workspace/store/workspace-store"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,16 +28,18 @@ import {
 } from "@/components/ui/alert-dialog"
 import MapInfo from "./map-info"
 import Settings from "./settings"
+import useWorkspaceData from "../../hooks/use-workspace-data"
 
 export function AppSidebar({ mapId, ...props }: React.ComponentProps<typeof Sidebar> & { mapId: string }) {
   const router = useRouter()
   const [showConfirm, setShowConfirm] = React.useState(false)
-  const { hasUnsavedChanges } = useWorkspaceStore()
+  const { changedNodePositions } = useWorkspaceStore()
+  const { savePosition } = useWorkspaceData()
   const { setOpen, toggleSidebar } = useSidebar()
   const [activePanel, setActivePanel] = React.useState<'map-info' | 'settings'>('map-info')
 
   const handleExit = () => {
-    if (hasUnsavedChanges) {
+    if (changedNodePositions.length > 0) {
       setShowConfirm(true)
     } else {
       router.push('/')
@@ -46,6 +48,7 @@ export function AppSidebar({ mapId, ...props }: React.ComponentProps<typeof Side
 
   const confirmExit = () => {
     setShowConfirm(false)
+    savePosition()
     router.push('/')
   }
 

@@ -40,7 +40,7 @@ func TestNodeService_CRUD(t *testing.T) {
 		NodeType: "analysis",
 		Question: "分析问题?",
 		Target:   "分析目标",
-		Position: model.Position{X: 10, Y: 20, Width: 100, Height: 50},
+		Position: model.Position{X: 10, Y: 20},
 	}
 	nodeResp, err := nodeSvc.CreateNode(ctx, mapID, createNodeReq)
 	assert.NoError(t, err)
@@ -69,7 +69,7 @@ func TestNodeService_CRUD(t *testing.T) {
 	updateReq := dto.UpdateNodeRequest{
 		Question: "新问题?",
 		Target:   "新目标",
-		Position: model.Position{X: 30, Y: 40, Width: 120, Height: 60},
+		Position: model.Position{X: 30, Y: 40},
 	}
 	updatedNode, err := nodeSvc.UpdateNode(ctx, nodeID, updateReq)
 	assert.NoError(t, err)

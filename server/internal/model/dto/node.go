@@ -43,7 +43,7 @@ type NodeResponse struct {
 	Target     string                 `json:"target"`
 	Context    model.DependentContext `json:"context"`
 	Conclusion string                 `json:"conclusion"`
-	Status     int                    `json:"status"`
+	Status     string                 `json:"status"`
 	Position   model.Position         `json:"position"`
 	Metadata   interface{}            `json:"metadata"`
 	CreatedAt  time.Time              `json:"createdAt"`

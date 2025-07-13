@@ -29,7 +29,7 @@ type ThinkingMap struct {
 	KeyPoints   KeyPoints      `json:"key_points" gorm:"type:jsonb"`
 	Constraints Constraints    `json:"constraints" gorm:"type:jsonb"`
 	Conclusion  string         `json:"conclusion" gorm:"type:text"`
-	Status      int            `json:"status" gorm:"type:int;not null;default:1"`
+	Status      string         `json:"status" gorm:"type:varchar(50);not null;default:'initial'"` // initial, running, completed, deleted
 	Metadata    datatypes.JSON `json:"metadata" gorm:"type:jsonb"`
 	CreatedAt   time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
 	UpdatedAt   time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`

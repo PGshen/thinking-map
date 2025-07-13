@@ -32,19 +32,20 @@ export interface CustomNodeModel {
   question: string;
   target: string;
   conclusion?: string;
-  status: 'pending' | 'running' | 'completed' | 'error';
+  status: 'initial' | 'pending' | 'running' | 'completed' | 'error';
   dependencies?: NodeContextItem[];
   context?: any;
   metadata?: any;
   selected?: boolean;
-  childCount?: number;
+  isEditing?: boolean;
   // 交互事件（由外部注入，非持久数据）
-  onEdit?: (id: string, data: { question: string; target: string }) => void;
-  onDelete?: (id: string) => void;
+  onEdit?: (mapId: string|null, id: string, data: Partial<CustomNodeModel>) => Promise<NodeResponse>;
+  onDelete?: (mapId: string|null, id: string) => void;
   onAddChild?: (id: string) => void;
   onSelect?: (id: string) => void;
   onDoubleClick?: (id: string) => void;
   onContextMenu?: (id: string, e: React.MouseEvent) => void;
+  onUpdateId?: (mapId: string|null, oldId: string, newId: string) => void;
 }
 
 // 节点上下文项类型
@@ -68,7 +69,7 @@ export interface NodeResponse {
     children: NodeContextItem[];
   };
   conclusion: string;
-  status: number;
+  status: string;
   position: Position;
   metadata: Record<string, any>;
   createdAt: string;

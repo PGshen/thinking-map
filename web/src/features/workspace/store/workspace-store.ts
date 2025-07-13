@@ -32,7 +32,7 @@ interface WorkspaceState {
   
   // UI状态
   isLoading: boolean;
-  hasUnsavedChanges: boolean;
+  changedNodePositions: string[];
   
   // 视图状态
   viewportState: {
@@ -67,8 +67,10 @@ interface WorkspaceActions {
   addNode: (node: Node<CustomNodeModel>) => void;
   addChildNode: (parentId: string, childNode: Node<CustomNodeModel>) => void;
   updateNode: (nodeId: string, updates: Partial<Node<CustomNodeModel>>) => void;
+  updateNodeId: (oldId: string, newId: string) => void;
   deleteNode: (nodeId: string) => void;
   selectNode: (nodeId: string | null) => void;
+  setEditing: (nodeId: string | null) => void;
   clearSelection: () => void;
   
   // 边操作
@@ -81,7 +83,9 @@ interface WorkspaceActions {
   
   // 状态操作
   setLoading: (loading: boolean) => void;
-  setUnsavedChanges: (hasChanges: boolean) => void;
+  addChangedNodePosition: (nodeId: string) => void;
+  getChangedNodePositions: () => string[];
+  clearChangedNodePositions: () => void;
   
   // 视图操作
   setViewportState: (viewport: { x: number; y: number; zoom: number }) => void;
@@ -115,7 +119,7 @@ const initialState: WorkspaceState = {
   
   // UI状态
   isLoading: false,
-  hasUnsavedChanges: false,
+  changedNodePositions: [],
   
   // 视图状态
   viewportState: {
@@ -194,7 +198,7 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
         // 节点操作
         setNodes: (nodes: Node<CustomNodeModel>[]) => {
           set(
-            (state) => ({ nodes, hasUnsavedChanges: true }),
+            (state) => ({ nodes: [...state.nodes, ...nodes] }),
             false,
             'setNodes'
           );
@@ -204,7 +208,6 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           set(
             (state) => ({
               nodes: [...state.nodes, node],
-              hasUnsavedChanges: true,
             }),
             false,
             'addNode'
@@ -217,8 +220,8 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
 
           // 计算子节点位置（在父节点右下方）
           const childPosition = {
-            x: parentNode.position.x + 200,
-            y: parentNode.position.y + 100
+            x: parentNode.position.x + (parentNode.width || 0) + 200,
+            y: parentNode.position.y + (parentNode.height || 0) + 200
           };
 
           // 创建新节点
@@ -232,14 +235,13 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
             id: `${parentId}-${childNode.id}`,
             source: parentId,
             target: childNode.id,
-            type: 'smoothstep',
+            type: 'default',
           };
 
           set(
             (state) => ({
               nodes: [...state.nodes, newNode],
               edges: [...state.edges, newEdge],
-              hasUnsavedChanges: true,
             }),
             false,
             'addChildNode'
@@ -264,10 +266,35 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
                 }
                 return updatedNode;
               }),
-              hasUnsavedChanges: true,
             }),
             false,
             'updateNode'
+          );
+        },
+
+        updateNodeId: (oldId: string, newId: string) => {
+          set(
+            (state) => ({
+              nodes: state.nodes.map((node) => {
+                if (node.id !== oldId) return node;
+                return {
+                  ...node,
+                  id: newId,
+                  data: {
+                    ...node.data,
+                    id: newId
+                  }
+                };
+              }),
+              edges: state.edges.map((edge) => ({
+                ...edge,
+                source: edge.source === oldId ? newId : edge.source,
+                target: edge.target === oldId ? newId : edge.target
+              })),
+              activeNodeId: state.activeNodeId === oldId ? newId : state.activeNodeId,
+            }),
+            false,
+            'updateNodeId'
           );
         },
         
@@ -280,7 +307,6 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
               ),
               activeNodeId: state.activeNodeId === nodeId ? null : state.activeNodeId,
               isPanelOpen: state.activeNodeId === nodeId ? false : state.isPanelOpen,
-              hasUnsavedChanges: true,
             }),
             false,
             'deleteNode'
@@ -292,12 +318,31 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
             (state) => ({
               nodes: state.nodes.map((node) => ({
                 ...node,
-                selected: node.id === nodeId,
+                data: {
+                  ...node.data,
+                  selected: node.id === nodeId,
+                }
               })),
               selectedNodeIds: nodeId ? [nodeId] : [],
             }),
             false,
             'selectNode'
+          );
+        },
+
+        setEditing: (nodeId: string | null) => {
+          set(
+            (state) => ({
+              nodes: state.nodes.map((node) => ({
+                ...node,
+                data: {
+                  ...node.data,
+                  isEditing: node.id === nodeId ? !node.data.isEditing : false,
+                },
+              }))
+            }),
+            false,
+            'setEditing'
           );
         },
         
@@ -318,7 +363,7 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
         // 边操作
         setEdges: (edges: Edge[]) => {
           set(
-            (state) => ({ edges, edgesData: edges, hasUnsavedChanges: true }),
+            (state) => ({ edges: [...state.edges, ...edges] }),
             false,
             'setEdges'
           );
@@ -328,7 +373,6 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           set(
             (state) => ({
               edges: [...state.edges, edge],
-              hasUnsavedChanges: true,
             }),
             false,
             'addEdge'
@@ -339,7 +383,6 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           set(
             (state) => ({
               edges: state.edges.filter((edge) => edge.id !== edgeId),
-              hasUnsavedChanges: true,
             }),
             false,
             'deleteEdge'
@@ -352,7 +395,6 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
               ...state,
               mapId: info.id,
               mapInfo: info,
-              hasUnsavedChanges: true,
             }),
             false,
             'updateMap'
@@ -367,12 +409,26 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
             'setLoading'
           );
         },
+
+        getChangedNodePositions: () => {
+          return get().changedNodePositions;
+        },
         
-        setUnsavedChanges: (hasChanges: boolean) => {
+        addChangedNodePosition: (nodeId?: string) => {
           set(
-            (state) => ({ hasUnsavedChanges: hasChanges }),
+            (state) => ({
+              changedNodePositions: nodeId ? [...state.changedNodePositions, nodeId].filter((id): id is string => id !== undefined) : state.changedNodePositions
+            }),
             false,
-            'setUnsavedChanges'
+            'addChangedNodePosition'
+          );
+        },
+        
+        clearChangedNodePositions: () => {
+          set(
+            (state) => ({ changedNodePositions: [] }),
+            false,
+            'clearChangedNodePositions'
           );
         },
         
@@ -390,7 +446,6 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           set(
             (state) => ({
               settings: { ...state.settings, ...newSettings },
-              hasUnsavedChanges: true,
             }),
             false,
             'updateSettings'
@@ -431,7 +486,6 @@ export const useWorkspaceStoreData = () => {
     nodes: store.nodes,
     edges: store.edges,
     isLoading: store.isLoading,
-    hasUnsavedChanges: store.hasUnsavedChanges,
   };
 };
 

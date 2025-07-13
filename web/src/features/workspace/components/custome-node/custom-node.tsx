@@ -12,37 +12,62 @@ import { NodeStatusIcon } from './node-status-icon';
 import { NodeActionButtons } from './node-action-buttons';
 import { Handle, Position } from 'reactflow';
 import { MarkdownContent } from '@/components/ui/markdown-content';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { useWorkspaceStoreData } from '../../store/workspace-store';
 
 interface CustomNodeProps {
   data: CustomNodeModel
 }
 
 export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
-  const [isEditing, setIsEditing] = useState(false);
+  const { mapId } = useWorkspaceStoreData()
   const [editForm, setEditForm] = useState({
     question: data.question,
-    target: data.target
+    target: data.target,
+    nodeType: data.nodeType
   });
 
   const handleEdit = () => {
-    setIsEditing(true);
+    data.onEdit?.(mapId, data.id, { isEditing: true });
   };
 
-  const handleSave = () => {
-    data.onEdit?.(data.id, editForm);
-    setIsEditing(false);
+  const handleSave = async () => {
+    if (data.status === 'initial') {
+      // 新增节点时，提交到后端并更新节点ID
+      const response = await data.onEdit?.(mapId, data.id, { ...editForm, status: 'pending', parentId: data.parentId, isEditing: false });
+      if (response?.id) {
+        // 更新节点ID
+        data.onUpdateId?.(mapId, data.id, response.id);
+      }
+      return;
+    }
+    // 编辑已有节点
+    data.onEdit?.(mapId, data.id, { ...editForm, isEditing: false });
   };
 
   const handleCancel = () => {
+    if (data.status === 'initial') {
+      // 如果是新增的节点，取消时删除该节点
+      data.onDelete?.(mapId, data.id);
+      return;
+    }
+    // 如果是编辑已有节点，恢复原始数据
     setEditForm({
       question: data.question,
-      target: data.target
+      target: data.target,
+      nodeType: data.nodeType
     });
-    setIsEditing(false);
+    data.onEdit?.(mapId, data.id, { isEditing: false });
   };
+
+  const handleAddChild = () => {
+    data.onAddChild?.(data.id)
+  }
+
+  const handleDelete = () => {
+    data.onDelete?.(mapId, data.id);
+  }
 
   return (
     <div
@@ -74,8 +99,23 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
 
       {/* Content: 问题/目标/结论 */}
       <div className="space-y-1 mb-2">
-        {isEditing ? (
-          <div className="space-y-2" onDoubleClick={e => e.stopPropagation()}>
+        {data.isEditing ? (
+          <div className="space-y-2" onDoubleClick={e => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+            <div className="space-y-1.5">
+              <label htmlFor="nodeType" className="text-sm font-medium text-gray-700">节点类型</label>
+              <select
+                id="nodeType"
+                value={editForm.nodeType}
+                onChange={(e) => setEditForm(prev => ({ ...prev, nodeType: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="problem">问题</option>
+                <option value="information">信息</option>
+                <option value="analysis">分析</option>
+                <option value="generation">生成</option>
+                <option value="evaluation">评估</option>
+              </select>
+            </div>
             <div className="space-y-1.5">
               <label htmlFor="question" className="text-sm font-medium text-gray-700">问题</label>
               <Textarea
@@ -134,9 +174,10 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
         >
           <NodeActionButtons
             id={data.id}
+            mapId={mapId}
             onEdit={handleEdit}
-            onDelete={data.onDelete}
-            onAddChild={data.onAddChild}
+            onDelete={handleDelete}
+            onAddChild={handleAddChild}
           />
         </div>
       </div>
@@ -151,43 +192,4 @@ const nodeTypeIcons: Record<string, React.ReactNode> = {
   analysis: <div className="p-1.5 rounded-lg bg-cyan-500"><Brain className="w-4 h-4 text-white" /></div>,
   generation: <div className="p-1.5 rounded-lg bg-yellow-500"><Lightbulb className="w-4 h-4 text-white" /></div>,
   evaluation: <div className="p-1.5 rounded-lg bg-green-500"><Scale className="w-4 h-4 text-white" /></div>
-};
-
-// 根据依赖状态返回对应的badge样式
-const getDependencyStatusStyle = (status: string): { variant: 'default' | 'secondary' | 'destructive' | 'outline', className: string } => {
-  switch (status.toLowerCase()) {
-    case 'completed':
-    case 'success':
-    case 'resolved':
-      return {
-        variant: 'outline',
-        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-      }; // 柔和的绿色，表示已完成
-    case 'pending':
-    case 'waiting':
-    case 'blocked':
-      return {
-        variant: 'outline',
-        className: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-      }; // 柔和的琥珀色，表示等待中
-    case 'error':
-    case 'failed':
-    case 'unmet':
-      return {
-        variant: 'outline',
-        className: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-      }; // 柔和的玫瑰色，表示错误或未满足
-    case 'running':
-    case 'processing':
-    case 'active':
-      return {
-        variant: 'outline',
-        className: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-      }; // 柔和的蓝色，表示进行中
-    default:
-      return {
-        variant: 'outline',
-        className: 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
-      }; // 默认为柔和的灰色
-  }
 };

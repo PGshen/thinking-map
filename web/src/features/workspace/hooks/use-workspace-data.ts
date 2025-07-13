@@ -4,13 +4,13 @@
  * @LastEditTime: 2025-01-27
  * @FilePath: /thinking-map/web/src/features/workspace/hooks/use-workspace-data.ts
  */
-import { useEffect, useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useWorkspaceStore } from '../store/workspace-store';
 import { useToast } from '@/hooks/use-toast';
 import { Map } from '@/types/map';
 import { getMap, updateMap } from '@/api/map';
 import { getMapNodes, updateNode, updateNodeContext } from '@/api/node';
-import { CustomNodeModel } from '@/types/node';
+import { CustomNodeModel, Position } from '@/types/node';
 
 // 工作区数据管理hook
 export function useWorkspaceData(mapId?: string) {
@@ -19,7 +19,7 @@ export function useWorkspaceData(mapId?: string) {
     nodes,
     edges,
     isLoading,
-    hasUnsavedChanges,
+    changedNodePositions,
     actions,
   } = useWorkspaceStore();
   
@@ -52,17 +52,6 @@ export function useWorkspaceData(mapId?: string) {
     try {
       const nodeDataResp = await getMapNodes(id);
       const nodes = nodeDataResp.data.nodes;
-      
-      // 转换状态数字为字符串枚举
-      const mapStatus = (status: number): 'pending' | 'running' | 'completed' | 'error' => {
-        switch (status) {
-          case 0: return 'pending';
-          case 1: return 'running';
-          case 2: return 'completed';
-          case 3: return 'error';
-          default: return 'pending';
-        }
-      };
 
       // 转换为ReactFlow格式节点
       const reactFlowNodes = nodes.map((nodeData) => ({
@@ -76,7 +65,7 @@ export function useWorkspaceData(mapId?: string) {
           question: nodeData.question,
           target: nodeData.target,
           conclusion: nodeData.conclusion,
-          status: mapStatus(nodeData.status),
+          status: nodeData.status,
           context: nodeData.context,
           metadata: nodeData.metadata,
         } as CustomNodeModel,
@@ -94,7 +83,7 @@ export function useWorkspaceData(mapId?: string) {
       
       actions.setNodes(reactFlowNodes);
       actions.setEdges(reactFlowEdges);
-      actions.setUnsavedChanges(false);
+      actions.clearChangedNodePositions();
     } catch (error) {
       toast({
         title: '加载失败',
@@ -116,7 +105,6 @@ export function useWorkspaceData(mapId?: string) {
         ...mapInfo,
         ...info
       });
-      actions.setUnsavedChanges(false);
       
       toast({
         title: '保存成功',
@@ -134,75 +122,55 @@ export function useWorkspaceData(mapId?: string) {
     }
   }, [mapId, mapInfo]);
 
-  // 保存节点信息
-  const saveNodeInfo = useCallback(async (nodeId: string, updates: any) => {
-    if (!mapId) return false;
-    
-    try {
-      await updateNode(mapId, nodeId, updates);
-      actions.updateNode(nodeId, { data: { ...updates } });
-      
-      toast({
-        title: '保存成功',
-        description: '节点信息已更新',
-      });
-      
-      return true;
-    } catch (error) {
-      toast({
-        title: '保存失败',
-        description: '更新节点信息时出错，请重试',
-        variant: 'destructive',
-      });
-      return false;
-    }
-  }, [mapId]);
+  // 定时保存节点位置的间隔（毫秒）
+  const AUTO_SAVE_INTERVAL = 30000; // 30秒
 
-  // 保存整个工作区
-  const saveWorkspace = useCallback(async () => {
-    if (!mapId || !hasUnsavedChanges) return true;
+  // 保存提交位置到后端
+  const savePosition = useCallback(async () => {
+    if (!mapId || changedNodePositions.length === 0) return true;
     
-    actions.setLoading(true);
     try {
-      // 转换节点数据格式并保存每个节点
-      const savePromises = nodes.map(async node => {
+      const changedNodes = nodes.filter(node => changedNodePositions.includes(node.id));
+      const savePromises = changedNodes.map(async node => {
         const nodeData = {
-          question: node.data.question,
-          target: node.data.target,
-          context: node.data.context,
-          conclusion: node.data.conclusion,
-          status: node.data.status,
           position: node.position,
-          dependencies: node.data.dependencies,
         };
         
         await updateNode(mapId, node.id, nodeData);
       });
       
       await Promise.all(savePromises);
-      actions.setUnsavedChanges(false);
-      
-      toast({
-        title: '保存成功',
-        description: '工作区已保存',
-      });
+      // 所有节点都保存完成后，重置状态
+      actions.clearChangedNodePositions();
       
       return true;
     } catch (error) {
       toast({
         title: '保存失败',
-        description: '保存工作区时出错，请重试',
+        description: '保存位置时出错',
         variant: 'destructive',
       });
       return false;
-    } finally {
-      actions.setLoading(false);
     }
-  }, [mapId, hasUnsavedChanges, nodes]);
+  }, [mapId, changedNodePositions, nodes]);
+
+  // 设置定时保存
+  useEffect(() => {
+    if (!mapId) return;
+
+    const timer = setInterval(() => {
+      if (changedNodePositions.length > 0) {
+        savePosition();
+      }
+    }, AUTO_SAVE_INTERVAL);
+
+    return () => clearInterval(timer);
+  }, [mapId, changedNodePositions, savePosition]);
 
   // 初始化数据
   useEffect(() => {
     if (mapId) {
+      console.log("init map", mapId)
       loadMap(mapId);
       loadNodes(mapId);
     }
@@ -211,7 +179,7 @@ export function useWorkspaceData(mapId?: string) {
   // 页面卸载前保存
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
+      if (changedNodePositions.length > 0) {
         e.preventDefault();
         e.returnValue = '您有未保存的更改，确定要离开吗？';
       }
@@ -219,7 +187,7 @@ export function useWorkspaceData(mapId?: string) {
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges]);
+  }, [changedNodePositions]);
 
   return {
     // 数据
@@ -227,14 +195,13 @@ export function useWorkspaceData(mapId?: string) {
     nodes,
     edges,
     isLoading,
-    hasUnsavedChanges,
+    changedNodePositions,
     
     // 操作
     loadMap,
     loadNodes,
     saveMap,
-    saveNodeInfo,
-    saveWorkspace,
+    savePosition,
     
     // Store actions
     actions,

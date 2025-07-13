@@ -7,21 +7,56 @@
 import { useCallback } from 'react';
 import { useWorkspaceStore } from '../store/workspace-store';
 import { useToast } from '@/hooks/use-toast';
-import { CustomNodeModel } from '@/types/node';
+import { CreateNodeResponse, CustomNodeModel } from '@/types/node';
+import { updateNode, createNode, deleteNode } from '@/api/node';
 
 export const useNodeOperations = () => {
   const { actions } = useWorkspaceStore();
   const { toast } = useToast();
 
   const handleNodeEdit = useCallback(
-    async (id: string, data: { question: string; target: string }) => {
+    async (mapId: string, nodeId: string, updates: Partial<CustomNodeModel>) => {
+      if (!mapId) return;
       try {
-        console.log("---", data)
-        actions.updateNode(id, {"data": data} as Partial<CustomNodeModel>);
-        toast({
-          title: '更新成功',
-          variant: 'info'
-        })
+        // If updates only contains isEditing and selected, skip backend API call
+        const updateKeys = Object.keys(updates);
+        const skipUpdate = updateKeys.length <= 2 && 
+          updateKeys.every(key => key === 'isEditing' || key === 'selected');
+        
+        if (!skipUpdate) {
+          if (nodeId.startsWith('temp-')) {
+            // 如果是临时ID，说明是新增节点
+            const response = await createNode(mapId, {
+              nodeType: updates.nodeType || 'problem',
+              question: updates.question || '',
+              target: updates.target || '',
+              mapID: mapId,
+              parentID: updates.parentId || '',
+              position: { x: 0, y: 0 } // 位置将在store中计算
+            });
+            if (response.code === 200) {
+              actions.updateNodeId(nodeId, response.data.id);
+              nodeId = response.data.id;  // 更新node为后端返回的ID
+              toast({
+                title: '创建成功',
+                variant: 'info'
+              });
+            }
+          } else {
+            // 如果不是临时ID，说明是更新已有节点
+            const response = await updateNode(mapId, nodeId, {
+              question: updates.question || '',
+              target: updates.target || ''
+            });
+            if (response.code === 200) {
+              toast({
+                title: '更新成功',
+                variant: 'info'
+              });
+            }
+          }
+        }
+        actions.updateNode(nodeId, { "data": { ...updates } } as Partial<CustomNodeModel>);
       } catch (error) {
         toast({
           title: '操作失败',
@@ -34,14 +69,17 @@ export const useNodeOperations = () => {
   );
 
   const handleNodeDelete = useCallback(
-    async (id: string) => {
+    async (mapId: string, id: string) => {
       try {
         // 删除节点及其相关边
-        actions.deleteNode(id);
-        toast({
-          title: '删除成功',
-          description: '节点已删除',
-        });
+        const response = await deleteNode(mapId, id);
+        if (response.code === 200) {
+          actions.deleteNode(id);
+          toast({
+            title: '删除成功',
+            description: '节点已删除',
+          });
+        }
       } catch (error) {
         toast({
           title: '操作失败',
@@ -55,26 +93,28 @@ export const useNodeOperations = () => {
 
   const handleAddChild = useCallback(
     async (parentId: string) => {
+      console.log("parentId",parentId)
       try {
         // 创建新节点
         const newNode = {
-          id: `node-${Date.now()}`,
+          id: `temp-${Date.now()}`,
           type: 'custom',
           position: { x: 0, y: 0 }, // 位置将在store中根据父节点位置计算
           data: {
-            id: `node-${Date.now()}`,
+            id: `temp-${Date.now()}`,
+            parentId: parentId,
             nodeType: 'custom',
             question: '新问题',
             target: '新目标',
-            status: 'pending' as const,
+            status: 'initial' as const,
           },
         };
 
         // 添加节点和边
         actions.addChildNode(parentId, newNode);
         
-        // 打开面板编辑新节点
-        actions.openPanel(newNode.id);
+        actions.selectNode(newNode.id);
+        actions.setEditing(newNode.id); // 进入编辑状态
 
         toast({
           title: '添加成功',
@@ -91,9 +131,30 @@ export const useNodeOperations = () => {
     [actions, toast]
   );
 
+  const handleNodeUpdateId = useCallback(
+    async (mapId: string | null, oldId: string, newId: string) => {
+      console.log("mapId",mapId,"oldId",oldId,"newId",newId)
+      try {
+        actions.updateNodeId(oldId, newId);
+        toast({
+          title: '节点更新成功',
+          variant: 'info'
+        });
+      } catch (error) {
+        toast({
+          title: '操作失败',
+          description: '更新节点ID时出现错误',
+          variant: 'destructive',
+        });
+      }
+    },
+    [actions, toast]
+  );
+
   return {
     handleNodeEdit,
     handleNodeDelete,
     handleAddChild,
+    handleNodeUpdateId,
   };
 };

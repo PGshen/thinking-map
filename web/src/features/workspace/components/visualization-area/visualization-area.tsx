@@ -41,7 +41,7 @@ function MapCanvas({ mapId }: VisualizationAreaProps) {
   const { selectedNodeIds, actions } = useWorkspaceStore();
   const { nodes: nodesData, edges: edgesData, isLoading } = useWorkspaceData(mapId);
   const { handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu } = useNodeSelection();
-  const { handleNodeEdit, handleNodeDelete, handleAddChild } = useNodeOperations();
+  const { handleNodeEdit, handleNodeDelete, handleAddChild, handleNodeUpdateId } = useNodeOperations();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<CustomNodeModel>[]>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
@@ -49,6 +49,7 @@ function MapCanvas({ mapId }: VisualizationAreaProps) {
   // 节点拖动结束时同步到 store
   const onNodeDragStop = useCallback((event: any, draggedNode: any) => {
     actions.updateNode(draggedNode.id, { position: draggedNode.position });
+    actions.addChangedNodePosition(draggedNode.id);
   }, [actions]);
 
   // 注入事件到节点 data
@@ -63,6 +64,7 @@ function MapCanvas({ mapId }: VisualizationAreaProps) {
         onSelect: handleNodeClick,
         onDoubleClick: handleNodeDoubleClick,
         onContextMenu: handleNodeContextMenu,
+        onUpdateId: handleNodeUpdateId,
       } as any,
     }));
   }, []);

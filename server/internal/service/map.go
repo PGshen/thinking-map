@@ -37,7 +37,7 @@ func (s *MapService) CreateMap(ctx context.Context, req dto.CreateMapRequest, us
 		Constraints: req.Constraints,
 		Conclusion:  "",
 		Metadata:    datatypes.JSON{},
-		Status:      comm.MapStatusExecuting,
+		Status:      comm.MapStatusInitial,
 	}
 
 	rootNodeID := uuid.NewString()

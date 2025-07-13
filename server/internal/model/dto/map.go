@@ -39,7 +39,7 @@ type UpdateMapRequest struct {
 // MapResponse represents the mind map data in responses
 type MapResponse struct {
 	ID          string            `json:"id"`
-	Status      int               `json:"status"`
+	Status      string            `json:"status"`
 	Title       string            `json:"title"`
 	Problem     string            `json:"problem"`
 	ProblemType string            `json:"problemType"`
@@ -65,7 +65,7 @@ type MapListResponse struct {
 type MapListQuery struct {
 	Page        int    `form:"page" binding:"required,min=1"`
 	Limit       int    `form:"limit" binding:"required,min=1,max=100"`
-	Status      int    `form:"status" binding:"oneof=0 1 2"` // 0:全部, 1:进行中, 2:已完成
+	Status      string `form:"status"`
 	ProblemType string `form:"problemType"`
 	DateRange   string `form:"dateRange"` // this-week, last-week, this-month, all-time
 	Search      string `form:"search"`

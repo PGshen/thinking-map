@@ -46,7 +46,7 @@ func TestMapService_CRUD(t *testing.T) {
 	assert.Equal(t, createReq.Problem, gotMap.Problem)
 
 	// 3. ListMaps
-	listQuery := dto.MapListQuery{Page: 1, Limit: 10, Status: 0}
+	listQuery := dto.MapListQuery{Page: 1, Limit: 10, Status: "initial"}
 	listResp, err := mapSvc.ListMaps(ctx, listQuery, userID)
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, listResp.Total, 1)

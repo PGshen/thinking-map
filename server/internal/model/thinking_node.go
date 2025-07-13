@@ -28,7 +28,7 @@ type ThinkingNode struct {
 	Target       string           `gorm:"type:text"`
 	Context      DependentContext `gorm:"type:text;default:'{}'"` // 上下文
 	Conclusion   string           `gorm:"type:text"`
-	Status       int              `gorm:"type:int;default:0"` // 0:pending, 1:processing, 2:completed, -1:failed
+	Status       string           `gorm:"type:varchar(50);default:'initial'"` // initial, pending, running, completed, error
 	Position     Position         `gorm:"type:jsonb;default:'{\"x\":0,\"y\":0}'"`
 	Metadata     datatypes.JSON   `gorm:"type:jsonb;default:'{}'"`
 	Dependencies Dependencies     `gorm:"type:jsonb;default:'[]'"`
@@ -50,10 +50,8 @@ func (ThinkingNode) TableName() string {
 
 // Position 节点位置信息
 type Position struct {
-	X      float64 `json:"x"`
-	Y      float64 `json:"y"`
-	Width  float64 `json:"width,omitempty"`
-	Height float64 `json:"height,omitempty"`
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 // Dependency 节点依赖信息

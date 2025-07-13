@@ -39,12 +39,12 @@ func (r *thinkingMapRepository) Create(ctx context.Context, thinkingMap *model.T
 }
 
 // ListMaps retrieves a list of thinking maps with pagination
-func (r *thinkingMapRepository) List(ctx context.Context, userID string, status int, problemType, search string, startTime, endTime time.Time, page, limit int) ([]*model.ThinkingMap, int64, error) {
+func (r *thinkingMapRepository) List(ctx context.Context, userID string, status string, problemType, search string, startTime, endTime time.Time, page, limit int) ([]*model.ThinkingMap, int64, error) {
 	var maps []*model.ThinkingMap
 	var total int64
 
 	dbQuery := r.db.Model(&model.ThinkingMap{}).Where("user_id = ?", userID)
-	if status > 0 {
+	if status != "" {
 		dbQuery = dbQuery.Where("status = ?", status)
 	}
 	if problemType != "" {

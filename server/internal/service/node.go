@@ -101,10 +101,8 @@ func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.Crea
 		Target:   req.Target,
 		Status:   comm.NodeStatusPending,
 		Position: model.Position{
-			X:      req.Position.X,
-			Y:      req.Position.Y,
-			Width:  req.Position.Width,
-			Height: req.Position.Height,
+			X: req.Position.X,
+			Y: req.Position.Y,
 		},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -130,10 +128,8 @@ func (s *NodeService) UpdateNode(ctx context.Context, nodeID string, req dto.Upd
 	}
 	if (req.Position != model.Position{}) {
 		node.Position = model.Position{
-			X:      req.Position.X,
-			Y:      req.Position.Y,
-			Width:  req.Position.Width,
-			Height: req.Position.Height,
+			X: req.Position.X,
+			Y: req.Position.Y,
 		}
 	}
 	node.UpdatedAt = time.Now()

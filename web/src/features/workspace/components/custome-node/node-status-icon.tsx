@@ -1,12 +1,14 @@
 import React from 'react';
-import { Clock, Loader, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Clock, Loader, CheckCircle2, AlertCircle, SquircleDashed } from 'lucide-react';
 
 interface NodeStatusIconProps {
-  status: 'pending' | 'running' | 'completed' | 'error'
+  status: 'initial' | 'pending' | 'running' | 'completed' | 'error'
 }
 
 export const NodeStatusIcon: React.FC<NodeStatusIconProps> = ({ status }) => {
   switch (status) {
+    case 'initial':
+      return <SquircleDashed className="w-4 h-4 text-gray-400" />;
     case 'pending':
       return <Clock className="w-4 h-4 text-gray-400" />;
     case 'running':

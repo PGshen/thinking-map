@@ -41,7 +41,7 @@ func TestNodeDetailService_CRUD(t *testing.T) {
 		NodeType: "analysis",
 		Question: "分析问题?",
 		Target:   "分析目标",
-		Position: model.Position{X: 10, Y: 20, Width: 100, Height: 50},
+		Position: model.Position{X: 10, Y: 20},
 	}
 	nodeResp, err := nodeSvc.CreateNode(ctx, mapID, createNodeReq)
 	assert.NoError(t, err)
@@ -171,7 +171,7 @@ func TestNodeDetailService_CreateMultipleDetails(t *testing.T) {
 		NodeType: "analysis",
 		Question: "多详情分析问题?",
 		Target:   "多详情分析目标",
-		Position: model.Position{X: 50, Y: 100, Width: 200, Height: 100},
+		Position: model.Position{X: 50, Y: 100},
 	}
 	nodeResp, err := nodeSvc.CreateNode(ctx, mapID, createNodeReq)
 	assert.NoError(t, err)
@@ -195,7 +195,8 @@ func TestNodeDetailService_CreateMultipleDetails(t *testing.T) {
 				"type_name":  detailType,
 			},
 		}
-		detailResp, err := nodeDetailSvc.CreateNodeDetail(ctx, nodeID, createDetailReq)
+		var detailResp *dto.NodeDetailResponse
+		detailResp, err = nodeDetailSvc.CreateNodeDetail(ctx, nodeID, createDetailReq)
 		assert.NoError(t, err)
 		assert.Equal(t, detailType, detailResp.DetailType)
 		assert.Equal(t, createDetailReq.Content.Question, detailResp.Content.Question)
@@ -244,7 +245,7 @@ func TestNodeDetailService_UpdateContentOnly(t *testing.T) {
 		NodeType: "analysis",
 		Question: "内容更新分析问题?",
 		Target:   "内容更新分析目标",
-		Position: model.Position{X: 100, Y: 150, Width: 150, Height: 75},
+		Position: model.Position{X: 100, Y: 150},
 	}
 	nodeResp, err := nodeSvc.CreateNode(ctx, mapID, createNodeReq)
 	assert.NoError(t, err)

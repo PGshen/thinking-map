@@ -73,7 +73,7 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 		Status:   1,
 	}
 
-	if err := s.db.Create(&user).Error; err != nil {
+	if err = s.db.Create(&user).Error; err != nil {
 		return nil, err
 	}
 
