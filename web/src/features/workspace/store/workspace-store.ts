@@ -8,20 +8,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Node, Edge } from 'reactflow';
 import { Map } from '@/types/map';
-
-// 扩展Node类型以包含自定义属性
-interface CustomNodeData {
-  question: string;
-  target: string;
-  context?: string;
-  conclusion?: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  dependencies?: Array<{
-    id: string;
-    name: string;
-    status: string;
-  }>;
-}
+import { CustomNodeModel } from '@/types/node';
 
 // 工作区状态接口
 interface WorkspaceState {
@@ -36,10 +23,8 @@ interface WorkspaceState {
   sidebarOpen: boolean;
   
   // 节点和边数据
-  nodes: Node[];
+  nodes: Node<CustomNodeModel>[];
   edges: Edge[];
-  nodesData: Node[]; // 别名，保持兼容性
-  edgesData: Edge[]; // 别名，保持兼容性
   
   // 思维导图信息
   mapId: string | null;
@@ -78,10 +63,10 @@ interface WorkspaceActions {
   toggleSidebar: () => void;
   
   // 节点操作
-  setNodes: (nodes: Node[]) => void;
-  addNode: (node: Node) => void;
-  addChildNode: (parentId: string, childNode: Node) => void;
-  updateNode: (nodeId: string, updates: Partial<Node & CustomNodeData>) => void;
+  setNodes: (nodes: Node<CustomNodeModel>[]) => void;
+  addNode: (node: Node<CustomNodeModel>) => void;
+  addChildNode: (parentId: string, childNode: Node<CustomNodeModel>) => void;
+  updateNode: (nodeId: string, updates: Partial<Node<CustomNodeModel>>) => void;
   deleteNode: (nodeId: string) => void;
   selectNode: (nodeId: string | null) => void;
   clearSelection: () => void;
@@ -123,8 +108,6 @@ const initialState: WorkspaceState = {
   // 节点和边数据
   nodes: [],
   edges: [],
-  nodesData: [],
-  edgesData: [],
   
   // 思维导图信息
   mapId: null,
@@ -209,15 +192,15 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
         },
         
         // 节点操作
-        setNodes: (nodes: Node[]) => {
+        setNodes: (nodes: Node<CustomNodeModel>[]) => {
           set(
-            (state) => ({ nodes, nodesData: nodes, hasUnsavedChanges: true }),
+            (state) => ({ nodes, hasUnsavedChanges: true }),
             false,
             'setNodes'
           );
         },
         
-        addNode: (node: Node) => {
+        addNode: (node: Node<CustomNodeModel>) => {
           set(
             (state) => ({
               nodes: [...state.nodes, node],
@@ -228,7 +211,7 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           );
         },
 
-        addChildNode: (parentId: string, childNode: Node) => {
+        addChildNode: (parentId: string, childNode: Node<CustomNodeModel>) => {
           const parentNode = get().nodes.find(node => node.id === parentId);
           if (!parentNode) return;
 
@@ -263,12 +246,24 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           );
         },
         
-        updateNode: (nodeId: string, updates: Partial<Node>) => {
+        updateNode: (nodeId: string, updates: Partial<Node<CustomNodeModel>>) => {
           set(
             (state) => ({
-              nodes: state.nodes.map((node) =>
-                node.id === nodeId ? { ...node, ...updates } : node
-              ),
+              nodes: state.nodes.map((node) => {
+                if (node.id !== nodeId) return node;
+                
+                // 处理 data 字段的局部更新
+                const updatedNode = { ...node, ...updates };
+                // console.log("updates",updates)
+                // 如果 updates 中包含 data 字段，进行深度合并
+                if (updates.data && node.data) {
+                  updatedNode.data = {
+                    ...node.data,
+                    ...updates.data,
+                  };
+                }
+                return updatedNode;
+              }),
               hasUnsavedChanges: true,
             }),
             false,

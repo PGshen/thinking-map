@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Clock, Loader, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface NodeStatusIconProps {
   status: 'pending' | 'running' | 'completed' | 'error'
@@ -10,7 +10,7 @@ export const NodeStatusIcon: React.FC<NodeStatusIconProps> = ({ status }) => {
     case 'pending':
       return <Clock className="w-4 h-4 text-gray-400" />;
     case 'running':
-      return <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />;
+      return <Loader className="w-4 h-4 text-blue-400" />;
     case 'completed':
       return <CheckCircle2 className="w-4 h-4 text-green-500" />;
     case 'error':

@@ -27,6 +27,7 @@ import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { useWorkspaceData } from '@/features/workspace/hooks/use-workspace-data';
 import { useNodeSelection } from '@/features/workspace/hooks/use-node-selection';
 import { useNodeOperations } from '@/features/workspace/hooks/use-node-operations';
+import { CustomNodeModel } from '@/types/node';
 interface VisualizationAreaProps {
   mapId: string;
 }
@@ -42,18 +43,13 @@ function MapCanvas({ mapId }: VisualizationAreaProps) {
   const { handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu } = useNodeSelection();
   const { handleNodeEdit, handleNodeDelete, handleAddChild } = useNodeOperations();
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<CustomNodeModel>[]>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
 
-  // 标记是否初始化完成
-  const initializedRef = useRef(false);
-
   // 节点拖动结束时同步到 store
-  const onNodeDragStop = useCallback((event: any, node: any) => {
-    if (initializedRef.current) {
-      actions.setNodes(nodes.map(n => ({ ...n, data: { ...n.data } })));
-    }
-  }, [nodes, actions]);
+  const onNodeDragStop = useCallback((event: any, draggedNode: any) => {
+    actions.updateNode(draggedNode.id, { position: draggedNode.position });
+  }, [actions]);
 
   // 注入事件到节点 data
   const nodesWithHandlers = useCallback((nodeData: any[]): Node[] => {
@@ -67,17 +63,15 @@ function MapCanvas({ mapId }: VisualizationAreaProps) {
         onSelect: handleNodeClick,
         onDoubleClick: handleNodeDoubleClick,
         onContextMenu: handleNodeContextMenu,
-      },
+      } as any,
     }));
   }, []);
 
-  // 只在首次加载执行
+  // 从state中同步
   useEffect(() => {
-    if (initializedRef.current == false && nodesData.length > 0) {
+    if (nodesData.length > 0) {
       setNodes(nodesWithHandlers(nodesData));
       setEdges(edgesData);
-      initializedRef.current = true; // 标记初始化完成
-      console.log("init")
     }
   }, [nodesData, edgesData]);
 

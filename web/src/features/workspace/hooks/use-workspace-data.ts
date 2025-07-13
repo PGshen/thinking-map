@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Map } from '@/types/map';
 import { getMap, updateMap } from '@/api/map';
 import { getMapNodes, updateNode, updateNodeContext } from '@/api/node';
+import { CustomNodeModel } from '@/types/node';
 
 // 工作区数据管理hook
 export function useWorkspaceData(mapId?: string) {
@@ -52,14 +53,33 @@ export function useWorkspaceData(mapId?: string) {
       const nodeDataResp = await getMapNodes(id);
       const nodes = nodeDataResp.data.nodes;
       
+      // 转换状态数字为字符串枚举
+      const mapStatus = (status: number): 'pending' | 'running' | 'completed' | 'error' => {
+        switch (status) {
+          case 0: return 'pending';
+          case 1: return 'running';
+          case 2: return 'completed';
+          case 3: return 'error';
+          default: return 'pending';
+        }
+      };
+
       // 转换为ReactFlow格式节点
-      const reactFlowNodes = nodes.map((node) => ({
-        id: node.id,
+      const reactFlowNodes = nodes.map((nodeData) => ({
+        id: nodeData.id,
         type: 'custom',
-        position: node.position,
+        position: nodeData.position,
         data: {
-          ...node
-        },
+          id: nodeData.id,
+          parentId: nodeData.parentID,
+          nodeType: nodeData.nodeType,
+          question: nodeData.question,
+          target: nodeData.target,
+          conclusion: nodeData.conclusion,
+          status: mapStatus(nodeData.status),
+          context: nodeData.context,
+          metadata: nodeData.metadata,
+        } as CustomNodeModel,
       }));
       
       // 生成边（parentID存在且非空）

@@ -9,7 +9,7 @@ import { toast as sonnerToast } from 'sonner';
 interface ToastProps {
   title?: string;
   description?: string;
-  variant?: 'default' | 'destructive';
+  variant?: 'default' | 'info' | 'destructive';
   duration?: number;
 }
 
@@ -20,8 +20,12 @@ export function useToast() {
     
     if (variant === 'destructive') {
       sonnerToast.error(fullMessage, {
-        duration: duration || 4000,
+        duration: duration || 5000,
       });
+    } else if (variant === 'info') {
+      sonnerToast.info(fullMessage, {
+        duration: duration || 3000,
+      })
     } else {
       sonnerToast.success(fullMessage, {
         duration: duration || 3000,

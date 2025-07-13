@@ -5,20 +5,45 @@
  * @LastEditTime: 2025-07-07 23:52:59
  * @FilePath: /thinking-map/web/src/features/map/components/CustomNode.tsx
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { HelpCircle, Search, Brain, Lightbulb, Scale } from 'lucide-react';
 import type { CustomNodeModel } from '@/types/node';
 import { NodeStatusIcon } from './node-status-icon';
 import { NodeActionButtons } from './node-action-buttons';
 import { Handle, Position } from 'reactflow';
 import { MarkdownContent } from '@/components/ui/markdown-content';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 
 interface CustomNodeProps {
   data: CustomNodeModel
 }
 
 export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    question: data.question,
+    target: data.target
+  });
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleSave = () => {
+    data.onEdit?.(data.id, editForm);
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditForm({
+      question: data.question,
+      target: data.target
+    });
+    setIsEditing(false);
+  };
+
   return (
     <div
       className={`rounded-lg shadow-lg bg-white border px-3 py-2.5 min-w-[280px] max-w-[360px] select-none transition-all duration-200 hover:shadow-xl ${data.selected ? 'ring-1 ring-blue-400' : ''}`}
@@ -49,44 +74,55 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
 
       {/* Content: 问题/目标/结论 */}
       <div className="space-y-1 mb-2">
-        <div className="text-sm font-medium text-gray-900 line-clamp-2 overflow-hidden text-ellipsis">{data.question}</div>
-        <div className="text-xs text-gray-600 overflow-hidden">
-          <MarkdownContent 
-            id={'target' + data.id}
-            content={data.target} 
-            className="max-w-full overflow-hidden text-ellipsis line-clamp-5"
-          />
-        </div>
-        {data.status === 'completed' && data.conclusion && (
-          <div className="text-xs text-green-700 overflow-hidden leading-tight">
-            <MarkdownContent 
-              id={'conclusion' + data.id}
-              content={data.conclusion} 
-              className="max-w-full overflow-hidden text-ellipsis line-clamp-5"
-            />
+        {isEditing ? (
+          <div className="space-y-2" onDoubleClick={e => e.stopPropagation()}>
+            <div className="space-y-1.5">
+              <label htmlFor="question" className="text-sm font-medium text-gray-700">问题</label>
+              <Textarea
+                id="question"
+                value={editForm.question}
+                onChange={(e) => setEditForm(prev => ({ ...prev, question: e.target.value }))}
+                placeholder="输入问题"
+                className="text-sm min-h-[80px]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="target" className="text-sm font-medium text-gray-700">目标</label>
+              <Textarea
+                id="target"
+                value={editForm.target}
+                onChange={(e) => setEditForm(prev => ({ ...prev, target: e.target.value }))}
+                placeholder="输入目标"
+                className="text-xs min-h-[100px]"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={handleCancel}>取消</Button>
+              <Button size="sm" onClick={handleSave}>保存</Button>
+            </div>
           </div>
+        ) : (
+          <>
+            <div className="text-sm font-medium text-gray-900 line-clamp-2 overflow-hidden text-ellipsis">{data.question}</div>
+            <div className="text-xs text-gray-600 overflow-hidden">
+              <MarkdownContent 
+                id={'target' + data.id}
+                content={data.target} 
+                className="max-w-full overflow-hidden text-ellipsis line-clamp-5"
+              />
+            </div>
+            {data.status === 'completed' && data.conclusion && (
+              <div className="text-xs text-green-700 overflow-hidden leading-tight">
+                <MarkdownContent 
+                  id={'conclusion' + data.id}
+                  content={data.conclusion} 
+                  className="max-w-full overflow-hidden text-ellipsis line-clamp-5"
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
-
-      {/* Footer: 依赖/分支 */}
-      {/* <div className="flex items-center justify-between text-xs text-gray-500">
-        <div className="flex items-center gap-1 flex-wrap">
-          {data.dependencies && data.dependencies.length > 0 && (
-            data.dependencies.map((dep, index) => {
-              const { variant, className: statusClassName } = getDependencyStatusStyle(dep.status);
-              return (
-                <Badge
-                  key={index}
-                  variant={variant}
-                  className={`text-md px-1.5 py-0.5 h-5 rounded-sm font-medium! ${statusClassName}`}
-                >
-                  {dep.name}
-                </Badge>
-              );
-            })
-          )}
-        </div>
-      </div> */}
 
       {/* 操作按钮组（悬浮在节点上方） */}
       <div className="absolute right-0 -top-12 flex justify-end">
@@ -98,7 +134,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
         >
           <NodeActionButtons
             id={data.id}
-            onEdit={data.onEdit}
+            onEdit={handleEdit}
             onDelete={data.onDelete}
             onAddChild={data.onAddChild}
           />

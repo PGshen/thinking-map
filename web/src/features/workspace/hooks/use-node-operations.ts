@@ -7,16 +7,21 @@
 import { useCallback } from 'react';
 import { useWorkspaceStore } from '../store/workspace-store';
 import { useToast } from '@/hooks/use-toast';
+import { CustomNodeModel } from '@/types/node';
 
 export const useNodeOperations = () => {
   const { actions } = useWorkspaceStore();
   const { toast } = useToast();
 
   const handleNodeEdit = useCallback(
-    async (id: string) => {
+    async (id: string, data: { question: string; target: string }) => {
       try {
-        // 打开面板进行编辑
-        actions.openPanel(id);
+        console.log("---", data)
+        actions.updateNode(id, {"data": data} as Partial<CustomNodeModel>);
+        toast({
+          title: '更新成功',
+          variant: 'info'
+        })
       } catch (error) {
         toast({
           title: '操作失败',
@@ -57,6 +62,8 @@ export const useNodeOperations = () => {
           type: 'custom',
           position: { x: 0, y: 0 }, // 位置将在store中根据父节点位置计算
           data: {
+            id: `node-${Date.now()}`,
+            nodeType: 'custom',
             question: '新问题',
             target: '新目标',
             status: 'pending' as const,

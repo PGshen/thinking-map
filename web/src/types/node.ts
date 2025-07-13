@@ -39,7 +39,7 @@ export interface CustomNodeModel {
   selected?: boolean;
   childCount?: number;
   // 交互事件（由外部注入，非持久数据）
-  onEdit?: (id: string) => void;
+  onEdit?: (id: string, data: { question: string; target: string }) => void;
   onDelete?: (id: string) => void;
   onAddChild?: (id: string) => void;
   onSelect?: (id: string) => void;
