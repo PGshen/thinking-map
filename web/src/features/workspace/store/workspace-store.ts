@@ -102,7 +102,7 @@ const initialState: WorkspaceState = {
   // 面板状态
   isPanelOpen: false,
   panelOpen: false,
-  panelWidth: 400,
+  panelWidth: 600,
   activeNodeId: null,
   selectedNodeIds: [],
   

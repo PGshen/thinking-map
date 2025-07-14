@@ -299,7 +299,8 @@ Response 200 OK:
               "question": "string",
               "target": "string",
               "conclusion": "string",
-              "abstract": "string"
+              "abstract": "string",
+              "status": "string"
             }
           ],
           "prevSibling": [
@@ -307,7 +308,8 @@ Response 200 OK:
               "question": "string",
               "target": "string",
               "conclusion": "string",
-              "abstract": "string"
+              "abstract": "string",
+              "status": "string"
             }
           ],
           "children": [
@@ -315,7 +317,8 @@ Response 200 OK:
               "question": "string",
               "target": "string",
               "conclusion": "string",
-              "abstract": "string"
+              "abstract": "string",
+              "status": "string"
             }
           ]
         },

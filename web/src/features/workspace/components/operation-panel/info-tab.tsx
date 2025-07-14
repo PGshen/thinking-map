@@ -7,38 +7,33 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Save, RotateCcw, Trash2, Play, AlertCircle } from 'lucide-react';
+import { Save, RotateCcw, Trash2, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { DependencyContext } from './dependency-context';
+import { getUnmetDependenciesMessage, checkAllDependenciesMet } from '@/utils/dependency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
+import { CustomNodeModel, DependentContext, NodeContextItem } from '@/types/node';
 
 interface InfoTabProps {
   nodeId: string;
-  node: any; // TODO: 使用正确的节点类型
+  nodeData: CustomNodeModel;
 }
 
-export function InfoTab({ nodeId, node }: InfoTabProps) {
-  const nodeData = node.data as any;
+export function InfoTab({ nodeId, nodeData }: InfoTabProps) {
+  const defaultContext: DependentContext = {
+    ancestor: [],
+    prevSibling: [],
+    children: []
+  };
+
   const [formData, setFormData] = useState({
     question: nodeData?.question || '',
     target: nodeData?.target || '',
-    context: nodeData?.context || '',
+    context: nodeData?.context || defaultContext,
   });
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -48,24 +43,32 @@ export function InfoTab({ nodeId, node }: InfoTabProps) {
 
   // 监听节点数据变化
   useEffect(() => {
-    const nodeData = node.data as any;
     setFormData({
       question: nodeData?.question || '',
       target: nodeData?.target || '',
-      context: nodeData?.context || '',
+      context: nodeData?.context || {
+        ancestor: [],
+        prevSibling: [],
+        children: []
+      } as DependentContext,
     });
     setHasChanges(false);
-  }, [node]);
+  }, [nodeData]);
+
+
 
   // 检查是否有未保存的更改
   useEffect(() => {
-    const nodeData = node.data as any;
     const changed = 
       formData.question !== (nodeData?.question || '') ||
       formData.target !== (nodeData?.target || '') ||
-      formData.context !== (nodeData?.context || '');
+      JSON.stringify(formData.context) !== JSON.stringify(nodeData?.context || {
+        ancestor: [],
+        prevSibling: [],
+        children: []
+      });
     setHasChanges(changed);
-  }, [formData, node]);
+  }, [formData, nodeData]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -80,7 +83,7 @@ export function InfoTab({ nodeId, node }: InfoTabProps) {
       // await updateNodeInfo(nodeId, formData);
       
       // 更新本地状态
-      actions.updateNode(nodeId, { data: { ...node.data, ...formData } });
+      actions.updateNode(nodeId, { data: { ...nodeData, ...formData } });
       
       toast({
         title: '保存成功',
@@ -100,35 +103,12 @@ export function InfoTab({ nodeId, node }: InfoTabProps) {
   };
 
   const handleReset = () => {
-    const nodeData = node.data as any;
     setFormData({
       question: nodeData?.question || '',
       target: nodeData?.target || '',
-      context: nodeData?.context || '',
+      context: nodeData?.context || defaultContext,
     });
     setHasChanges(false);
-  };
-
-  const handleDelete = async () => {
-    try {
-      // TODO: 调用API删除节点
-      // await deleteNode(nodeId);
-      
-      // 更新本地状态
-      actions.deleteNode(nodeId);
-      actions.closePanel();
-      
-      toast({
-        title: '删除成功',
-        description: '节点已删除',
-      });
-    } catch (error) {
-      toast({
-        title: '删除失败',
-        description: '删除节点时出错，请重试',
-        variant: 'destructive',
-      });
-    }
   };
 
   const handleStartExecution = async () => {
@@ -157,10 +137,10 @@ export function InfoTab({ nodeId, node }: InfoTabProps) {
   };
 
   // 检查依赖是否满足
-  const unmetDependencies = nodeData?.dependencies?.filter(
-    (dep: any) => dep.status !== 'completed'
-  ) || [];
-  const canExecute = unmetDependencies.length === 0 && (nodeData?.status || 'pending') === 'pending';
+  const canExecute = (() => {
+    if (!nodeData?.context || nodeData?.status !== 'pending') return false;
+    return checkAllDependenciesMet(nodeData.context);
+  })();
 
   return (
     <div className="h-full flex flex-col space-y-6">
@@ -188,17 +168,6 @@ export function InfoTab({ nodeId, node }: InfoTabProps) {
           />
         </div>
         
-        <div className="space-y-2">
-          <Label htmlFor="context">上下文背景</Label>
-          <Textarea
-            id="context"
-            value={formData.context}
-            onChange={(e) => handleInputChange('context', e.target.value)}
-            placeholder="提供相关的背景信息和上下文..."
-            className="min-h-[100px] resize-none"
-          />
-        </div>
-        
         {/* 结论内容（仅在已完成状态显示） */}
         {(nodeData?.status === 'completed') && nodeData?.conclusion && (
           <div className="space-y-2">
@@ -212,34 +181,19 @@ export function InfoTab({ nodeId, node }: InfoTabProps) {
       
       <Separator />
       
-      {/* 依赖检查 */}
-      {nodeData?.dependencies && nodeData.dependencies.length > 0 && (
-        <div className="space-y-3">
-          <Label>依赖状态</Label>
-          <div className="space-y-2">
-            {nodeData.dependencies.map((dep: any, index: number) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-                <span className="text-sm font-medium">{dep.name}</span>
-                <Badge 
-                  variant={dep.status === 'completed' ? 'default' : 'secondary'}
-                  className={dep.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}
-                >
-                  {dep.status === 'completed' ? '已完成' : '未完成'}
-                </Badge>
-              </div>
-            ))}
-          </div>
-          
-          {unmetDependencies.length > 0 && (
-            <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-              <AlertCircle className="w-4 h-4 text-yellow-600" />
-              <p className="text-sm text-yellow-800">
-                有 {unmetDependencies.length} 个依赖未满足，无法开始执行
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+      {/* 依赖上下文 */}
+      <div className="space-y-4">
+        <Label>依赖上下文</Label>
+        <DependencyContext
+          context={formData.context}
+          onContextChange={(newContext) => {
+            setFormData(prev => ({
+              ...prev,
+              context: newContext
+            }));
+          }}
+        />
+      </div>
       
       <Separator />
       
@@ -280,30 +234,6 @@ export function InfoTab({ nodeId, node }: InfoTabProps) {
             重置
           </Button>
         </div>
-        
-        {/* 删除操作 */}
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" className="w-full">
-              <Trash2 className="w-4 h-4 mr-2" />
-              删除节点
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>确认删除</AlertDialogTitle>
-              <AlertDialogDescription>
-                确定要删除这个节点吗？此操作无法撤销，相关的子节点也会被删除。
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                确定删除
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </div>
   );

@@ -1,19 +1,20 @@
 "use client"
 
-import * as React from "react"
+import {useState, useEffect} from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { useWorkspaceStore } from "@/features/workspace/store/workspace-store"
 import useWorkspaceData from "../../hooks/use-workspace-data"
+import { useWorkspaceStore } from "../../store/workspace-store"
 
 export default function MapInfo() {
+  const { mapId } = useWorkspaceStore()
   const { mapInfo, saveMap } = useWorkspaceData()
 
   const { toast } = useToast()
-  const [isEditing, setIsEditing] = React.useState(false)
-  const [formData, setFormData] = React.useState({
+  const [isEditing, setIsEditing] = useState(false)
+  const [formData, setFormData] = useState({
     title: mapInfo?.title || '',
     problem: mapInfo?.problem || '',
     target: mapInfo?.target || '',
@@ -21,7 +22,7 @@ export default function MapInfo() {
     constraints: mapInfo?.constraints || [],
   })
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (mapInfo) {
       setFormData({
         title: mapInfo.title || '',
@@ -35,7 +36,7 @@ export default function MapInfo() {
 
   const handleSave = async () => {
     try {
-      await saveMap({
+      await saveMap(mapId, {
         ...formData
       })
       setIsEditing(false)

@@ -35,7 +35,7 @@ export function PanelTabs({ nodeId }: PanelTabsProps) {
   }
 
   // 根据节点状态判断Tab可用性
-  const nodeData = currentNode.data as any;
+  const nodeData = currentNode.data;
   const status = nodeData?.status || 'pending';
   const canDecompose = status === 'pending' || status === 'running';
   const canConclude = status === 'completed' ||
@@ -47,14 +47,14 @@ export function PanelTabs({ nodeId }: PanelTabsProps) {
         {/* Tab导航 */}
         <div className="flex items-center justify-between mt-2 px-4">
           <TabsList className="grid grid-cols-3">
-            <TabsTrigger value="info" className="flex items-center gap-2">
+            <TabsTrigger value="info" className="flex items-center gap-2 cursor-pointer">
               <Info className="w-4 h-4" />
               <span className="hidden sm:inline">信息</span>
             </TabsTrigger>
             <TabsTrigger
               value="decompose"
               disabled={!canDecompose}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 cursor-pointer"
             >
               <GitBranch className="w-4 h-4" />
               <span className="hidden sm:inline">拆解</span>
@@ -62,7 +62,7 @@ export function PanelTabs({ nodeId }: PanelTabsProps) {
             <TabsTrigger
               value="conclusion"
               disabled={!canConclude}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 cursor-pointer"
             >
               <CheckCircle className="w-4 h-4" />
               <span className="hidden sm:inline">结论</span>
@@ -82,7 +82,7 @@ export function PanelTabs({ nodeId }: PanelTabsProps) {
         {/* Tab内容 */}
         <div className="flex-1 overflow-hidden">
           <TabsContent value="info" className="h-full m-0 p-4">
-            <InfoTab nodeId={nodeId} node={currentNode} />
+            <InfoTab nodeId={nodeId} nodeData={nodeData} />
           </TabsContent>
 
           <TabsContent value="decompose" className="h-full m-0 p-4">

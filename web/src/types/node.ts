@@ -33,8 +33,7 @@ export interface CustomNodeModel {
   target: string;
   conclusion?: string;
   status: 'initial' | 'pending' | 'running' | 'completed' | 'error';
-  dependencies?: NodeContextItem[];
-  context?: any;
+  context?: DependentContext;
   metadata?: any;
   selected?: boolean;
   isEditing?: boolean;
@@ -48,12 +47,19 @@ export interface CustomNodeModel {
   onUpdateId?: (mapId: string|null, oldId: string, newId: string) => void;
 }
 
+export interface DependentContext {
+  ancestor: NodeContextItem[];
+  prevSibling: NodeContextItem[];
+  children: NodeContextItem[];
+}
+
 // 节点上下文项类型
 export interface NodeContextItem {
   question: string;
   target: string;
-  conclusion: string;
-  abstract: string;
+  conclusion?: string;
+  abstract?: string;
+  status: string;
 }
 
 export interface NodeResponse {

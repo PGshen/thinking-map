@@ -7,7 +7,7 @@
 import { useCallback, useEffect } from 'react';
 import { useWorkspaceStore } from '../store/workspace-store';
 import { useToast } from '@/hooks/use-toast';
-import { Map } from '@/types/map';
+import { Map, UpdateMapRequest } from '@/types/map';
 import { getMap, updateMap } from '@/api/map';
 import { getMapNodes, updateNode, updateNodeContext } from '@/api/node';
 import { CustomNodeModel, Position } from '@/types/node';
@@ -96,11 +96,12 @@ export function useWorkspaceData(mapId?: string) {
   }, []);
 
   // 保存思维导图详细信息
-  const saveMap = useCallback(async (info: Partial<Omit<Map, 'id' | 'createdAt' | 'updatedAt'>>) => {
+  const saveMap = useCallback(async (mapId: string | null, info: Partial<UpdateMapRequest>) => {
+    console.log(mapId)
     if (!mapId || !mapInfo) return false;
     
     try {
-      await updateMap(mapId, info);
+      const resp = await updateMap(mapId, info);
       actions.updateMap({
         ...mapInfo,
         ...info
