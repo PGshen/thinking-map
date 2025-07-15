@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Edit2, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,17 +16,39 @@ interface DependencyItemProps {
   onDelete: () => void;
   onAddAbove: () => void;
   onAddBelow: () => void;
+  isEditing?: boolean;
+  onEditingChange?: (isEditing: boolean) => void;
 }
 
-export function DependencyItem({ item, onUpdate, onDelete, onAddAbove, onAddBelow }: DependencyItemProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+export function DependencyItem({ item, onUpdate, onDelete, onAddAbove, onAddBelow, isEditing = false, onEditingChange }: DependencyItemProps) {
+  const [isExpanded, setIsExpanded] = useState(false);  //  如果初始便是isEditing,那么需要默认展开
+  const [internalIsEditing, setInternalIsEditing] = useState(false);
+  
+  // 使用外部传入的isEditing状态，如果没有传入则使用内部状态
+  const currentIsEditing = onEditingChange ? isEditing : internalIsEditing;
+  const setCurrentIsEditing = onEditingChange ? onEditingChange : setInternalIsEditing;
   const [editForm, setEditForm] = useState({
     question: item.question,
     target: item.target,
     conclusion: item.conclusion || '',
     status: item.status
   });
+
+  // 当item变化时更新editForm
+  useEffect(() => {
+    setEditForm({
+      question: item.question,
+      target: item.target,
+      conclusion: item.conclusion || '',
+      status: item.status
+    });
+  }, [item]);
+
+  useEffect(() => {
+    if (currentIsEditing) {
+      setIsExpanded(true);
+    }
+  }, [currentIsEditing]);
 
   // 获取摘要内容
   const getSummary = () => {
@@ -42,7 +64,7 @@ export function DependencyItem({ item, onUpdate, onDelete, onAddAbove, onAddBelo
       ...item,
       ...editForm
     });
-    setIsEditing(false);
+    setCurrentIsEditing(false);
   };
 
   return (
@@ -81,7 +103,7 @@ export function DependencyItem({ item, onUpdate, onDelete, onAddAbove, onAddBelo
 
           {/* 操作按钮 */}
           <div className="flex items-center gap-2 mt-4">
-            <Popover open={isEditing} onOpenChange={setIsEditing}>
+            <Popover open={currentIsEditing} onOpenChange={setCurrentIsEditing}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-5 px-1 text-xs cursor-pointer">
                   <Edit2 className="w-2.5 h-2.5 text-blue-500" />
@@ -131,7 +153,7 @@ export function DependencyItem({ item, onUpdate, onDelete, onAddAbove, onAddBelo
                     </div>
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setIsEditing(false)}>
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setCurrentIsEditing(false)}>
                       取消
                     </Button>
                     <Button size="sm" className="h-7 px-2 text-xs" onClick={handleSave}>
@@ -167,10 +189,7 @@ export function DependencyItem({ item, onUpdate, onDelete, onAddAbove, onAddBelo
               variant="outline"
               size="sm"
               className="h-5 px-2 text-xs cursor-pointer"
-              onClick={() => {
-                onAddAbove();
-                setIsEditing(true);
-              }}
+              onClick={onAddAbove}
             >
               <ArrowUp className="w-3.5 h-3.5" />
               {/* 向上添加 */}
@@ -180,10 +199,7 @@ export function DependencyItem({ item, onUpdate, onDelete, onAddAbove, onAddBelo
               variant="outline"
               size="sm"
               className="h-5 px-2 text-xs cursor-pointer"
-              onClick={() => {
-                onAddBelow();
-                setIsEditing(true);
-              }}
+              onClick={onAddBelow}
             >
               <ArrowDown className="w-3.5 h-3.5" />
               {/* 向下添加 */}

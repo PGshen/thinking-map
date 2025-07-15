@@ -454,7 +454,8 @@ Request:
         "question": "string",
         "target": "string",
         "conclusion": "string",
-        "abstract": "string"
+        "abstract": "string",
+        "status": "string"
       }
     ],
     "prevSibling": [
@@ -462,7 +463,8 @@ Request:
         "question": "string",
         "target": "string",
         "conclusion": "string",
-        "abstract": "string"
+        "abstract": "string",
+        "status": "string"
       }
     ],
     "children": [

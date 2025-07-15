@@ -113,7 +113,7 @@ export function OperationPanel() {
         </div>
         
         {/* 面板内容 */}
-        <div className="flex-1 overflow-hidden">
+        <div className="h-full flex flex-col overflow-hidden">
           <PanelTabs nodeId={activeNodeId} />
         </div>
       </div>

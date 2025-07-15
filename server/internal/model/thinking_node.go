@@ -70,6 +70,7 @@ type NodeContext struct {
 	Target     string `json:"target"`
 	Conclusion string `json:"conclusion"`
 	Abstract   string `json:"abstract"`
+	Status     string `json:"status"`
 }
 
 // Position 实现 Scanner 接口

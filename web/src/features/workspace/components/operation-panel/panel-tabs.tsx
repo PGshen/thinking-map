@@ -45,7 +45,7 @@ export function PanelTabs({ nodeId }: PanelTabsProps) {
     <div className="h-full flex flex-col">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
         {/* Tab导航 */}
-        <div className="flex items-center justify-between mt-2 px-4">
+        <div className="flex items-center justify-between mt-2 px-4 sticky top-0 bg-background z-10 border-b">
           <TabsList className="grid grid-cols-3">
             <TabsTrigger value="info" className="flex items-center gap-2 cursor-pointer">
               <Info className="w-4 h-4" />
@@ -81,16 +81,22 @@ export function PanelTabs({ nodeId }: PanelTabsProps) {
 
         {/* Tab内容 */}
         <div className="flex-1 overflow-hidden">
-          <TabsContent value="info" className="h-full m-0 p-4">
-            <InfoTab nodeId={nodeId} nodeData={nodeData} />
+          <TabsContent value="info" className="h-full m-0 p-0 overflow-x-auto overflow-y-auto">
+            <div className="p-4 min-w-fit">
+              <InfoTab nodeId={nodeId} nodeData={nodeData} />
+            </div>
           </TabsContent>
 
-          <TabsContent value="decompose" className="h-full m-0 p-4">
-            <DecomposeTab nodeId={nodeId} node={currentNode} />
+          <TabsContent value="decompose" className="h-full m-0 p-0 overflow-x-auto overflow-y-auto">
+            <div className="p-4 min-w-fit">
+              <DecomposeTab nodeId={nodeId} node={currentNode} />
+            </div>
           </TabsContent>
 
-          <TabsContent value="conclusion" className="h-full m-0 p-4">
-            <ConclusionTab nodeId={nodeId} node={currentNode} />
+          <TabsContent value="conclusion" className="h-full m-0 p-0 overflow-x-auto overflow-y-auto">
+            <div className="p-4 min-w-fit">
+              <ConclusionTab nodeId={nodeId} node={currentNode} />
+            </div>
           </TabsContent>
         </div>
       </Tabs>

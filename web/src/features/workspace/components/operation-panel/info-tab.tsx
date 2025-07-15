@@ -17,6 +17,7 @@ import { getUnmetDependenciesMessage, checkAllDependenciesMet } from '@/utils/de
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { CustomNodeModel, DependentContext, NodeContextItem } from '@/types/node';
+import { updateNode, updateNodeContext } from '@/api/node';
 
 interface InfoTabProps {
   nodeId: string;
@@ -24,6 +25,7 @@ interface InfoTabProps {
 }
 
 export function InfoTab({ nodeId, nodeData }: InfoTabProps) {
+  const { mapId } = useWorkspaceStore();
   const defaultContext: DependentContext = {
     ancestor: [],
     prevSibling: [],
@@ -76,20 +78,24 @@ export function InfoTab({ nodeId, nodeData }: InfoTabProps) {
 
   const handleSave = async () => {
     if (!hasChanges) return;
+    if (!mapId) return
     
     setIsSaving(true);
     try {
       // TODO: 调用API保存节点信息
-      // await updateNodeInfo(nodeId, formData);
-      
-      // 更新本地状态
-      actions.updateNode(nodeId, { data: { ...nodeData, ...formData } });
-      
+      let res = await updateNodeContext(mapId, nodeId, formData);
+      if (res.code !== 200) {
+        throw new Error(res.message);
+      }  
+      res = await updateNode(mapId, nodeId, formData);
+      if (res.code !== 200) {
+        throw new Error(res.message);
+      }
+      actions.updateNode(nodeId, { data: { ...nodeData, ...formData } });    
       toast({
         title: '保存成功',
         description: '节点信息已更新',
       });
-      
       setHasChanges(false);
     } catch (error) {
       toast({

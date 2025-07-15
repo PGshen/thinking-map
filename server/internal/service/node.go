@@ -166,6 +166,7 @@ func (s *NodeService) getAncestor(ctx *gin.Context, nodeID string) []model.NodeC
 		Question: parentNode.Question,
 		Target:   parentNode.Target,
 		Abstract: "", // 可以根据需要添加摘要逻辑
+		Status:   parentNode.Status,
 	}
 	// 递归获取更上层的祖先节点
 	ancestor := s.getAncestor(ctx, parentNode.ID)
@@ -195,6 +196,7 @@ func (s *NodeService) getPreSibling(ctx *gin.Context, node *model.ThinkingNode) 
 			Target:     depNode.Target,
 			Conclusion: depNode.Conclusion,
 			Abstract:   "", // 可以根据需要添加摘要逻辑
+			Status:     depNode.Status,
 		}
 		nodeContexts = append(nodeContexts, nodeContext)
 	}
@@ -218,6 +220,7 @@ func (s *NodeService) getChildren(ctx *gin.Context, nodeID string) []model.NodeC
 			Target:     childNode.Target,
 			Conclusion: childNode.Conclusion,
 			Abstract:   "", // 可以根据需要添加摘要逻辑
+			Status:     childNode.Status,
 		}
 		nodeContexts = append(nodeContexts, nodeContext)
 	}
