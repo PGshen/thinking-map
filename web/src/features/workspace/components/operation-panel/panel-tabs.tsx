@@ -45,7 +45,7 @@ export function PanelTabs({ nodeId }: PanelTabsProps) {
     <div className="h-full flex flex-col">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
         {/* Tab导航 */}
-        <div className="flex items-center justify-between mt-2 px-4 sticky top-0 bg-background z-10 border-b">
+        <div className="flex items-center justify-between mt-2 px-4 sticky top-0 bg-background">
           <TabsList className="grid grid-cols-3">
             <TabsTrigger value="info" className="flex items-center gap-2 cursor-pointer">
               <Info className="w-4 h-4" />

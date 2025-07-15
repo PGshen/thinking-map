@@ -30,7 +30,7 @@ import MapInfo from "./map-info"
 import Settings from "./settings"
 import useWorkspaceData from "../../hooks/use-workspace-data"
 
-export function AppSidebar({ mapId, ...props }: React.ComponentProps<typeof Sidebar> & { mapId: string }) {
+export function InfoSidebar({ mapId, ...props }: React.ComponentProps<typeof Sidebar> & { mapId: string }) {
   const router = useRouter()
   const [showConfirm, setShowConfirm] = React.useState(false)
   const { changedNodePositions } = useWorkspaceStore()

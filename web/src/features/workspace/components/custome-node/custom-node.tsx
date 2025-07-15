@@ -71,7 +71,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
 
   return (
     <div
-      className={`rounded-lg shadow-lg bg-white border px-3 py-2.5 min-w-[280px] max-w-[360px] select-none transition-all duration-200 hover:shadow-xl ${data.selected ? 'ring-1 ring-blue-400' : ''}`}
+      className={`rounded-lg shadow-lg bg-white border ${data.status === 'initial' ? 'border-dashed' : ''} px-3 py-2.5 min-w-[280px] max-w-[360px] select-none transition-all duration-200 hover:shadow-xl ${data.selected ? 'ring-1 ring-blue-400' : ''}`}
       onClick={() => data.onSelect?.(data.id)}
       onDoubleClick={() => data.onDoubleClick?.(data.id)}
       onContextMenu={e => { e.preventDefault(); data.onContextMenu?.(data.id, e); }}

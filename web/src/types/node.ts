@@ -115,3 +115,4 @@ export type CreateNodeResponse = ApiResponse<NodeResponse>;
 export type UpdateNodeResponse = ApiResponse<NodeResponse>;
 export type DeleteNodeResponse = ApiResponse<null>;
 export type UpdateNodeContextResponse = ApiResponse<NodeResponse>;
+export type ResetNodeContextResponse = ApiResponse<NodeResponse>;

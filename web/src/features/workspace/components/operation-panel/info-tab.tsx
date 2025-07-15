@@ -17,7 +17,7 @@ import { getUnmetDependenciesMessage, checkAllDependenciesMet } from '@/utils/de
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { CustomNodeModel, DependentContext, NodeContextItem } from '@/types/node';
-import { updateNode, updateNodeContext } from '@/api/node';
+import { resetNodeContext, updateNode, updateNodeContext } from '@/api/node';
 
 interface InfoTabProps {
   nodeId: string;
@@ -108,13 +108,28 @@ export function InfoTab({ nodeId, nodeData }: InfoTabProps) {
     }
   };
 
-  const handleReset = () => {
-    setFormData({
-      question: nodeData?.question || '',
-      target: nodeData?.target || '',
-      context: nodeData?.context || defaultContext,
-    });
-    setHasChanges(false);
+  const handleReset = async () => {
+    if (!mapId) return
+    try {
+      const res = await resetNodeContext(mapId, nodeId);
+      if (res.code !== 200) {
+        throw new Error(res.message);
+      }
+      // 重置上下文
+      actions.updateNode(nodeId, { data: { ...nodeData, context: res.data.context } });
+      
+      toast({
+        title: '重置成功',
+        description: '节点上下文已重置',
+      });
+      setHasChanges(false);
+    } catch (error) {
+      toast({
+        title: '重置失败',
+        description: '重置节点上下文时出错，请重试',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleStartExecution = async () => {
@@ -210,7 +225,7 @@ export function InfoTab({ nodeId, nodeData }: InfoTabProps) {
           <Button
             onClick={handleStartExecution}
             disabled={!canExecute}
-            className="w-full"
+            className="w-full cursor-pointer"
             size="lg"
           >
             <Play className="w-4 h-4 mr-2" />
@@ -223,7 +238,7 @@ export function InfoTab({ nodeId, nodeData }: InfoTabProps) {
           <Button
             onClick={handleSave}
             disabled={!hasChanges || isSaving}
-            className="flex-1"
+            className="flex-1 cursor-pointer"
             variant="default"
           >
             <Save className="w-4 h-4 mr-2" />
@@ -232,9 +247,8 @@ export function InfoTab({ nodeId, nodeData }: InfoTabProps) {
           
           <Button
             onClick={handleReset}
-            disabled={!hasChanges}
             variant="outline"
-            className="flex-1"
+            className="flex-1 cursor-pointer"
           >
             <RotateCcw className="w-4 h-4 mr-2" />
             重置

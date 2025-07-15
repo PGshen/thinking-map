@@ -27,17 +27,14 @@ export async function fetchMapList(params: MapListQuery): Promise<MapListRespons
   return get(url);
 }
 
-// 获取思维导图详情
 export async function getMap(mapId: string): Promise<MapDetailResponse> {
-  return get(API_ENDPOINTS.MAP.GET + `/${mapId}`);
+  return get(API_ENDPOINTS.MAP.GET.replace(':mapId', mapId));
 }
 
-// 更新思维导图
 export async function updateMap(mapId: string, params: UpdateMapRequest): Promise<UpdateMapResponse> {
-  return put(API_ENDPOINTS.MAP.UPDATE + `/${mapId}`, params);
+  return put(API_ENDPOINTS.MAP.UPDATE.replace(':mapId', mapId), params);
 }
 
-// 删除思维导图
 export async function deleteMap(mapId: string): Promise<void> {
-  del(API_ENDPOINTS.MAP.DELETE + `/${mapId}`);
+  del(API_ENDPOINTS.MAP.DELETE.replace(':mapId', mapId));
 }

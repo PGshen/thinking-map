@@ -9,7 +9,7 @@
 import React from 'react';
 import { VisualizationArea } from './visualization-area/visualization-area';
 import { OperationPanel } from './operation-panel/operation-panel';
-import { AppSidebar } from './side-bar/side-bar';
+import { InfoSidebar } from './side-bar/side-bar';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 
@@ -29,7 +29,7 @@ export function WorkspaceLayout({ mapId }: WorkspaceLayoutProps) {
         } as React.CSSProperties
       }
     >
-      <AppSidebar mapId={mapId} />
+      <InfoSidebar mapId={mapId} />
       <SidebarInset>
         <div className="flex-1 flex relative overflow-hidden">
           {/* 可视化区域 */}

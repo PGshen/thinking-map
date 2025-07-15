@@ -90,6 +90,31 @@ func (s *NodeService) UpdateNodeContext(ctx *gin.Context, nodeID string, req dto
 	return &resp, nil
 }
 
+// ResetNodeContext 重置上下文
+func (s *NodeService) ResetNodeContext(ctx *gin.Context, nodeID string) (*dto.NodeResponse, error) {
+	node, err := s.nodeRepo.FindByID(ctx, nodeID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Reset ancestor context
+	node.Context.Ancestor = s.getAncestor(ctx, nodeID)
+
+	// Reset previous sibling context
+	node.Context.PrevSibling = s.getPreSibling(ctx, node)
+
+	// Reset children context
+	node.Context.Children = s.getChildren(ctx, nodeID)
+
+	// Update node with new context
+	if err := s.nodeRepo.Update(ctx, node); err != nil {
+		return nil, err
+	}
+
+	resp := dto.ToNodeResponse(node)
+	return &resp, nil
+}
+
 // CreateNode 创建节点
 func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.CreateNodeRequest) (*dto.NodeResponse, error) {
 	node := &model.ThinkingNode{

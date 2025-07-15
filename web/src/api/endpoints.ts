@@ -16,17 +16,18 @@ export const API_ENDPOINTS = {
   },
   MAP: {
     CREATE: `${API_BASE}/v1/maps`,
-    GET: `${API_BASE}/v1/maps`,
+    GET: `${API_BASE}/v1/maps/:mapId`,
     LIST: `${API_BASE}/v1/maps`,
-    UPDATE: `${API_BASE}/v1/maps`,
-    DELETE: `${API_BASE}/v1/maps`,
+    UPDATE: `${API_BASE}/v1/maps/:mapId`,
+    DELETE: `${API_BASE}/v1/maps/:mapId`,
   },
   NODE: {
-    CREATE: `${API_BASE}/v1/maps`,
-    GET: `${API_BASE}/v1/maps`,
-    UPDATE: `${API_BASE}/v1/maps`,
-    DELETE: `${API_BASE}/v1/maps`,
-    CONTEXT: `${API_BASE}/v1/maps`,
+    CREATE: `${API_BASE}/v1/maps/:mapId/nodes`,
+    GET: `${API_BASE}/v1/maps/:mapId/nodes`,
+    UPDATE: `${API_BASE}/v1/maps/:mapId/nodes/:nodeId`,
+    DELETE: `${API_BASE}/v1/maps/:mapId/nodes/:nodeId`,
+    CONTEXT: `${API_BASE}/v1/maps/:mapId/nodes/:nodeId/context`,
+    CONTEXT_RESET: `${API_BASE}/v1/maps/:mapId/nodes/:nodeId/context/reset`,
   },
   // 其他模块分组
 };

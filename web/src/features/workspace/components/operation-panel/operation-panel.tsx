@@ -92,7 +92,7 @@ export function OperationPanel() {
       <div
         ref={panelRef}
         className={cn(
-          "fixed right-0 top-16 bottom-0 bg-background border-l shadow-lg z-50",
+          "fixed h-screen right-0 top-16 bottom-0 bg-background border-l shadow-lg z-50",
           "lg:relative lg:top-0 lg:shadow-none",
           panelOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
         )}
@@ -105,7 +105,7 @@ export function OperationPanel() {
         {/* 调整大小手柄 */}
         <div
           ref={resizerRef}
-          className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/20 transition-colors group hidden lg:block"
+          className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/20 transition-colors group hidden lg:block z-20"
         >
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
             <GripVertical className="w-3 h-3 text-muted-foreground" />

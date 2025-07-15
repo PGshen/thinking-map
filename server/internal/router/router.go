@@ -98,6 +98,7 @@ func SetupRouter(
 				nodes.PUT("/:nodeId", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.UpdateNode)
 				nodes.DELETE("/:nodeId", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.DeleteNode)
 				nodes.PUT("/:nodeId/context", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.UpdateNodeContext)
+				nodes.PUT("/:nodeId/context/reset", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.ResetNodeContext)
 			}
 
 			nodeDetails := protected.Group("/maps/:mapId/nodes/:nodeId/details")

@@ -510,6 +510,37 @@ Response 200 OK:
   "requestId": "uuid"
 }
 
+# 重置上下文
+PUT /api/v1/{mapId}/nodes/{nodeId}/context/reset
+Authorization: Bearer <token>
+
+Response 200 OK:
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "uuid",
+    "mapID": "uuid",
+    "parentID": "uuid",
+    "nodeType": "string",
+    "question": "string",
+    "target": "string",
+    "position": {
+      "x": 0,
+      "y": 0
+    },
+    "context": {
+      "ancestor": [],
+      "prevSibling": [],
+      "children": []
+    },
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  },
+  "timestamp": "2024-01-01T00:00:00Z",
+  "requestId": "uuid"
+}
+
 # 删除节点
 DELETE /api/v1/{mapId}/nodes/{nodeId}
 Authorization: Bearer <token>
