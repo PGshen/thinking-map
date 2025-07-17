@@ -1,3 +1,5 @@
+import { Position } from './node';
+
 // 与后端 dto/sse.go 对齐的 SSE 事件类型定义
 export interface NodeCreatedEvent {
   nodeID: string;
@@ -5,12 +7,13 @@ export interface NodeCreatedEvent {
   nodeType: string;
   question: string;
   target: string;
-  position: any; // TODO: 可根据 model.Position 进一步细化
+  position: Position;
   timestamp: string;
 }
 
 export interface NodeUpdatedEvent {
   nodeID: string;
+  mode: string; // 更新模式：replace/append
   updates: Record<string, any>;
   timestamp: string;
 }
@@ -43,4 +46,4 @@ export interface TestEventResponse {
   message: string;
 }
 
-export type SSEEvent = NodeCreatedEvent | NodeUpdatedEvent | ThinkingProgressEvent | ErrorEvent; 
+export type SSEEvent = NodeCreatedEvent | NodeUpdatedEvent | ThinkingProgressEvent | ErrorEvent;

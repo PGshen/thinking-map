@@ -10,6 +10,9 @@ export const API_ENDPOINTS = {
     REFRESH: `${API_BASE}/v1/auth/refresh`,
     LOGOUT: `${API_BASE}/v1/auth/logout`,
   },
+  SSE: {
+    CONNECT: `${API_BASE}/v1/sse/connect/:mapID`,
+  },
   THINKING: {
     REPEAT: `${API_BASE}/v1/thinking/repeat`,
     UNDERSTANDING: `${API_BASE}/v1/thinking/understanding`

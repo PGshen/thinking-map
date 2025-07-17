@@ -65,7 +65,7 @@ type ErrorEvent struct {
 
 // TestEventRequest represents the request for testing SSE events
 type TestEventRequest struct {
-	EventType string                 `json:"eventType" binding:"required,oneof=node_created node_updated thinking_progress error custom"`
+	EventType string                 `json:"eventType" binding:"required,oneof=nodeCreated nodeUpdated thinkingProgress error custom"`
 	Data      map[string]interface{} `json:"data" binding:"required"`
 	Delay     int                    `json:"delay" binding:"min=0,max=10000"` // 延迟发送时间（毫秒）
 }
