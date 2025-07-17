@@ -38,7 +38,7 @@ const initialNodes: Node<CustomNodeModel>[] = [
     position: { x: 100, y: 250 },
     data: {
       id: '2',
-      parentId: '1',
+      parentID: '1',
       nodeType: 'analysis',
       question: '用户研究与需求分析',
       target: '团队内部保持一致：最重要的是团队约定统一考虑后端风格：如果后端使用下划线，前端可以考虑保持一致使用转换工具',
@@ -55,7 +55,7 @@ const initialNodes: Node<CustomNodeModel>[] = [
     position: { x: 350, y: 250 },
     data: {
       id: '3',
-      parentId: '1',
+      parentID: '1',
       nodeType: 'information',
       question: '界面设计与原型',
       target: '设计界面布局和元素',

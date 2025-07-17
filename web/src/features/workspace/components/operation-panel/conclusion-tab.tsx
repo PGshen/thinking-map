@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 
 interface ConclusionTabProps {
-  nodeId: string;
+  nodeID: string;
   node: any; // TODO: 使用正确的节点类型
 }
 
@@ -31,7 +31,7 @@ interface ExecutionLog {
   details?: string;
 }
 
-export function ConclusionTab({ nodeId, node }: ConclusionTabProps) {
+export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   const nodeData = node.data as any;
   const [conclusion, setConclusion] = useState(nodeData?.conclusion || '');
   const [hasChanges, setHasChanges] = useState(false);
@@ -120,12 +120,12 @@ export function ConclusionTab({ nodeId, node }: ConclusionTabProps) {
     setIsSaving(true);
     try {
       // TODO: 调用API保存结论
-      // await updateNodeConclusion(nodeId, conclusion);
+      // await updateNodeConclusion(nodeID, conclusion);
       
       // 更新本地状态
       const nodeData = node.data as any;
       const currentStatus = nodeData?.status || 'pending';
-      actions.updateNode(nodeId, { 
+      actions.updateNode(nodeID, { 
         data: {
           ...nodeData,
           conclusion,
@@ -166,7 +166,7 @@ export function ConclusionTab({ nodeId, node }: ConclusionTabProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `execution-logs-${nodeId}.txt`;
+    a.download = `execution-logs-${nodeID}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

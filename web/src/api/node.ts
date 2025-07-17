@@ -20,31 +20,31 @@ import type {
 } from '@/types/node';
 
 // 获取思维导图的所有节点
-export async function getMapNodes(mapId: string): Promise<NodeListResponse> {
-  return get(API_ENDPOINTS.NODE.GET.replace(':mapId', mapId));
+export async function getMapNodes(mapID: string): Promise<NodeListResponse> {
+  return get(API_ENDPOINTS.NODE.GET.replace(':mapID', mapID));
 }
 
 // 创建节点
-export async function createNode(mapId: string, params: CreateNodeRequest): Promise<CreateNodeResponse> {
-  return post(API_ENDPOINTS.NODE.CREATE.replace(':mapId', mapId), params);
+export async function createNode(mapID: string, params: CreateNodeRequest): Promise<CreateNodeResponse> {
+  return post(API_ENDPOINTS.NODE.CREATE.replace(':mapID', mapID), params);
 }
 
 // 更新节点
-export async function updateNode(mapId: string, nodeId: string, params: UpdateNodeRequest): Promise<UpdateNodeResponse> {
-  return put(API_ENDPOINTS.NODE.UPDATE.replace(':mapId', mapId).replace(':nodeId', nodeId), params);
+export async function updateNode(mapID: string, nodeID: string, params: UpdateNodeRequest): Promise<UpdateNodeResponse> {
+  return put(API_ENDPOINTS.NODE.UPDATE.replace(':mapID', mapID).replace(':nodeID', nodeID), params);
 }
 
 // 更新节点上下文
-export async function updateNodeContext(mapId: string, nodeId: string, params: UpdateNodeContextRequest): Promise<UpdateNodeContextResponse> {
-  return put(API_ENDPOINTS.NODE.CONTEXT.replace(':mapId', mapId).replace(':nodeId', nodeId), params);
+export async function updateNodeContext(mapID: string, nodeID: string, params: UpdateNodeContextRequest): Promise<UpdateNodeContextResponse> {
+  return put(API_ENDPOINTS.NODE.CONTEXT.replace(':mapID', mapID).replace(':nodeID', nodeID), params);
 }
 
 // 重置节点上下文
-export async function resetNodeContext(mapId: string, nodeId: string): Promise<ResetNodeContextResponse> {
-  return put(API_ENDPOINTS.NODE.CONTEXT_RESET.replace(':mapId', mapId).replace(':nodeId', nodeId));
+export async function resetNodeContext(mapID: string, nodeID: string): Promise<ResetNodeContextResponse> {
+  return put(API_ENDPOINTS.NODE.CONTEXT_RESET.replace(':mapID', mapID).replace(':nodeID', nodeID));
 }
 
 // 删除节点
-export async function deleteNode(mapId: string, nodeId: string): Promise<DeleteNodeResponse> {
-  return del(API_ENDPOINTS.NODE.DELETE.replace(':mapId', mapId).replace(':nodeId', nodeId));
+export async function deleteNode(mapID: string, nodeID: string): Promise<DeleteNodeResponse> {
+  return del(API_ENDPOINTS.NODE.DELETE.replace(':mapID', mapID).replace(':nodeID', nodeID));
 }

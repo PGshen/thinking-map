@@ -26,7 +26,7 @@ type LoginRequest struct {
 
 // AuthData represents the data field in auth responses
 type AuthData struct {
-	UserID       string `json:"userId,omitempty"`
+	UserID       string `json:"userID,omitempty"`
 	Username     string `json:"username,omitempty"`
 	Email        string `json:"email,omitempty"`
 	FullName     string `json:"fullName,omitempty"`
@@ -44,7 +44,7 @@ type ErrorData struct {
 // TokenInfoDTO 用于返回 token 信息
 // 与 model.TokenInfo 字段保持一致
 type TokenInfoDTO struct {
-	UserID      string    `json:"userId"`
+	UserID      string    `json:"userID"`
 	Username    string    `json:"username"`
 	AccessToken string    `json:"accessToken"`
 	ExpiresAt   time.Time `json:"expiresAt"`

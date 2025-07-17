@@ -17,7 +17,7 @@ export function OperationPanel() {
   const { 
     panelOpen, 
     panelWidth, 
-    activeNodeId, 
+    activeNodeID, 
     actions 
   } = useWorkspaceStore();
   
@@ -76,7 +76,7 @@ export function OperationPanel() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [panelOpen, actions]);
 
-  if (!panelOpen || !activeNodeId) {
+  if (!panelOpen || !activeNodeID) {
     return null;
   }
 
@@ -114,7 +114,7 @@ export function OperationPanel() {
         
         {/* 面板内容 */}
         <div className="h-full flex flex-col overflow-hidden">
-          <PanelTabs nodeId={activeNodeId} />
+          <PanelTabs nodeID={activeNodeID} />
         </div>
       </div>
     </>

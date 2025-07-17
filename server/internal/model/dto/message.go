@@ -29,7 +29,7 @@ type UpdateMessageRequest struct {
 type MessageResponse struct {
 	ID          string               `json:"id"`
 	ParentID    string               `json:"parentID"`
-	ChatID      string               `json:"chatId"`
+	ChatID      string               `json:"chatID"`
 	MessageType string               `json:"messageType"`
 	Role        schema.RoleType      `json:"role"`
 	Content     model.MessageContent `json:"content"`

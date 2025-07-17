@@ -21,7 +21,7 @@ interface CustomNodeProps {
 }
 
 export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
-  const { mapId } = useWorkspaceStoreData()
+  const { mapID } = useWorkspaceStoreData()
   const [editForm, setEditForm] = useState({
     question: data.question,
     target: data.target,
@@ -29,27 +29,27 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
   });
 
   const handleEdit = () => {
-    data.onEdit?.(mapId, data.id, { isEditing: true });
+    data.onEdit?.(mapID, data.id, { isEditing: true });
   };
 
   const handleSave = async () => {
     if (data.status === 'initial') {
       // 新增节点时，提交到后端并更新节点ID
-      const response = await data.onEdit?.(mapId, data.id, { ...editForm, status: 'pending', parentId: data.parentId, isEditing: false });
+      const response = await data.onEdit?.(mapID, data.id, { ...editForm, status: 'pending', parentID: data.parentID, isEditing: false });
       if (response?.id) {
         // 更新节点ID
-        data.onUpdateId?.(mapId, data.id, response.id);
+        data.onUpdateID?.(mapID, data.id, response.id);
       }
       return;
     }
     // 编辑已有节点
-    data.onEdit?.(mapId, data.id, { ...editForm, isEditing: false });
+    data.onEdit?.(mapID, data.id, { ...editForm, isEditing: false });
   };
 
   const handleCancel = () => {
     if (data.status === 'initial') {
       // 如果是新增的节点，取消时删除该节点
-      data.onDelete?.(mapId, data.id);
+      data.onDelete?.(mapID, data.id);
       return;
     }
     // 如果是编辑已有节点，恢复原始数据
@@ -58,7 +58,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
       target: data.target,
       nodeType: data.nodeType
     });
-    data.onEdit?.(mapId, data.id, { isEditing: false });
+    data.onEdit?.(mapID, data.id, { isEditing: false });
   };
 
   const handleAddChild = () => {
@@ -66,7 +66,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
   }
 
   const handleDelete = () => {
-    data.onDelete?.(mapId, data.id);
+    data.onDelete?.(mapID, data.id);
   }
 
   return (
@@ -174,7 +174,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
         >
           <NodeActionButtons
             id={data.id}
-            mapId={mapId}
+            mapID={mapID}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onAddChild={handleAddChild}

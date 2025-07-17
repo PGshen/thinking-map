@@ -14,13 +14,13 @@ import {
 
 interface NodeActionButtonsProps {
   id: string;
-  mapId: string | null;
+  mapID: string | null;
   onEdit?: (id: string) => void;
-  onDelete?: (mapId: string | null, id: string) => void;
+  onDelete?: (mapID: string | null, id: string) => void;
   onAddChild?: (id: string) => void;
 }
 
-export const NodeActionButtons: React.FC<NodeActionButtonsProps> = ({ id, mapId, onEdit, onDelete, onAddChild }) => {
+export const NodeActionButtons: React.FC<NodeActionButtonsProps> = ({ id, mapID, onEdit, onDelete, onAddChild }) => {
   return (
     <div className="flex gap-1.5 bg-white/80 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border border-gray-100">
       <button 
@@ -47,7 +47,7 @@ export const NodeActionButtons: React.FC<NodeActionButtonsProps> = ({ id, mapId,
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={e => e.stopPropagation()}>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={e => { e.stopPropagation(); onDelete?.(mapId, id); }}>删除</AlertDialogAction>
+            <AlertDialogAction onClick={e => { e.stopPropagation(); onDelete?.(mapID, id); }}>删除</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

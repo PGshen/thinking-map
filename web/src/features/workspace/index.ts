@@ -35,12 +35,12 @@ export { default as useWorkspaceData } from './hooks/use-workspace-data';
 
 // 类型定义
 export interface WorkspaceProps {
-  taskId: string;
+  taskID: string;
   className?: string;
 }
 
 export interface NodeActionEvent {
-  nodeId: string;
+  nodeID: string;
   action: 'select' | 'doubleClick' | 'rightClick';
   event?: React.MouseEvent;
 }

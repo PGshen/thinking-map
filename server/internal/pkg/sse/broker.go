@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/model/dto"
 	"github.com/gin-gonic/gin"
 )
 
@@ -119,11 +120,11 @@ func (b *Broker) HandleSSE(c *gin.Context, sessionID, clientID string) {
 
 	// 发送连接建立事件
 	client.EventChan <- Event{
-		Type: "connection-established",
-		Data: map[string]string{
-			"session_id": sessionID,
-			"client_id":  clientID,
-			"message":    "SSE连接已建立",
+		Type: dto.ConnectionEstablishedEventType,
+		Data: dto.ConnectionEstablishedEvent{
+			SessionID: sessionID,
+			ClientID:  clientID,
+			Message:   "SSE连接已建立",
 		},
 	}
 

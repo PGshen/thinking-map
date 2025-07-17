@@ -4,7 +4,7 @@ export interface Response<T = any> {
   message: string;
   data?: T;
   timestamp: string;
-  requestId: string;
+  requestID: string;
 }
 
 // 通用API响应类型
@@ -13,5 +13,5 @@ export interface ApiResponse<T = any> {
   message: string;
   data: T;
   timestamp?: string;
-  requestId?: string;
+  requestID?: string;
 } 

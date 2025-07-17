@@ -16,7 +16,7 @@ type Response struct {
 	Message   string      `json:"message"`
 	Data      interface{} `json:"data,omitempty"`
 	Timestamp time.Time   `json:"timestamp"`
-	RequestID string      `json:"requestId"`
+	RequestID string      `json:"requestID"`
 }
 
 // 分页响应

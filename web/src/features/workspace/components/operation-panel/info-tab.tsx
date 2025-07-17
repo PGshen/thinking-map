@@ -20,12 +20,12 @@ import { CustomNodeModel, DependentContext, NodeContextItem } from '@/types/node
 import { resetNodeContext, updateNode, updateNodeContext } from '@/api/node';
 
 interface InfoTabProps {
-  nodeId: string;
+  nodeID: string;
   nodeData: CustomNodeModel;
 }
 
-export function InfoTab({ nodeId, nodeData }: InfoTabProps) {
-  const { mapId } = useWorkspaceStore();
+export function InfoTab({ nodeID, nodeData }: InfoTabProps) {
+  const { mapID } = useWorkspaceStore();
   const defaultContext: DependentContext = {
     ancestor: [],
     prevSibling: [],
@@ -78,20 +78,20 @@ export function InfoTab({ nodeId, nodeData }: InfoTabProps) {
 
   const handleSave = async () => {
     if (!hasChanges) return;
-    if (!mapId) return
+    if (!mapID) return
     
     setIsSaving(true);
     try {
       // TODO: 调用API保存节点信息
-      let res = await updateNodeContext(mapId, nodeId, formData);
+      let res = await updateNodeContext(mapID, nodeID, formData);
       if (res.code !== 200) {
         throw new Error(res.message);
       }  
-      res = await updateNode(mapId, nodeId, formData);
+      res = await updateNode(mapID, nodeID, formData);
       if (res.code !== 200) {
         throw new Error(res.message);
       }
-      actions.updateNode(nodeId, { data: { ...nodeData, ...formData } });    
+      actions.updateNode(nodeID, { data: { ...nodeData, ...formData } });    
       toast({
         title: '保存成功',
         description: '节点信息已更新',
@@ -109,14 +109,14 @@ export function InfoTab({ nodeId, nodeData }: InfoTabProps) {
   };
 
   const handleReset = async () => {
-    if (!mapId) return
+    if (!mapID) return
     try {
-      const res = await resetNodeContext(mapId, nodeId);
+      const res = await resetNodeContext(mapID, nodeID);
       if (res.code !== 200) {
         throw new Error(res.message);
       }
       // 重置上下文
-      actions.updateNode(nodeId, { data: { ...nodeData, context: res.data.context } });
+      actions.updateNode(nodeID, { data: { ...nodeData, context: res.data.context } });
       
       toast({
         title: '重置成功',
@@ -135,7 +135,7 @@ export function InfoTab({ nodeId, nodeData }: InfoTabProps) {
   const handleStartExecution = async () => {
     try {
       // TODO: 调用API开始执行节点
-      // const result = await startNodeExecution(nodeId);
+      // const result = await startNodeExecution(nodeID);
       
       toast({
         title: '开始执行',

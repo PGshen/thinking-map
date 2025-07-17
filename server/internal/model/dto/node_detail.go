@@ -8,7 +8,7 @@ import (
 )
 
 // CreateNodeDetailRequest 创建节点详情请求
-// POST /api/v1/nodes/{nodeId}/details
+// POST /api/v1/nodes/{nodeID}/details
 // 只允许部分字段
 // 参考API文档
 // detail_type, content, status, metadata
@@ -23,7 +23,7 @@ type CreateNodeDetailRequest struct {
 }
 
 // UpdateNodeDetailRequest 更新节点详情请求
-// PUT /api/v1/node-details/{detailId}
+// PUT /api/v1/node-details/{detailID}
 type UpdateNodeDetailRequest struct {
 	Content  model.DetailContent    `json:"content" binding:"required"`
 	Status   int                    `json:"status"`
@@ -31,12 +31,12 @@ type UpdateNodeDetailRequest struct {
 }
 
 // NodeDetailResponse 节点详情响应
-// GET /api/v1/nodes/{nodeId}/details
-// POST /api/v1/nodes/{nodeId}/details
-// PUT /api/v1/node-details/{detailId}
+// GET /api/v1/nodes/{nodeID}/details
+// POST /api/v1/nodes/{nodeID}/details
+// PUT /api/v1/node-details/{detailID}
 type NodeDetailResponse struct {
 	ID         string                 `json:"id"`
-	NodeID     string                 `json:"nodeId"`
+	NodeID     string                 `json:"nodeID"`
 	DetailType string                 `json:"detailType"`
 	Content    model.DetailContent    `json:"content"`
 	Status     int                    `json:"status"`

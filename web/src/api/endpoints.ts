@@ -16,18 +16,18 @@ export const API_ENDPOINTS = {
   },
   MAP: {
     CREATE: `${API_BASE}/v1/maps`,
-    GET: `${API_BASE}/v1/maps/:mapId`,
+    GET: `${API_BASE}/v1/maps/:mapID`,
     LIST: `${API_BASE}/v1/maps`,
-    UPDATE: `${API_BASE}/v1/maps/:mapId`,
-    DELETE: `${API_BASE}/v1/maps/:mapId`,
+    UPDATE: `${API_BASE}/v1/maps/:mapID`,
+    DELETE: `${API_BASE}/v1/maps/:mapID`,
   },
   NODE: {
-    CREATE: `${API_BASE}/v1/maps/:mapId/nodes`,
-    GET: `${API_BASE}/v1/maps/:mapId/nodes`,
-    UPDATE: `${API_BASE}/v1/maps/:mapId/nodes/:nodeId`,
-    DELETE: `${API_BASE}/v1/maps/:mapId/nodes/:nodeId`,
-    CONTEXT: `${API_BASE}/v1/maps/:mapId/nodes/:nodeId/context`,
-    CONTEXT_RESET: `${API_BASE}/v1/maps/:mapId/nodes/:nodeId/context/reset`,
+    CREATE: `${API_BASE}/v1/maps/:mapID/nodes`,
+    GET: `${API_BASE}/v1/maps/:mapID/nodes`,
+    UPDATE: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID`,
+    DELETE: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID`,
+    CONTEXT: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID/context`,
+    CONTEXT_RESET: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID/context/reset`,
   },
   // 其他模块分组
 };

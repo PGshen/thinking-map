@@ -5,38 +5,38 @@ export interface ThinkingOptions {
 }
 
 export interface AnalyzeRequest {
-  nodeId: string;
+  nodeID: string;
   context: string;
   options: ThinkingOptions;
 }
 
 export interface DecomposeRequest {
-  nodeId: string;
+  nodeID: string;
   decomposeStrategy: string; // 'breadth_first' | 'depth_first'
   maxDepth: number;
 }
 
 export interface ConcludeRequest {
-  nodeId: string;
+  nodeID: string;
   evidence: string[];
   reasoningType: string; // 'deductive' | 'inductive' | 'abductive'
 }
 
 export interface ChatRequest {
-  nodeId: string;
+  nodeID: string;
   message: string;
   context: string; // 'decompose' | 'conclude'
 }
 
 export interface TaskResponse {
-  taskId: string;
-  nodeId: string;
+  taskID: string;
+  nodeID: string;
   status: string;
   estimatedTime: number;
 }
 
 export interface ChatResponse {
-  messageId: string;
+  messageID: string;
   content: string;
   role: string;
   createdAt: string;

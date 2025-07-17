@@ -16,15 +16,15 @@ import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { Button } from '@/components/ui/button';
 
 interface PanelTabsProps {
-  nodeId: string;
+  nodeID: string;
 }
 
-export function PanelTabs({ nodeId }: PanelTabsProps) {
+export function PanelTabs({ nodeID }: PanelTabsProps) {
   const [activeTab, setActiveTab] = useState('info');
   const { nodes, actions } = useWorkspaceStore();
 
   // 获取当前节点数据
-  const currentNode = nodes.find(node => node.id === nodeId);
+  const currentNode = nodes.find(node => node.id === nodeID);
 
   if (!currentNode) {
     return (
@@ -83,19 +83,19 @@ export function PanelTabs({ nodeId }: PanelTabsProps) {
         <div className="flex-1 overflow-hidden">
           <TabsContent value="info" className="h-full m-0 p-0 overflow-x-auto overflow-y-auto">
             <div className="p-4 min-w-fit">
-              <InfoTab nodeId={nodeId} nodeData={nodeData} />
+              <InfoTab nodeID={nodeID} nodeData={nodeData} />
             </div>
           </TabsContent>
 
           <TabsContent value="decompose" className="h-full m-0 p-0 overflow-x-auto overflow-y-auto">
             <div className="p-4 min-w-fit">
-              <DecomposeTab nodeId={nodeId} node={currentNode} />
+              <DecomposeTab nodeID={nodeID} node={currentNode} />
             </div>
           </TabsContent>
 
           <TabsContent value="conclusion" className="h-full m-0 p-0 overflow-x-auto overflow-y-auto">
             <div className="p-4 min-w-fit">
-              <ConclusionTab nodeId={nodeId} node={currentNode} />
+              <ConclusionTab nodeID={nodeID} node={currentNode} />
             </div>
           </TabsContent>
         </div>

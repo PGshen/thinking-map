@@ -14,11 +14,11 @@ import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 
 interface WorkspaceLayoutProps {
-  mapId: string;
+  mapID: string;
   children?: React.ReactNode;
 }
 
-export function WorkspaceLayout({ mapId }: WorkspaceLayoutProps) {
+export function WorkspaceLayout({ mapID }: WorkspaceLayoutProps) {
   const { panelOpen, panelWidth } = useWorkspaceStore();
 
   return (
@@ -29,7 +29,7 @@ export function WorkspaceLayout({ mapId }: WorkspaceLayoutProps) {
         } as React.CSSProperties
       }
     >
-      <InfoSidebar mapId={mapId} />
+      <InfoSidebar mapID={mapID} />
       <SidebarInset>
         <div className="flex-1 flex relative overflow-hidden">
           {/* 可视化区域 */}
@@ -39,7 +39,7 @@ export function WorkspaceLayout({ mapId }: WorkspaceLayoutProps) {
               width: panelOpen ? `calc(100% - ${panelWidth}px)` : '100%',
             }}
           >
-            <VisualizationArea mapId={mapId} />
+            <VisualizationArea mapID={mapID} />
           </div>
 
           {/* 操作面板 */}

@@ -29,7 +29,7 @@ import { useNodeSelection } from '@/features/workspace/hooks/use-node-selection'
 import { useNodeOperations } from '@/features/workspace/hooks/use-node-operations';
 import { CustomNodeModel } from '@/types/node';
 interface VisualizationAreaProps {
-  mapId: string;
+  mapID: string;
 }
 
 // 定义节点类型
@@ -37,11 +37,11 @@ const nodeTypes: NodeTypes = {
   custom: CustomNode,
 };
 
-function MapCanvas({ mapId }: VisualizationAreaProps) {
-  const { selectedNodeIds, actions } = useWorkspaceStore();
-  const { nodes: nodesData, edges: edgesData, isLoading } = useWorkspaceData(mapId);
+function MapCanvas({ mapID }: VisualizationAreaProps) {
+  const { selectedNodeIDs, actions } = useWorkspaceStore();
+  const { nodes: nodesData, edges: edgesData, isLoading } = useWorkspaceData(mapID);
   const { handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu } = useNodeSelection();
-  const { handleNodeEdit, handleNodeDelete, handleAddChild, handleNodeUpdateId } = useNodeOperations();
+  const { handleNodeEdit, handleNodeDelete, handleAddChild, handleNodeUpdateID } = useNodeOperations();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<CustomNodeModel>[]>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
@@ -64,7 +64,7 @@ function MapCanvas({ mapId }: VisualizationAreaProps) {
         onSelect: handleNodeClick,
         onDoubleClick: handleNodeDoubleClick,
         onContextMenu: handleNodeContextMenu,
-        onUpdateId: handleNodeUpdateId,
+        onUpdateID: handleNodeUpdateID,
       } as any,
     }));
   }, []);
@@ -84,11 +84,11 @@ function MapCanvas({ mapId }: VisualizationAreaProps) {
         ...node,
         data: {
           ...node.data,
-          selected: selectedNodeIds.includes(node.id),
+          selected: selectedNodeIDs.includes(node.id),
         },
       }))
     );
-  }, [selectedNodeIds]);
+  }, [selectedNodeIDs]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -145,10 +145,10 @@ function MapCanvas({ mapId }: VisualizationAreaProps) {
   );
 }
 
-export function VisualizationArea({ mapId }: VisualizationAreaProps) {
+export function VisualizationArea({ mapID }: VisualizationAreaProps) {
   return (
     <ReactFlowProvider>
-      <MapCanvas mapId={mapId} />
+      <MapCanvas mapID={mapID} />
     </ReactFlowProvider>
   );
 }

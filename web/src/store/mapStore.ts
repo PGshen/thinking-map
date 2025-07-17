@@ -5,7 +5,7 @@ import type { Node, Edge } from '../types/node';
 interface MapStore {
   nodes: Node[];
   edges: Edge[];
-  selectedNodeId: string | null;
+  selectedNodeID: string | null;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
   selectNode: (id: string | null) => void;
@@ -17,10 +17,10 @@ export const useMapStore = create<MapStore>()(
       (set) => ({
         nodes: [],
         edges: [],
-        selectedNodeId: null,
+        selectedNodeID: null,
         setNodes: (nodes) => set({ nodes }),
         setEdges: (edges) => set({ edges }),
-        selectNode: (id) => set({ selectedNodeId: id }),
+        selectNode: (id) => set({ selectedNodeID: id }),
       }),
       { name: 'map-store' }
     )

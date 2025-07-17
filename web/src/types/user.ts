@@ -1,6 +1,6 @@
 // 与后端 dto/auth.go 对齐的用户类型定义
 export interface AuthData {
-  userId?: string;
+  userID?: string;
   username?: string;
   email?: string;
   fullName?: string;
@@ -10,14 +10,14 @@ export interface AuthData {
 }
 
 export interface TokenInfoDTO {
-  userId: string;
+  userID: string;
   username: string;
   accessToken: string;
   expiresAt: string;
 }
 
 export interface User {
-  userId: string;
+  userID: string;
   username: string;
   email: string;
   fullName: string;

@@ -594,10 +594,10 @@ interface ExplorationAction {
 }
 
 const ExplorationPanel: React.FC<{
-  nodeId: string;
+  nodeID: string;
   suggestions: ExplorationSuggestion[];
   onSuggestionClick: (suggestion: ExplorationSuggestion) => void;
-}> = ({ nodeId, suggestions, onSuggestionClick }) => {
+}> = ({ nodeID, suggestions, onSuggestionClick }) => {
   // 组件实现
 };
 ```
@@ -633,7 +633,7 @@ const KnowledgeGraphViewer: React.FC<{
 #### 6.2.1 节点操作菜单
 ```typescript
 interface NodeOperationMenu {
-  nodeId: string;
+  nodeID: string;
   position: { x: number; y: number };
   operations: NodeOperation[];
   onOperationClick: (operation: NodeOperation) => void;
@@ -649,7 +649,7 @@ interface NodeOperation {
 }
 
 const NodeOperationMenu: React.FC<NodeOperationMenu> = ({
-  nodeId,
+  nodeID,
   position,
   operations,
   onOperationClick
@@ -661,10 +661,10 @@ const NodeOperationMenu: React.FC<NodeOperationMenu> = ({
 #### 6.2.2 拖拽操作组件
 ```typescript
 interface DragDropContext {
-  onNodeDragStart: (nodeId: string, event: DragEvent) => void;
-  onNodeDragEnd: (nodeId: string, event: DragEvent) => void;
-  onNodeDrop: (nodeId: string, targetId: string) => void;
-  onConnectionCreate: (sourceId: string, targetId: string) => void;
+  onNodeDragStart: (nodeID: string, event: DragEvent) => void;
+  onNodeDragEnd: (nodeID: string, event: DragEvent) => void;
+  onNodeDrop: (nodeID: string, targetID: string) => void;
+  onConnectionCreate: (sourceID: string, targetID: string) => void;
 }
 
 const DraggableNode: React.FC<{

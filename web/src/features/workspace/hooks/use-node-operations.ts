@@ -15,8 +15,8 @@ export const useNodeOperations = () => {
   const { toast } = useToast();
 
   const handleNodeEdit = useCallback(
-    async (mapId: string, nodeId: string, updates: Partial<CustomNodeModel>) => {
-      if (!mapId) return;
+    async (mapID: string, nodeID: string, updates: Partial<CustomNodeModel>) => {
+      if (!mapID) return;
       try {
         // If updates only contains isEditing and selected, skip backend API call
         const updateKeys = Object.keys(updates);
@@ -24,19 +24,19 @@ export const useNodeOperations = () => {
           updateKeys.every(key => key === 'isEditing' || key === 'selected');
         
         if (!skipUpdate) {
-          if (nodeId.startsWith('temp-')) {
+          if (nodeID.startsWith('temp-')) {
             // 如果是临时ID，说明是新增节点
-            const response = await createNode(mapId, {
+            const response = await createNode(mapID, {
               nodeType: updates.nodeType || 'problem',
               question: updates.question || '',
               target: updates.target || '',
-              mapID: mapId,
-              parentID: updates.parentId || '',
+              mapID: mapID,
+              parentID: updates.parentID || '',
               position: { x: 0, y: 0 } // 位置将在store中计算
             });
             if (response.code === 200) {
-              actions.updateNodeId(nodeId, response.data.id);
-              nodeId = response.data.id;  // 更新node为后端返回的ID
+              actions.updateNodeID(nodeID, response.data.id);
+              nodeID = response.data.id;  // 更新node为后端返回的ID
               toast({
                 title: '创建成功',
                 variant: 'info'
@@ -44,7 +44,7 @@ export const useNodeOperations = () => {
             }
           } else {
             // 如果不是临时ID，说明是更新已有节点
-            const response = await updateNode(mapId, nodeId, {
+            const response = await updateNode(mapID, nodeID, {
               question: updates.question || '',
               target: updates.target || ''
             });
@@ -56,7 +56,7 @@ export const useNodeOperations = () => {
             }
           }
         }
-        actions.updateNode(nodeId, { "data": { ...updates } } as Partial<CustomNodeModel>);
+        actions.updateNode(nodeID, { "data": { ...updates } } as Partial<CustomNodeModel>);
       } catch (error) {
         toast({
           title: '操作失败',
@@ -69,10 +69,10 @@ export const useNodeOperations = () => {
   );
 
   const handleNodeDelete = useCallback(
-    async (mapId: string, id: string) => {
+    async (mapID: string, id: string) => {
       try {
         // 删除节点及其相关边
-        const response = await deleteNode(mapId, id);
+        const response = await deleteNode(mapID, id);
         if (response.code === 200) {
           actions.deleteNode(id);
           toast({
@@ -92,8 +92,8 @@ export const useNodeOperations = () => {
   );
 
   const handleAddChild = useCallback(
-    async (parentId: string) => {
-      console.log("parentId",parentId)
+    async (parentID: string) => {
+      console.log("parentID",parentID)
       try {
         // 创建新节点
         const newNode = {
@@ -102,7 +102,7 @@ export const useNodeOperations = () => {
           position: { x: 0, y: 0 }, // 位置将在store中根据父节点位置计算
           data: {
             id: `temp-${Date.now()}`,
-            parentId: parentId,
+            parentID: parentID,
             nodeType: 'custom',
             question: '新问题',
             target: '新目标',
@@ -111,7 +111,7 @@ export const useNodeOperations = () => {
         };
 
         // 添加节点和边
-        actions.addChildNode(parentId, newNode);
+        actions.addChildNode(parentID, newNode);
         
         actions.selectNode(newNode.id);
         actions.setEditing(newNode.id); // 进入编辑状态
@@ -131,11 +131,11 @@ export const useNodeOperations = () => {
     [actions, toast]
   );
 
-  const handleNodeUpdateId = useCallback(
-    async (mapId: string | null, oldId: string, newId: string) => {
-      console.log("mapId",mapId,"oldId",oldId,"newId",newId)
+  const handleNodeUpdateID = useCallback(
+    async (mapID: string | null, oldID: string, newID: string) => {
+      console.log("mapID",mapID,"oldID",oldID,"newID",newID)
       try {
-        actions.updateNodeId(oldId, newId);
+        actions.updateNodeID(oldID, newID);
         toast({
           title: '节点更新成功',
           variant: 'info'
@@ -155,6 +155,6 @@ export const useNodeOperations = () => {
     handleNodeEdit,
     handleNodeDelete,
     handleAddChild,
-    handleNodeUpdateId,
+    handleNodeUpdateID,
   };
 };

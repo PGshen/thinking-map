@@ -16,8 +16,8 @@ interface WorkspaceState {
   isPanelOpen: boolean;
   panelOpen: boolean; // 别名，保持兼容性
   panelWidth: number;
-  activeNodeId: string | null;
-  selectedNodeIds: string[];
+  activeNodeID: string | null;
+  selectedNodeIDs: string[];
   
   // 侧边栏状态
   sidebarOpen: boolean;
@@ -27,7 +27,7 @@ interface WorkspaceState {
   edges: Edge[];
   
   // 思维导图信息
-  mapId: string | null;
+  mapID: string | null;
   mapInfo: Map | null;
   
   // UI状态
@@ -55,7 +55,7 @@ interface WorkspaceState {
 // 操作接口
 interface WorkspaceActions {
   // 面板操作
-  openPanel: (nodeId: string) => void;
+  openPanel: (nodeID: string) => void;
   closePanel: () => void;
   setPanelWidth: (width: number) => void;
   
@@ -65,25 +65,25 @@ interface WorkspaceActions {
   // 节点操作
   setNodes: (nodes: Node<CustomNodeModel>[]) => void;
   addNode: (node: Node<CustomNodeModel>) => void;
-  addChildNode: (parentId: string, childNode: Node<CustomNodeModel>) => void;
-  updateNode: (nodeId: string, updates: Partial<Node<CustomNodeModel>>) => void;
-  updateNodeId: (oldId: string, newId: string) => void;
-  deleteNode: (nodeId: string) => void;
-  selectNode: (nodeId: string | null) => void;
-  setEditing: (nodeId: string | null) => void;
+  addChildNode: (parentID: string, childNode: Node<CustomNodeModel>) => void;
+  updateNode: (nodeID: string, updates: Partial<Node<CustomNodeModel>>) => void;
+  updateNodeID: (oldID: string, newID: string) => void;
+  deleteNode: (nodeID: string) => void;
+  selectNode: (nodeID: string | null) => void;
+  setEditing: (nodeID: string | null) => void;
   clearSelection: () => void;
   
   // 边操作
   setEdges: (edges: Edge[]) => void;
   addEdge: (edge: Edge) => void;
-  deleteEdge: (edgeId: string) => void;
+  deleteEdge: (edgeID: string) => void;
   
   // 思维导图操作
   updateMap: (info: WorkspaceState['mapInfo']) => void;
   
   // 状态操作
   setLoading: (loading: boolean) => void;
-  addChangedNodePosition: (nodeId: string) => void;
+  addChangedNodePosition: (nodeID: string) => void;
   getChangedNodePositions: () => string[];
   clearChangedNodePositions: () => void;
   
@@ -103,8 +103,8 @@ const initialState: WorkspaceState = {
   isPanelOpen: false,
   panelOpen: false,
   panelWidth: 600,
-  activeNodeId: null,
-  selectedNodeIds: [],
+  activeNodeID: null,
+  selectedNodeIDs: [],
   
   // 侧边栏状态
   sidebarOpen: true,
@@ -114,7 +114,7 @@ const initialState: WorkspaceState = {
   edges: [],
   
   // 思维导图信息
-  mapId: null,
+  mapID: null,
   mapInfo: null,
   
   // UI状态
@@ -158,12 +158,12 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
         },
 
         // 面板操作
-        openPanel: (nodeId: string) => {
+        openPanel: (nodeID: string) => {
           set(
             (state) => ({
               isPanelOpen: true,
               panelOpen: true,
-              activeNodeId: nodeId,
+              activeNodeID: nodeID,
             }),
             false,
             'openPanel'
@@ -175,7 +175,7 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
             (state) => ({
               isPanelOpen: false,
               panelOpen: false,
-              activeNodeId: null,
+              activeNodeID: null,
             }),
             false,
             'closePanel'
@@ -214,8 +214,8 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           );
         },
 
-        addChildNode: (parentId: string, childNode: Node<CustomNodeModel>) => {
-          const parentNode = get().nodes.find(node => node.id === parentId);
+        addChildNode: (parentID: string, childNode: Node<CustomNodeModel>) => {
+          const parentNode = get().nodes.find(node => node.id === parentID);
           if (!parentNode) return;
 
           // 计算子节点位置（在父节点右下方）
@@ -232,8 +232,8 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
 
           // 创建连接边
           const newEdge = {
-            id: `${parentId}-${childNode.id}`,
-            source: parentId,
+            id: `${parentID}-${childNode.id}`,
+            source: parentID,
             target: childNode.id,
             type: 'default',
           };
@@ -248,11 +248,11 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           );
         },
         
-        updateNode: (nodeId: string, updates: Partial<Node<CustomNodeModel>>) => {
+        updateNode: (nodeID: string, updates: Partial<Node<CustomNodeModel>>) => {
           set(
             (state) => ({
               nodes: state.nodes.map((node) => {
-                if (node.id !== nodeId) return node;
+                if (node.id !== nodeID) return node;
                 
                 // 处理 data 字段的局部更新
                 const updatedNode = { ...node, ...updates };
@@ -272,72 +272,72 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           );
         },
 
-        updateNodeId: (oldId: string, newId: string) => {
+        updateNodeID: (oldID: string, newID: string) => {
           set(
             (state) => ({
               nodes: state.nodes.map((node) => {
-                if (node.id !== oldId) return node;
+                if (node.id !== oldID) return node;
                 return {
                   ...node,
-                  id: newId,
+                  id: newID,
                   data: {
                     ...node.data,
-                    id: newId
+                    id: newID
                   }
                 };
               }),
               edges: state.edges.map((edge) => ({
                 ...edge,
-                source: edge.source === oldId ? newId : edge.source,
-                target: edge.target === oldId ? newId : edge.target
+                source: edge.source === oldID ? newID : edge.source,
+                target: edge.target === oldID ? newID : edge.target
               })),
-              activeNodeId: state.activeNodeId === oldId ? newId : state.activeNodeId,
+              activeNodeID: state.activeNodeID === oldID ? newID : state.activeNodeID,
             }),
             false,
-            'updateNodeId'
+            'updateNodeID'
           );
         },
         
-        deleteNode: (nodeId: string) => {
+        deleteNode: (nodeID: string) => {
           set(
             (state) => ({
-              nodes: state.nodes.filter((node) => node.id !== nodeId),
+              nodes: state.nodes.filter((node) => node.id !== nodeID),
               edges: state.edges.filter(
-                (edge) => edge.source !== nodeId && edge.target !== nodeId
+                (edge) => edge.source !== nodeID && edge.target !== nodeID
               ),
-              activeNodeId: state.activeNodeId === nodeId ? null : state.activeNodeId,
-              isPanelOpen: state.activeNodeId === nodeId ? false : state.isPanelOpen,
+              activeNodeID: state.activeNodeID === nodeID ? null : state.activeNodeID,
+              isPanelOpen: state.activeNodeID === nodeID ? false : state.isPanelOpen,
             }),
             false,
             'deleteNode'
           );
         },
         
-        selectNode: (nodeId: string | null) => {
+        selectNode: (nodeID: string | null) => {
           set(
             (state) => ({
               nodes: state.nodes.map((node) => ({
                 ...node,
                 data: {
                   ...node.data,
-                  selected: node.id === nodeId,
+                  selected: node.id === nodeID,
                 }
               })),
-              selectedNodeIds: nodeId ? [nodeId] : [],
+              selectedNodeIDs: nodeID ? [nodeID] : [],
             }),
             false,
             'selectNode'
           );
         },
 
-        setEditing: (nodeId: string | null) => {
+        setEditing: (nodeID: string | null) => {
           set(
             (state) => ({
               nodes: state.nodes.map((node) => ({
                 ...node,
                 data: {
                   ...node.data,
-                  isEditing: node.id === nodeId ? !node.data.isEditing : false,
+                  isEditing: node.id === nodeID ? !node.data.isEditing : false,
                 },
               }))
             }),
@@ -353,7 +353,7 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
                 ...node,
                 selected: false,
               })),
-              selectedNodeIds: [],
+              selectedNodeIDs: [],
             }),
             false,
             'clearSelection'
@@ -379,10 +379,10 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           );
         },
         
-        deleteEdge: (edgeId: string) => {
+        deleteEdge: (edgeID: string) => {
           set(
             (state) => ({
-              edges: state.edges.filter((edge) => edge.id !== edgeId),
+              edges: state.edges.filter((edge) => edge.id !== edgeID),
             }),
             false,
             'deleteEdge'
@@ -393,7 +393,7 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           set(
             (state) => ({
               ...state,
-              mapId: info.id,
+              mapID: info.id,
               mapInfo: info,
             }),
             false,
@@ -414,10 +414,10 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           return get().changedNodePositions;
         },
         
-        addChangedNodePosition: (nodeId?: string) => {
+        addChangedNodePosition: (nodeID?: string) => {
           set(
             (state) => ({
-              changedNodePositions: nodeId ? [...state.changedNodePositions, nodeId].filter((id): id is string => id !== undefined) : state.changedNodePositions
+              changedNodePositions: nodeID ? [...state.changedNodePositions, nodeID].filter((id): id is string => id !== undefined) : state.changedNodePositions
             }),
             false,
             'addChangedNodePosition'
@@ -481,7 +481,7 @@ export type { WorkspaceState, WorkspaceActions };
 export const useWorkspaceStoreData = () => {
   const store = useWorkspaceStore();
   return {
-    mapId: store.mapId,
+    mapID: store.mapID,
     mapInfo: store.mapInfo,
     nodes: store.nodes,
     edges: store.edges,
@@ -494,7 +494,7 @@ export const usePanelState = () => {
   return {
     isPanelOpen: store.isPanelOpen,
     panelWidth: store.panelWidth,
-    activeNodeId: store.activeNodeId,
+    activeNodeID: store.activeNodeID,
   };
 };
 

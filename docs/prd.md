@@ -200,7 +200,7 @@ ThinkingMap 是一款交互式AI问题解决可视化助手，将AI的思考和�
 {
   "type": "node_created",
   "data": {
-    "nodeId": "string",
+    "nodeID": "string",
     "parentID": "string",
     "nodeType": "string",
     "question": "string",
@@ -212,7 +212,7 @@ ThinkingMap 是一款交互式AI问题解决可视化助手，将AI的思考和�
 {
   "type": "node_updated",
   "data": {
-    "nodeId": "string",
+    "nodeID": "string",
     "updates": {
       "question": "string",
       "target": "string",
@@ -225,14 +225,14 @@ ThinkingMap 是一款交互式AI问题解决可视化助手，将AI的思考和�
 {
   "type": "node_deleted",
   "data": {
-    "nodeId": "string"
+    "nodeID": "string"
   }
 }
 
 {
   "type": "thinking_progress",
   "data": {
-    "nodeId": "string",
+    "nodeID": "string",
     "stage": "string",
     "message": "string"
   }
@@ -243,9 +243,9 @@ ThinkingMap 是一款交互式AI问题解决可视化助手，将AI的思考和�
 **节点操作接口**
 
 + `POST /api/nodes` - 创建节点
-+ `PUT /api/nodes/{nodeId}` - 更新节点
-+ `DELETE /api/nodes/{nodeId}` - 删除节点
-+ `GET /api/nodes/{nodeId}/dependencies` - 检查节点依赖
++ `PUT /api/nodes/{nodeID}` - 更新节点
++ `DELETE /api/nodes/{nodeID}` - 删除节点
++ `GET /api/nodes/{nodeID}/dependencies` - 检查节点依赖
 
 **思考流程接口**
 

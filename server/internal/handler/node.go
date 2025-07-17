@@ -22,7 +22,7 @@ func NewNodeHandler(nodeService *service.NodeService) *NodeHandler {
 
 // ListNodes handles retrieving all nodes in a map
 func (h *NodeHandler) ListNodes(c *gin.Context) {
-	mapID := c.Param("mapId")
+	mapID := c.Param("mapID")
 	if mapID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
@@ -56,7 +56,7 @@ func (h *NodeHandler) ListNodes(c *gin.Context) {
 
 // CreateNode handles creating a new node
 func (h *NodeHandler) CreateNode(c *gin.Context) {
-	mapID := c.Param("mapId")
+	mapID := c.Param("mapID")
 	if mapID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
@@ -100,7 +100,7 @@ func (h *NodeHandler) CreateNode(c *gin.Context) {
 
 // UpdateNode handles updating a node
 func (h *NodeHandler) UpdateNode(c *gin.Context) {
-	nodeID := c.Param("nodeId")
+	nodeID := c.Param("nodeID")
 	if nodeID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
@@ -143,7 +143,7 @@ func (h *NodeHandler) UpdateNode(c *gin.Context) {
 	})
 }
 func (h *NodeHandler) UpdateNodeContext(c *gin.Context) {
-	nodeID := c.Param("nodeId")
+	nodeID := c.Param("nodeID")
 	if nodeID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
@@ -190,7 +190,7 @@ func (h *NodeHandler) UpdateNodeContext(c *gin.Context) {
 
 // ResetNodeContext handles resetting a node's context
 func (h *NodeHandler) ResetNodeContext(c *gin.Context) {
-	nodeID := c.Param("nodeId")
+	nodeID := c.Param("nodeID")
 	if nodeID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
@@ -225,7 +225,7 @@ func (h *NodeHandler) ResetNodeContext(c *gin.Context) {
 
 // DeleteNode handles deleting a node
 func (h *NodeHandler) DeleteNode(c *gin.Context) {
-	nodeID := c.Param("nodeId")
+	nodeID := c.Param("nodeID")
 	if nodeID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,

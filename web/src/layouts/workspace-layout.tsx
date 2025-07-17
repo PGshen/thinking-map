@@ -9,13 +9,13 @@ import { WorkspaceLayout as NewWorkspaceLayout } from '@/features/workspace';
 
 interface WorkspaceLayoutProps {
   children?: React.ReactNode;
-  taskId?: string;
+  taskID?: string;
 }
 
-export default function WorkspaceLayout({ children, taskId }: WorkspaceLayoutProps) {
-  // 如果提供了taskId，使用新的工作区布局
-  if (taskId) {
-    return <NewWorkspaceLayout taskId={taskId} />;
+export default function WorkspaceLayout({ children, taskID }: WorkspaceLayoutProps) {
+  // 如果提供了taskID，使用新的工作区布局
+  if (taskID) {
+    return <NewWorkspaceLayout taskID={taskID} />;
   }
   
   // 否则保持原有的简单布局（向后兼容）

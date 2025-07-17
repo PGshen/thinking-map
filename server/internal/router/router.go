@@ -85,29 +85,29 @@ func SetupRouter(
 			{
 				maps.POST("", mapHandler.CreateMap)
 				maps.GET("", mapHandler.ListMaps)
-				maps.PUT("/:mapId", middleware.MapOwnershipMiddleware(thinkingMapRepo), mapHandler.UpdateMap)
-				maps.DELETE("/:mapId", middleware.MapOwnershipMiddleware(thinkingMapRepo), mapHandler.DeleteMap)
-				maps.GET("/:mapId", middleware.MapOwnershipMiddleware(thinkingMapRepo), mapHandler.GetMap)
+				maps.PUT("/:mapID", middleware.MapOwnershipMiddleware(thinkingMapRepo), mapHandler.UpdateMap)
+				maps.DELETE("/:mapID", middleware.MapOwnershipMiddleware(thinkingMapRepo), mapHandler.DeleteMap)
+				maps.GET("/:mapID", middleware.MapOwnershipMiddleware(thinkingMapRepo), mapHandler.GetMap)
 			}
 
 			// Node routes
-			nodes := protected.Group("/maps/:mapId/nodes")
+			nodes := protected.Group("/maps/:mapID/nodes")
 			{
 				nodes.GET("", middleware.MapOwnershipMiddleware(thinkingMapRepo), nodeHandler.ListNodes)
 				nodes.POST("", nodeHandler.CreateNode)
-				nodes.PUT("/:nodeId", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.UpdateNode)
-				nodes.DELETE("/:nodeId", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.DeleteNode)
-				nodes.PUT("/:nodeId/context", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.UpdateNodeContext)
-				nodes.PUT("/:nodeId/context/reset", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.ResetNodeContext)
+				nodes.PUT("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.UpdateNode)
+				nodes.DELETE("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.DeleteNode)
+				nodes.PUT("/:nodeID/context", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.UpdateNodeContext)
+				nodes.PUT("/:nodeID/context/reset", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.ResetNodeContext)
 			}
 
-			nodeDetails := protected.Group("/maps/:mapId/nodes/:nodeId/details")
+			nodeDetails := protected.Group("/maps/:mapID/nodes/:nodeID/details")
 			{
 				// NodeDetail routes
 				nodeDetails.GET("", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeDetailHandler.GetNodeDetails)
 				nodeDetails.POST("", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeDetailHandler.CreateNodeDetail)
-				nodeDetails.PUT("/:detailId", middleware.NodeDetailOwnershipMiddleware(nodeDetailRepo, nodeRepo, thinkingMapRepo), nodeDetailHandler.UpdateNodeDetail)
-				nodeDetails.DELETE("/:detailId", middleware.NodeDetailOwnershipMiddleware(nodeDetailRepo, nodeRepo, thinkingMapRepo), nodeDetailHandler.DeleteNodeDetail)
+				nodeDetails.PUT("/:detailID", middleware.NodeDetailOwnershipMiddleware(nodeDetailRepo, nodeRepo, thinkingMapRepo), nodeDetailHandler.UpdateNodeDetail)
+				nodeDetails.DELETE("/:detailID", middleware.NodeDetailOwnershipMiddleware(nodeDetailRepo, nodeRepo, thinkingMapRepo), nodeDetailHandler.DeleteNodeDetail)
 			}
 
 			// Thinking routes
@@ -120,8 +120,8 @@ func SetupRouter(
 			// SSE routes
 			sse := protected.Group("/sse")
 			{
-				sse.GET("/connect/:mapId", sseHandler.Connect)
-				sse.POST("/send-event/:mapId", sseHandler.SendEvent)
+				sse.GET("/connect/:mapID", sseHandler.Connect)
+				sse.POST("/send-event/:mapID", sseHandler.SendEvent)
 			}
 		}
 	}

@@ -9,7 +9,7 @@ import useWorkspaceData from "../../hooks/use-workspace-data"
 import { useWorkspaceStore } from "../../store/workspace-store"
 
 export default function MapInfo() {
-  const { mapId } = useWorkspaceStore()
+  const { mapID } = useWorkspaceStore()
   const { mapInfo, saveMap } = useWorkspaceData()
 
   const { toast } = useToast()
@@ -36,7 +36,7 @@ export default function MapInfo() {
 
   const handleSave = async () => {
     try {
-      await saveMap(mapId, {
+      await saveMap(mapID, {
         ...formData
       })
       setIsEditing(false)

@@ -25,7 +25,7 @@ func NewSSEHandler(broker *sse.Broker, mapRepo repository.ThinkingMap) *SSEHandl
 
 // Connect handles SSE connection requests, with map ownership check
 func (h *SSEHandler) Connect(c *gin.Context) {
-	mapID := c.Param("mapId")
+	mapID := c.Param("mapID")
 	if mapID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "map ID is required",
@@ -54,13 +54,14 @@ func (h *SSEHandler) Connect(c *gin.Context) {
 		return
 	}
 
+	// mapID作为sessionID
 	// 以 userID 作为 clientID，或可自定义
 	h.broker.HandleSSE(c, mapID, userIDStr)
 }
 
 // SendEvent handles SSE test event requests
 func (h *SSEHandler) SendEvent(c *gin.Context) {
-	mapID := c.Param("mapId")
+	mapID := c.Param("mapID")
 	if mapID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,

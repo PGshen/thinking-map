@@ -27,14 +27,14 @@ export async function fetchMapList(params: MapListQuery): Promise<MapListRespons
   return get(url);
 }
 
-export async function getMap(mapId: string): Promise<MapDetailResponse> {
-  return get(API_ENDPOINTS.MAP.GET.replace(':mapId', mapId));
+export async function getMap(mapID: string): Promise<MapDetailResponse> {
+  return get(API_ENDPOINTS.MAP.GET.replace(':mapID', mapID));
 }
 
-export async function updateMap(mapId: string, params: UpdateMapRequest): Promise<UpdateMapResponse> {
-  return put(API_ENDPOINTS.MAP.UPDATE.replace(':mapId', mapId), params);
+export async function updateMap(mapID: string, params: UpdateMapRequest): Promise<UpdateMapResponse> {
+  return put(API_ENDPOINTS.MAP.UPDATE.replace(':mapID', mapID), params);
 }
 
-export async function deleteMap(mapId: string): Promise<void> {
-  del(API_ENDPOINTS.MAP.DELETE.replace(':mapId', mapId));
+export async function deleteMap(mapID: string): Promise<void> {
+  del(API_ENDPOINTS.MAP.DELETE.replace(':mapID', mapID));
 }

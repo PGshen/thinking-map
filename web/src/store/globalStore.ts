@@ -4,11 +4,11 @@ import type { User } from '../types/user';
 
 interface GlobalStore {
   user: User | null;
-  mapId: string | null;
+  mapID: string | null;
   loading: boolean;
   error: string | null;
   setUser: (user: User | null) => void;
-  setMapId: (id: string | null) => void;
+  setMapID: (id: string | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 }
@@ -18,11 +18,11 @@ export const useGlobalStore = create<GlobalStore>()(
     persist(
       (set) => ({
         user: null,
-        mapId: null,
+        mapID: null,
         loading: false,
         error: null,
         setUser: (user) => set({ user }),
-        setMapId: (id) => set({ mapId: id }),
+        setMapID: (id) => set({ mapID: id }),
         setLoading: (loading) => set({ loading }),
         setError: (error) => set({ error }),
       }),

@@ -57,7 +57,7 @@
 
 // src/app/map/[id]/page.tsx
 <WorkspaceLayout>
-  <MapWorkspace mapId={params.id} />
+  <MapWorkspace mapID={params.id} />
 </WorkspaceLayout>
 ```
 

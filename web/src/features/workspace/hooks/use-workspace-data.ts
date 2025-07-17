@@ -13,7 +13,7 @@ import { getMapNodes, updateNode, updateNodeContext } from '@/api/node';
 import { CustomNodeModel, Position } from '@/types/node';
 
 // 工作区数据管理hook
-export function useWorkspaceData(mapId?: string) {
+export function useWorkspaceData(mapID?: string) {
   const {
     mapInfo,
     nodes,
@@ -60,7 +60,7 @@ export function useWorkspaceData(mapId?: string) {
         position: nodeData.position,
         data: {
           id: nodeData.id,
-          parentId: nodeData.parentID,
+          parentID: nodeData.parentID,
           nodeType: nodeData.nodeType,
           question: nodeData.question,
           target: nodeData.target,
@@ -96,12 +96,12 @@ export function useWorkspaceData(mapId?: string) {
   }, []);
 
   // 保存思维导图详细信息
-  const saveMap = useCallback(async (mapId: string | null, info: Partial<UpdateMapRequest>) => {
-    console.log(mapId)
-    if (!mapId || !mapInfo) return false;
+  const saveMap = useCallback(async (mapID: string | null, info: Partial<UpdateMapRequest>) => {
+    console.log(mapID)
+    if (!mapID || !mapInfo) return false;
     
     try {
-      const resp = await updateMap(mapId, info);
+      const resp = await updateMap(mapID, info);
       actions.updateMap({
         ...mapInfo,
         ...info
@@ -121,14 +121,14 @@ export function useWorkspaceData(mapId?: string) {
       });
       return false;
     }
-  }, [mapId, mapInfo]);
+  }, [mapID, mapInfo]);
 
   // 定时保存节点位置的间隔（毫秒）
   const AUTO_SAVE_INTERVAL = 30000; // 30秒
 
   // 保存提交位置到后端
   const savePosition = useCallback(async () => {
-    if (!mapId || changedNodePositions.length === 0) return true;
+    if (!mapID || changedNodePositions.length === 0) return true;
     
     try {
       const changedNodes = nodes.filter(node => changedNodePositions.includes(node.id));
@@ -137,7 +137,7 @@ export function useWorkspaceData(mapId?: string) {
           position: node.position,
         };
         
-        await updateNode(mapId, node.id, nodeData);
+        await updateNode(mapID, node.id, nodeData);
       });
       
       await Promise.all(savePromises);
@@ -153,11 +153,11 @@ export function useWorkspaceData(mapId?: string) {
       });
       return false;
     }
-  }, [mapId, changedNodePositions, nodes]);
+  }, [mapID, changedNodePositions, nodes]);
 
   // 设置定时保存
   useEffect(() => {
-    if (!mapId) return;
+    if (!mapID) return;
 
     const timer = setInterval(() => {
       if (changedNodePositions.length > 0) {
@@ -166,16 +166,16 @@ export function useWorkspaceData(mapId?: string) {
     }, AUTO_SAVE_INTERVAL);
 
     return () => clearInterval(timer);
-  }, [mapId, changedNodePositions, savePosition]);
+  }, [mapID, changedNodePositions, savePosition]);
 
   // 初始化数据
   useEffect(() => {
-    if (mapId) {
-      console.log("init map", mapId)
-      loadMap(mapId);
-      loadNodes(mapId);
+    if (mapID) {
+      console.log("init map", mapID)
+      loadMap(mapID);
+      loadNodes(mapID);
     }
-  }, [mapId]);
+  }, [mapID]);
 
   // 页面卸载前保存
   useEffect(() => {

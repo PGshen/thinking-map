@@ -17,7 +17,7 @@ import (
 // NodeOwnershipMiddleware checks if the node belongs to the user
 func NodeOwnershipMiddleware(nodeRepo repository.ThinkingNode, mapRepo repository.ThinkingMap) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		nodeID := c.Param("nodeId")
+		nodeID := c.Param("nodeID")
 		if nodeID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "node ID is required"})
 			c.Abort()
@@ -62,7 +62,7 @@ func NodeOwnershipMiddleware(nodeRepo repository.ThinkingNode, mapRepo repositor
 // NodeDetailOwnershipMiddleware checks if the node_detail belongs to the user
 func NodeDetailOwnershipMiddleware(nodeDetailRepo repository.NodeDetail, nodeRepo repository.ThinkingNode, mapRepo repository.ThinkingMap) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		detailID := c.Param("detailId")
+		detailID := c.Param("detailID")
 		if detailID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "detail ID is required"})
 			c.Abort()

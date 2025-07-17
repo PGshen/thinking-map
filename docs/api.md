@@ -18,7 +18,7 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "userId": "uuid",
+    "userID": "uuid",
     "username": "string",
     "email": "string",
     "fullName": "string",
@@ -27,7 +27,7 @@ Response 200 OK:
     "expiresIn": 900
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 Response 400 Bad Request:
@@ -39,7 +39,7 @@ Response 400 Bad Request:
     "error": "username already exists"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 用户登录
@@ -57,7 +57,7 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "userId": "uuid",
+    "userID": "uuid",
     "username": "string",
     "email": "string",
     "fullName": "string",
@@ -66,7 +66,7 @@ Response 200 OK:
     "expiresIn": 900
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 Response 401 Unauthorized:
@@ -75,7 +75,7 @@ Response 401 Unauthorized:
   "message": "invalid credentials",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 刷新Token
@@ -92,7 +92,7 @@ Response 200 OK:
     "expiresIn": 900
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 Response 401 Unauthorized:
@@ -101,7 +101,7 @@ Response 401 Unauthorized:
   "message": "invalid refresh token",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 登出
@@ -114,7 +114,7 @@ Response 200 OK:
   "message": "success",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 ```
 
@@ -140,7 +140,6 @@ Response 200 OK:
   "message": "success",
   "data": {
     "id": "string",             // 导图ID（UUID）
-    "rootNodeId": "string",     // 根节点ID（UUID）
     "status": 1,                 // 状态码
     "problem": "string",        // 问题描述
     "problemType": "string",    // 问题类型
@@ -153,7 +152,7 @@ Response 200 OK:
     "updatedAt": "string"       // 更新时间（ISO8601）
   },
   "timestamp": "string",        // 响应时间（ISO8601）
-  "requestId": "string"         // 请求ID（UUID）
+  "requestID": "string"         // 请求ID（UUID）
 }
 
 // 说明：
@@ -190,11 +189,11 @@ Response 200 OK:
     ]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 获取思维导图详情
-GET /api/v1/maps/{mapId}
+GET /api/v1/maps/{mapID}
 Authorization: Bearer <token>
 
 Response 200 OK:
@@ -217,11 +216,11 @@ Response 200 OK:
     "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 更新思维导图
-PUT /api/v1/maps/{mapId}
+PUT /api/v1/maps/{mapID}
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -257,11 +256,11 @@ Response 200 OK:
     "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 删除思维导图
-DELETE /api/v1/maps/{mapId}
+DELETE /api/v1/maps/{mapID}
 Authorization: Bearer <token>
 
 Response 200 OK:
@@ -270,14 +269,14 @@ Response 200 OK:
   "message": "success",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 ```
 
 #### 6.3.3 节点管理接口
 ```yaml
 # 获取思维导图的所有节点
-GET /api/v1/maps/{mapId}/nodes
+GET /api/v1/maps/{mapID}/nodes
 Authorization: Bearer <token>
 
 Response 200 OK:
@@ -337,11 +336,11 @@ Response 200 OK:
     ]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 创建节点
-POST /api/v1/maps/{mapId}/nodes
+POST /api/v1/maps/{mapID}/nodes
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -389,11 +388,11 @@ Response 200 OK:
     "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 更新节点
-PUT /api/v1/{mapId}/nodes/{nodeId}
+PUT /api/v1/{mapID}/nodes/{nodeID}
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -438,11 +437,11 @@ Response 200 OK:
     "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 更新节点上下文
-PUT /api/v1/{mapId}/nodes/{nodeId}/context
+PUT /api/v1/{mapID}/nodes/{nodeID}/context
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -507,11 +506,11 @@ Response 200 OK:
     "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 重置上下文
-PUT /api/v1/{mapId}/nodes/{nodeId}/context/reset
+PUT /api/v1/{mapID}/nodes/{nodeID}/context/reset
 Authorization: Bearer <token>
 
 Response 200 OK:
@@ -538,11 +537,11 @@ Response 200 OK:
     "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 删除节点
-DELETE /api/v1/{mapId}/nodes/{nodeId}
+DELETE /api/v1/{mapID}/nodes/{nodeID}
 Authorization: Bearer <token>
 
 Response 200 OK:
@@ -551,14 +550,14 @@ Response 200 OK:
   "message": "success",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 
 #### 6.3.4 节点详情接口
 ```yaml
 # 获取节点详情
-GET /api/v1/{mapId}/nodes/{nodeId}/details
+GET /api/v1/{mapID}/nodes/{nodeID}/details
 Authorization: Bearer <token>
 
 Response 200 OK:
@@ -569,12 +568,12 @@ Response 200 OK:
     "details": [
       {
         "id": "uuid",
-        "nodeId": "uuid",
+        "nodeID": "uuid",
         "detailType": "string",
         "content": {
           "context": [
             {
-              "nodeId": "uuid",
+              "nodeID": "uuid",
               "type": "string",
               "question": "string",
               "target": "string",
@@ -600,11 +599,11 @@ Response 200 OK:
     ]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 创建节点详情
-POST /api/v1/{mapId}/nodes/{nodeId}/details
+POST /api/v1/{mapID}/nodes/{nodeID}/details
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -614,7 +613,7 @@ Request:
   "content": {
     "context": [
       {
-        "nodeId": "uuid",
+        "nodeID": "uuid",
         "type": "string",
         "question": "string",
         "target": "string",
@@ -642,7 +641,7 @@ Response 200 OK:
   "message": "success",
   "data": {
     "id": "uuid",
-    "nodeId": "uuid",
+    "nodeID": "uuid",
     "detailType": "string",
     "content": { ... },
     "status": 1,
@@ -651,11 +650,11 @@ Response 200 OK:
     "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 更新节点详情
-PUT /api/v1/node-details/{detailId}
+PUT /api/v1/node-details/{detailID}
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -672,7 +671,7 @@ Response 200 OK:
   "message": "success",
   "data": {
     "id": "uuid",
-    "nodeId": "uuid",
+    "nodeID": "uuid",
     "detailType": "string",
     "content": { ... },
     "status": 1,
@@ -680,11 +679,11 @@ Response 200 OK:
     "updatedAt": "2024-01-01T00:00:00Z"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 删除节点详情
-DELETE /api/v1/node-details/{detailId}
+DELETE /api/v1/node-details/{detailID}
 Authorization: Bearer <token>
 
 Response 200 OK:
@@ -693,7 +692,7 @@ Response 200 OK:
   "message": "success",
   "data": null,
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 ```
 
@@ -702,21 +701,21 @@ Response 200 OK:
 
 
 # SSE连接
-GET /api/v1/sse/connect?map_id={map_id}&user_id={user_id}
+GET /api/v1/sse/connect?map_id={map_id}
 Authorization: Bearer <token>
 
 Response 200 OK:
 event: connection_established
 data: {
-  "mapId": "uuid",
-  "currentStatus": "ready",
-  "activeNodes": ["uuid"]
+  "sessionID": "uuid",
+  "clientID": "uuid",
+  "message": "SSE连接已建立"
 }
 
 # SSE事件格式
-event: node_created
+event: nodeCreated
 data: {
-  "nodeId": "uuid",
+  "nodeID": "uuid",
   "parentID": "uuid",
   "nodeType": "analysis",
   "question": "string",
@@ -725,18 +724,19 @@ data: {
   "dependencies": ["uuid"]
 }
 
-event: node_updated
+event: nodeUpdated
 data: {
-  "nodeId": "uuid",
+  "nodeID": "uuid",
+  "mode": "replace",
   "updates": {
     "status": "completed",
     "conclusion": "string"
   }
 }
 
-event: thinking_progress
+event: thinkingProgress
 data: {
-  "nodeId": "uuid",
+  "nodeID": "uuid",
   "stage": "analyzing|reasoning|synthesizing",
   "progress": 50,
   "message": "string"
@@ -752,7 +752,7 @@ Request:
 {
   "question": "string",
   "questionType": "research|creative|analysis|planning",
-  "userId": "uuid"
+  "userID": "uuid"
 }
 
 Response 200 OK:
@@ -772,7 +772,7 @@ Response 200 OK:
     "clarificationQuestions": ["string"]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 问题澄清
@@ -782,7 +782,7 @@ Content-Type: application/json
 
 Request:
 {
-  "sessionId": "uuid",
+  "sessionID": "uuid",
   "clarifications": {
     "answers": ["string"],
     "additionalInfo": "string",
@@ -810,7 +810,7 @@ Response 200 OK:
     "clarificationQuestions": ["string"]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 问题确认
@@ -820,7 +820,7 @@ Content-Type: application/json
 
 Request:
 {
-  "sessionId": "uuid",
+  "sessionID": "uuid",
   "finalUnderstanding": {
     "problem": "string",
     "target": "string",
@@ -834,16 +834,16 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "mapId": "uuid",
+    "mapID": "uuid",
     "rootNode": {
-      "nodeId": "uuid",
+      "nodeID": "uuid",
       "question": "string",
       "target": "string",
       "status": "pending"
     }
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 节点执行
@@ -853,7 +853,7 @@ Content-Type: application/json
 
 Request:
 {
-  "nodeId": "uuid",
+  "nodeID": "uuid",
   "action": "start"
 }
 
@@ -867,7 +867,7 @@ Response 200 OK:
     "nextTab": "decompose|conclusion"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 问题拆解
@@ -877,7 +877,7 @@ Content-Type: application/json
 
 Request:
 {
-  "nodeId": "uuid",
+  "nodeID": "uuid",
   "question": "string",
   "context": "string"
 }
@@ -898,7 +898,7 @@ Response 200 OK:
     "strategy": "string"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 问题拆解反馈
@@ -908,13 +908,13 @@ Content-Type: application/json
 
 Request:
 {
-  "nodeId": "节点ID",
+  "nodeID": "节点ID",
   "feedback": {
     "rating": 3,
     "comments": "拆解不够细致，缺少技术实现层面",
     "issues": [
       {
-        "subProblemId": "子问题ID",
+        "subProblemID": "子问题ID",
         "issue": "问题描述过于宽泛"
       }
     ],
@@ -928,12 +928,12 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "feedbackId": "反馈ID",
+    "feedbackID": "反馈ID",
     "status": "received",
     "nextAction": "regenerate"
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 
@@ -944,7 +944,7 @@ Content-Type: application/json
 
 Request:
 {
-  "nodeId": "uuid",
+  "nodeID": "uuid",
   "question": "string",
   "context": "string",
   "subConclusions": ["string"]
@@ -962,7 +962,7 @@ Response 200 OK:
     "recommendations": ["string"]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 # 用户反馈
@@ -972,7 +972,7 @@ Content-Type: application/json
 
 Request:
 {
-  "nodeId": "uuid",
+  "nodeID": "uuid",
   "feedback": "string",
   "action": "adjust|confirm"
 }
@@ -989,7 +989,7 @@ Response 200 OK:
     "recommendations": ["string"]
   },
   "timestamp": "2024-01-01T00:00:00Z",
-  "requestId": "uuid"
+  "requestID": "uuid"
 }
 
 ```

@@ -30,7 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 
 interface DecomposeTabProps {
-  nodeId: string;
+  nodeID: string;
   node: any; // TODO: 使用正确的节点类型
 }
 
@@ -42,7 +42,7 @@ interface SubNode {
   isEditing?: boolean;
 }
 
-export function DecomposeTab({ nodeId, node }: DecomposeTabProps) {
+export function DecomposeTab({ nodeID, node }: DecomposeTabProps) {
   const [subNodes, setSubNodes] = useState<SubNode[]>([]);
   const [isDecomposing, setIsDecomposing] = useState(false);
   const [newSubNode, setNewSubNode] = useState({ question: '', target: '' });
@@ -54,16 +54,16 @@ export function DecomposeTab({ nodeId, node }: DecomposeTabProps) {
   // 加载子节点数据
   useEffect(() => {
     // TODO: 从API或store获取子节点数据
-    // const childNodes = getChildNodes(nodeId);
+    // const childNodes = getChildNodes(nodeID);
     // setSubNodes(childNodes);
-  }, [nodeId]);
+  }, [nodeID]);
 
   // 自动拆解
   const handleAutoDecompose = async () => {
     setIsDecomposing(true);
     try {
       // TODO: 调用AI拆解API
-      // const result = await autoDecomposeNode(nodeId, {
+      // const result = await autoDecomposeNode(nodeID, {
       //   question: node.question,
       //   target: node.target,
       //   context: node.context
@@ -72,19 +72,19 @@ export function DecomposeTab({ nodeId, node }: DecomposeTabProps) {
       // 模拟AI拆解结果
       const mockSubNodes: SubNode[] = [
         {
-          id: `${nodeId}-sub-1`,
+          id: `${nodeID}-sub-1`,
           question: '分析当前问题的核心要素',
           target: '识别问题的关键组成部分',
           status: 'pending'
         },
         {
-          id: `${nodeId}-sub-2`,
+          id: `${nodeID}-sub-2`,
           question: '制定解决方案',
           target: '基于分析结果制定可行的解决方案',
           status: 'pending'
         },
         {
-          id: `${nodeId}-sub-3`,
+          id: `${nodeID}-sub-3`,
           question: '验证方案可行性',
           target: '确保方案能够有效解决问题',
           status: 'pending'
@@ -94,7 +94,7 @@ export function DecomposeTab({ nodeId, node }: DecomposeTabProps) {
       setSubNodes(mockSubNodes);
       
       // 更新节点状态
-      actions.updateNode(nodeId, { data: { ...node.data, status: 'running' } });
+      actions.updateNode(nodeID, { data: { ...node.data, status: 'running' } });
       
       toast({
         title: '拆解完成',
@@ -123,7 +123,7 @@ export function DecomposeTab({ nodeId, node }: DecomposeTabProps) {
     }
 
     const subNode: SubNode = {
-      id: `${nodeId}-manual-${Date.now()}`,
+      id: `${nodeID}-manual-${Date.now()}`,
       question: newSubNode.question,
       target: newSubNode.target,
       status: 'pending'
@@ -140,22 +140,22 @@ export function DecomposeTab({ nodeId, node }: DecomposeTabProps) {
   };
 
   // 编辑子节点
-  const handleEditSubNode = (subNodeId: string, field: string, value: string) => {
+  const handleEditSubNode = (subNodeID: string, field: string, value: string) => {
     setSubNodes(prev => prev.map(subNode => 
-      subNode.id === subNodeId 
+      subNode.id === subNodeID 
         ? { ...subNode, [field]: value }
         : subNode
     ));
   };
 
   // 保存子节点编辑
-  const handleSaveSubNode = async (subNodeId: string) => {
+  const handleSaveSubNode = async (subNodeID: string) => {
     try {
       // TODO: 调用API保存子节点
-      // await updateSubNode(subNodeId, subNode);
+      // await updateSubNode(subNodeID, subNode);
       
       setSubNodes(prev => prev.map(subNode => 
-        subNode.id === subNodeId 
+        subNode.id === subNodeID 
           ? { ...subNode, isEditing: false }
           : subNode
       ));
@@ -174,8 +174,8 @@ export function DecomposeTab({ nodeId, node }: DecomposeTabProps) {
   };
 
   // 删除子节点
-  const handleDeleteSubNode = (subNodeId: string) => {
-    setSubNodes(prev => prev.filter(subNode => subNode.id !== subNodeId));
+  const handleDeleteSubNode = (subNodeID: string) => {
+    setSubNodes(prev => prev.filter(subNode => subNode.id !== subNodeID));
     toast({
       title: '删除成功',
       description: '子任务已删除',
@@ -183,13 +183,13 @@ export function DecomposeTab({ nodeId, node }: DecomposeTabProps) {
   };
 
   // 开始执行子节点
-  const handleStartSubNode = async (subNodeId: string) => {
+  const handleStartSubNode = async (subNodeID: string) => {
     try {
       // TODO: 调用API开始执行子节点
-      // await startSubNodeExecution(subNodeId);
+      // await startSubNodeExecution(subNodeID);
       
       setSubNodes(prev => prev.map(subNode => 
-        subNode.id === subNodeId 
+        subNode.id === subNodeID 
           ? { ...subNode, status: 'running' }
           : subNode
       ));

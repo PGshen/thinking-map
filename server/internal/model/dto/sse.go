@@ -12,9 +12,24 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model"
 )
 
+const (
+	ConnectionEstablishedEventType = "connectionEstablished"
+	NodeCreatedEventType           = "nodeCreated"
+	NodeUpdatedEventType           = "nodeUpdated"
+	ThinkingProgressEventType      = "thinkingProgress"
+	ErrorEventType                 = "error"
+	CustomEventType                = "custom"
+)
+
+type ConnectionEstablishedEvent struct {
+	SessionID string `json:"sessionID"`
+	ClientID  string `json:"clientID"`
+	Message   string `json:"message"`
+}
+
 // NodeCreatedEvent represents the node creation event
 type NodeCreatedEvent struct {
-	NodeID    string         `json:"nodeId"`
+	NodeID    string         `json:"nodeID"`
 	ParentID  string         `json:"parentID"`
 	NodeType  string         `json:"nodeType"`
 	Question  string         `json:"question"`
@@ -25,14 +40,15 @@ type NodeCreatedEvent struct {
 
 // NodeUpdatedEvent represents the node update event
 type NodeUpdatedEvent struct {
-	NodeID    string                 `json:"nodeId"`
+	NodeID    string                 `json:"nodeID"`
+	Mode      string                 `json:"mode"` // 更新模式：repeace/append
 	Updates   map[string]interface{} `json:"updates"`
 	Timestamp time.Time              `json:"timestamp"`
 }
 
 // ThinkingProgressEvent represents the thinking progress event
 type ThinkingProgressEvent struct {
-	NodeID    string    `json:"nodeId"`
+	NodeID    string    `json:"nodeID"`
 	Stage     string    `json:"stage"`
 	Progress  int       `json:"progress"`
 	Message   string    `json:"message"`
@@ -41,7 +57,7 @@ type ThinkingProgressEvent struct {
 
 // ErrorEvent represents the error event
 type ErrorEvent struct {
-	NodeID       string    `json:"nodeId"`
+	NodeID       string    `json:"nodeID"`
 	ErrorCode    string    `json:"errorCode"`
 	ErrorMessage string    `json:"errorMessage"`
 	Timestamp    time.Time `json:"timestamp"`
@@ -56,7 +72,7 @@ type TestEventRequest struct {
 
 // TestEventResponse represents the response for testing SSE events
 type TestEventResponse struct {
-	EventID   string    `json:"eventId"`
+	EventID   string    `json:"eventID"`
 	EventType string    `json:"eventType"`
 	SentAt    time.Time `json:"sentAt"`
 	Message   string    `json:"message"`

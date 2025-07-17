@@ -11,7 +11,7 @@ import (
 // MapOwnershipMiddleware checks if the map belongs to the user
 func MapOwnershipMiddleware(mapRepo repository.ThinkingMap) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		mapID := c.Param("mapId")
+		mapID := c.Param("mapID")
 		if mapID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "map ID is required"})
 			c.Abort()

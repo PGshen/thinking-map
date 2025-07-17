@@ -20,9 +20,9 @@ func NewNodeDetailHandler(svc *service.NodeDetailService) *NodeDetailHandler {
 	return &NodeDetailHandler{NodeDetailService: svc}
 }
 
-// GetNodeDetails handles GET /api/v1/nodes/{nodeId}/details
+// GetNodeDetails handles GET /api/v1/nodes/{nodeID}/details
 func (h *NodeDetailHandler) GetNodeDetails(c *gin.Context) {
-	nodeID := c.Param("nodeId")
+	nodeID := c.Param("nodeID")
 	if nodeID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
@@ -53,9 +53,9 @@ func (h *NodeDetailHandler) GetNodeDetails(c *gin.Context) {
 	})
 }
 
-// CreateNodeDetail handles POST /api/v1/nodes/{nodeId}/details
+// CreateNodeDetail handles POST /api/v1/nodes/{nodeID}/details
 func (h *NodeDetailHandler) CreateNodeDetail(c *gin.Context) {
-	nodeID := c.Param("nodeId")
+	nodeID := c.Param("nodeID")
 	if nodeID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
@@ -97,9 +97,9 @@ func (h *NodeDetailHandler) CreateNodeDetail(c *gin.Context) {
 	})
 }
 
-// UpdateNodeDetail handles PUT /api/v1/node-details/{detailId}
+// UpdateNodeDetail handles PUT /api/v1/node-details/{detailID}
 func (h *NodeDetailHandler) UpdateNodeDetail(c *gin.Context) {
-	detailID := c.Param("detailId")
+	detailID := c.Param("detailID")
 	if detailID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
@@ -141,9 +141,9 @@ func (h *NodeDetailHandler) UpdateNodeDetail(c *gin.Context) {
 	})
 }
 
-// DeleteNodeDetail handles DELETE /api/v1/node-details/{detailId}
+// DeleteNodeDetail handles DELETE /api/v1/node-details/{detailID}
 func (h *NodeDetailHandler) DeleteNodeDetail(c *gin.Context) {
-	detailID := c.Param("detailId")
+	detailID := c.Param("detailID")
 	if detailID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,

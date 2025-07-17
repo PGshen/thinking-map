@@ -60,7 +60,7 @@ export function RegisterForm({
         if (typeof window !== 'undefined') {
           setToken(data.accessToken || '', data.refreshToken || '');
         }
-        setUser({ userId: data.userId, username: data.username, email: data.email, fullName: data.fullName });
+        setUser({ userID: data.userID, username: data.username, email: data.email, fullName: data.fullName });
         toast.success("注册成功！🎉🎉🎉")
         router.push("/");
       } else {

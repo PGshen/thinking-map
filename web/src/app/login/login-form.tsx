@@ -46,7 +46,7 @@ export function LoginForm({
         if (typeof window !== 'undefined') {
           setToken(data.accessToken || '', data.refreshToken || '');
         }
-        setUser({ userId: data.userId, username: data.username, email: data.email, fullName: data.fullName });
+        setUser({ userID: data.userID, username: data.username, email: data.email, fullName: data.fullName });
         toast.success("登录成功！")
         router.push("/");
       } else {

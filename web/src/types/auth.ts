@@ -16,7 +16,7 @@ export interface RegisterParams {
 
 // 注册/登录响应data
 export interface AuthData {
-  userId: string;
+  userID: string;
   username: string;
   email: string;
   fullName: string;

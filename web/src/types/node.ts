@@ -27,7 +27,7 @@ export interface Edge {
 
 export interface CustomNodeModel {
   id: string;
-  parentId?: string;
+  parentID?: string;
   nodeType: string;
   question: string;
   target: string;
@@ -38,13 +38,13 @@ export interface CustomNodeModel {
   selected?: boolean;
   isEditing?: boolean;
   // 交互事件（由外部注入，非持久数据）
-  onEdit?: (mapId: string|null, id: string, data: Partial<CustomNodeModel>) => Promise<NodeResponse>;
-  onDelete?: (mapId: string|null, id: string) => void;
+  onEdit?: (mapID: string|null, id: string, data: Partial<CustomNodeModel>) => Promise<NodeResponse>;
+  onDelete?: (mapID: string|null, id: string) => void;
   onAddChild?: (id: string) => void;
   onSelect?: (id: string) => void;
   onDoubleClick?: (id: string) => void;
   onContextMenu?: (id: string, e: React.MouseEvent) => void;
-  onUpdateId?: (mapId: string|null, oldId: string, newId: string) => void;
+  onUpdateID?: (mapID: string|null, oldID: string, newID: string) => void;
 }
 
 export interface DependentContext {

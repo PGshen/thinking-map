@@ -17,7 +17,7 @@
 interface MapStore {
   nodes: Node[];
   edges: Edge[];
-  selectedNodeId: string | null;
+  selectedNodeID: string | null;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
   selectNode: (id: string | null) => void;
@@ -27,7 +27,7 @@ interface MapStore {
 // store/globalStore.ts
 interface GlobalStore {
   user: User | null;
-  mapId: string | null;
+  mapID: string | null;
   loading: boolean;
   error: string | null;
   setUser: (user: User | null) => void;
@@ -74,10 +74,10 @@ export const useMapStore = create<MapStore>()(
       (set, get) => ({
         nodes: [],
         edges: [],
-        selectedNodeId: null,
+        selectedNodeID: null,
         setNodes: (nodes) => set({ nodes }),
         setEdges: (edges) => set({ edges }),
-        selectNode: (id) => set({ selectedNodeId: id }),
+        selectNode: (id) => set({ selectedNodeID: id }),
         // ...
       }),
       { name: 'map-store' }

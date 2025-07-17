@@ -151,19 +151,19 @@ interface WorkspaceStore {
   edges: NodeEdge[]
   
   // 选中状态
-  selectedNodeIds: string[]
+  selectedNodeIDs: string[]
   
   // 面板状态
   panelOpen: boolean
   panelWidth: number
-  activeNodeId: string | null
+  activeNodeID: string | null
   
   // 操作方法
   actions: {
-    selectNode: (nodeId: string) => void
-    openPanel: (nodeId: string) => void
+    selectNode: (nodeID: string) => void
+    openPanel: (nodeID: string) => void
     closePanel: () => void
-    updateNode: (nodeId: string, data: Partial<ThinkingNode>) => void
+    updateNode: (nodeID: string, data: Partial<ThinkingNode>) => void
     // ...
   }
 }

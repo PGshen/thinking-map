@@ -1,6 +1,6 @@
 // 与后端 dto/sse.go 对齐的 SSE 事件类型定义
 export interface NodeCreatedEvent {
-  nodeId: string;
+  nodeID: string;
   parentID: string;
   nodeType: string;
   question: string;
@@ -10,13 +10,13 @@ export interface NodeCreatedEvent {
 }
 
 export interface NodeUpdatedEvent {
-  nodeId: string;
+  nodeID: string;
   updates: Record<string, any>;
   timestamp: string;
 }
 
 export interface ThinkingProgressEvent {
-  nodeId: string;
+  nodeID: string;
   stage: string;
   progress: number;
   message: string;
@@ -24,7 +24,7 @@ export interface ThinkingProgressEvent {
 }
 
 export interface ErrorEvent {
-  nodeId: string;
+  nodeID: string;
   errorCode: string;
   errorMessage: string;
   timestamp: string;
@@ -37,7 +37,7 @@ export interface TestEventRequest {
 }
 
 export interface TestEventResponse {
-  eventId: string;
+  eventID: string;
   eventType: string;
   sentAt: string;
   message: string;

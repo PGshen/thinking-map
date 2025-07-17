@@ -101,7 +101,7 @@ func (h *MapHandler) ListMaps(c *gin.Context) {
 
 // GetMap handles retrieving a specific mind map
 func (h *MapHandler) GetMap(c *gin.Context) {
-	mapID := c.Param("mapId")
+	mapID := c.Param("mapID")
 	if mapID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
@@ -137,7 +137,7 @@ func (h *MapHandler) GetMap(c *gin.Context) {
 
 // UpdateMap handles updating a mind map
 func (h *MapHandler) UpdateMap(c *gin.Context) {
-	mapID := c.Param("mapId")
+	mapID := c.Param("mapID")
 	if mapID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
@@ -188,7 +188,7 @@ func (h *MapHandler) UpdateMap(c *gin.Context) {
 
 // DeleteMap handles deleting a mind map
 func (h *MapHandler) DeleteMap(c *gin.Context) {
-	mapID := c.Param("mapId")
+	mapID := c.Param("mapID")
 	if mapID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
