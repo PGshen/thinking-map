@@ -25,9 +25,8 @@ graph TB
     H -->|拆解| I[拆解决策Agent]
     H -->|结论| J[结论生成Agent]
     I --> K[问题拆解Agent]
-    K --> L[创建子节点工具]
-    L --> M[SSE通知前端]
-    J --> N[节点完成]
+    
+    M[SSE通知前端]
     
     subgraph "工程化组件"
         O[上下文管理器]
@@ -42,7 +41,9 @@ graph TB
     G -.-> Q
     K -.-> Q
     J -.-> Q
-    K -.-> S
+    K -.-> |新增/更新|S
+    J -.-> |完成|S
+    S -.-> M
     E -.-> R
 ```
 
@@ -233,13 +234,18 @@ flowchart TD
 - **父节点上下文**：父节点的问题和目标
 - **同级依赖节点上下文**：同级依赖节点的问题目标和结论
 - **子节点上下文**：直接子节点的问题目标和结论
+- **对话历史上下文**：当前节点的对话历史记录，用于问题拆解和结论生成的对话框交互
+  - 包含最近10条对话记录，保持对话的连续性
+  - 提供对话摘要信息（消息总数、时间范围、用户/助手消息数量）
+  - 支持Agent理解当前对话的进展和上下文背景
 - **用户干预上下文**：用户手动添加或修改的上下文信息
 
 **实现方式**：
 ```python
 class ContextManager:
-    def __init__(self, thinking_tree):
+    def __init__(self, thinking_tree, conversation_manager=None):
         self.thinking_tree = thinking_tree
+        self.conversation_manager = conversation_manager
     
     def get_node_context(self, node_id):
         """获取节点的完整上下文"""
@@ -249,6 +255,7 @@ class ContextManager:
             'parent_context': self._get_parent_context(node_id),
             'dependency_context': self._get_dependency_context(node_id),
             'children_context': self._get_children_context(node_id),
+            'conversation_context': self._get_conversation_context(node_id),
             'user_context': self._get_user_context(node_id)
         }
         return context
@@ -281,6 +288,78 @@ class ContextManager:
             'goal': child.goal,
             'conclusion': child.conclusion
         } for child in children]
+    
+    def _get_conversation_context(self, node_id):
+        """获取节点的对话历史上下文"""
+        if not self.conversation_manager:
+            return []
+        
+        # 获取最近的对话历史，用于问题拆解和结论生成的对话框交互
+        recent_messages = self.conversation_manager.get_recent_node_conversation(node_id, limit=10)
+        
+        # 格式化对话历史，提供给Agent作为上下文
+        formatted_history = []
+        for msg in recent_messages:
+            formatted_history.append({
+                'role': msg['role'],
+                'content': msg['content'],
+                'timestamp': msg['timestamp']
+            })
+        
+        return {
+            'recent_messages': formatted_history,
+            'summary': self.conversation_manager.get_conversation_summary(node_id)
+        }
+    
+    def _get_user_context(self, node_id):
+        """获取用户手动添加或修改的上下文信息"""
+        # 这里可以从数据库或其他存储中获取用户自定义的上下文
+        # 暂时返回空，具体实现根据需求定义
+        return None
+```
+
+**对话框交互中的上下文使用示例**：
+```python
+# 在问题拆解或结论生成的对话框中使用上下文
+def handle_dialog_interaction(node_id, user_message, context_manager, conversation_manager):
+    # 获取完整的节点上下文
+    context = context_manager.get_node_context(node_id)
+    
+    # 添加用户消息到对话历史
+    conversation_manager.add_message('user', user_message, node_id)
+    
+    # 构建Agent的提示词，包含所有相关上下文
+    prompt = f"""
+    当前节点信息：
+    - 问题：{context['current_node'].question}
+    - 目标：{context['current_node'].goal}
+    
+    父节点上下文：{context['parent_context']}
+    依赖节点上下文：{context['dependency_context']}
+    子节点上下文：{context['children_context']}
+    
+    对话历史：
+    {format_conversation_history(context['conversation_context']['recent_messages'])}
+    
+    对话摘要：{context['conversation_context']['summary']}
+    
+    用户消息：{user_message}
+    """
+    
+    # 调用Agent进行处理
+    agent_response = agent.process(prompt)
+    
+    # 添加Agent响应到对话历史
+    conversation_manager.add_message('assistant', agent_response, node_id)
+    
+    return agent_response
+
+def format_conversation_history(messages):
+    """格式化对话历史为可读文本"""
+    formatted = []
+    for msg in messages:
+        formatted.append(f"{msg['role']}: {msg['content']}")
+    return "\n".join(formatted)
 ```
 
 ### 3.2 依赖检查器 (Dependency Checker)
@@ -375,6 +454,34 @@ class ConversationManager:
         """获取特定节点的对话历史"""
         return [msg for msg in self.conversation_history 
                 if msg.get('node_id') == node_id]
+    
+    def get_recent_node_conversation(self, node_id, limit=10):
+        """获取特定节点的最近对话历史"""
+        node_messages = self.get_node_conversation(node_id)
+        return node_messages[-limit:] if node_messages else []
+    
+    def clear_node_conversation(self, node_id):
+        """清除特定节点的对话历史"""
+        self.conversation_history = [msg for msg in self.conversation_history 
+                                   if msg.get('node_id') != node_id]
+    
+    def get_conversation_summary(self, node_id):
+        """获取节点对话的摘要信息"""
+        node_messages = self.get_node_conversation(node_id)
+        if not node_messages:
+            return None
+        
+        return {
+            'total_messages': len(node_messages),
+            'first_message_time': node_messages[0]['timestamp'],
+            'last_message_time': node_messages[-1]['timestamp'],
+            'user_messages': len([msg for msg in node_messages if msg['role'] == 'user']),
+            'assistant_messages': len([msg for msg in node_messages if msg['role'] == 'assistant'])
+        }
+    
+    def _log_conversation_start(self, node_id, agent_type):
+        """记录对话开始"""
+        self.add_message('system', f'开始{agent_type}对话', node_id)
 ```
 
 ### 3.5 节点操作工具 (Node Operation Tools)
