@@ -14,16 +14,14 @@ import (
 )
 
 type NodeService struct {
-	nodeRepo       repository.ThinkingNode
-	nodeDetailRepo repository.NodeDetail
-	mapRepo        repository.ThinkingMap
+	nodeRepo repository.ThinkingNode
+	mapRepo  repository.ThinkingMap
 }
 
-func NewNodeService(nodeRepo repository.ThinkingNode, nodeDetailRepo repository.NodeDetail, mapRepo repository.ThinkingMap) *NodeService {
+func NewNodeService(nodeRepo repository.ThinkingNode, mapRepo repository.ThinkingMap) *NodeService {
 	return &NodeService{
-		nodeRepo:       nodeRepo,
-		nodeDetailRepo: nodeDetailRepo,
-		mapRepo:        mapRepo,
+		nodeRepo: nodeRepo,
+		mapRepo:  mapRepo,
 	}
 }
 
@@ -219,7 +217,7 @@ func (s *NodeService) getPreSibling(ctx *gin.Context, node *model.ThinkingNode) 
 		nodeContext := model.NodeContext{
 			Question:   depNode.Question,
 			Target:     depNode.Target,
-			Conclusion: depNode.Conclusion,
+			Conclusion: depNode.Conclusion.Content,
 			Abstract:   "", // 可以根据需要添加摘要逻辑
 			Status:     depNode.Status,
 		}
@@ -243,7 +241,7 @@ func (s *NodeService) getChildren(ctx *gin.Context, nodeID string) []model.NodeC
 		nodeContext := model.NodeContext{
 			Question:   childNode.Question,
 			Target:     childNode.Target,
-			Conclusion: childNode.Conclusion,
+			Conclusion: childNode.Conclusion.Content,
 			Abstract:   "", // 可以根据需要添加摘要逻辑
 			Status:     childNode.Status,
 		}

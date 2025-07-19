@@ -17,7 +17,6 @@ var (
 	authSvc           AuthService
 	mapSvc            *MapService
 	nodeSvc           *NodeService
-	nodeDetailSvc     *NodeDetailService
 	dependencyChecker *DependencyChecker
 )
 
@@ -50,9 +49,7 @@ func TestMain(m *testing.M) {
 	mapSvc = NewMapService(mapRepo)
 
 	nodeRepo := repository.NewThinkingNodeRepository(testDB)
-	nodeDetailRepo := repository.NewNodeDetailRepository(testDB)
-	nodeSvc = NewNodeService(nodeRepo, nodeDetailRepo, mapRepo)
-	nodeDetailSvc = NewNodeDetailService(nodeDetailRepo)
+	nodeSvc = NewNodeService(nodeRepo, mapRepo)
 	dependencyChecker = NewDependencyChecker(nodeRepo)
 
 	code := m.Run()

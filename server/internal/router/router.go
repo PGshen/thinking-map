@@ -41,21 +41,18 @@ func SetupRouter(
 	// Create repositories
 	thinkingMapRepo := repository.NewThinkingMapRepository(db)
 	nodeRepo := repository.NewThinkingNodeRepository(db)
-	nodeDetailRepo := repository.NewNodeDetailRepository(db)
 	messageRepo := repository.NewMessageRepository(db)
 
 	// Create services
 	authService := service.NewAuthService(db, redisClient, jwtConfig)
 	mapService := service.NewMapService(thinkingMapRepo)
-	nodeService := service.NewNodeService(nodeRepo, nodeDetailRepo, thinkingMapRepo)
-	nodeDetailService := service.NewNodeDetailService(nodeDetailRepo)
+	nodeService := service.NewNodeService(nodeRepo, thinkingMapRepo)
 	understandingService := service.NewUnderstandingService(messageRepo)
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)
 	mapHandler := handler.NewMapHandler(mapService)
 	nodeHandler := handler.NewNodeHandler(nodeService)
-	nodeDetailHandler := handler.NewNodeDetailHandler(nodeDetailService)
 	understandingHandler := thinkinghandler.NewUnderstandingHandler(understandingService)
 	repeaterHandler := thinkinghandler.NewRepeaterHandler()
 
@@ -99,15 +96,6 @@ func SetupRouter(
 				nodes.DELETE("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.DeleteNode)
 				nodes.PUT("/:nodeID/context", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.UpdateNodeContext)
 				nodes.PUT("/:nodeID/context/reset", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.ResetNodeContext)
-			}
-
-			nodeDetails := protected.Group("/maps/:mapID/nodes/:nodeID/details")
-			{
-				// NodeDetail routes
-				nodeDetails.GET("", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeDetailHandler.GetNodeDetails)
-				nodeDetails.POST("", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeDetailHandler.CreateNodeDetail)
-				nodeDetails.PUT("/:detailID", middleware.NodeDetailOwnershipMiddleware(nodeDetailRepo, nodeRepo, thinkingMapRepo), nodeDetailHandler.UpdateNodeDetail)
-				nodeDetails.DELETE("/:detailID", middleware.NodeDetailOwnershipMiddleware(nodeDetailRepo, nodeRepo, thinkingMapRepo), nodeDetailHandler.DeleteNodeDetail)
 			}
 
 			// Thinking routes

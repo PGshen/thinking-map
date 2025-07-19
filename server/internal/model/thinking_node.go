@@ -19,22 +19,23 @@ import (
 
 // ThinkingNode 思维节点模型
 type ThinkingNode struct {
-	SerialID     int64            `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
-	ID           string           `gorm:"type:uuid;uniqueIndex"`
-	MapID        string           `gorm:"type:uuid;not null;index"`
-	ParentID     string           `gorm:"type:uuid;index"`
-	NodeType     string           `gorm:"type:varchar(50);not null"` // root, analysis, conclusion, custom
-	Question     string           `gorm:"type:text;not null"`
-	Target       string           `gorm:"type:text"`
-	Context      DependentContext `gorm:"type:text;default:'{}'"` // 上下文
-	Conclusion   string           `gorm:"type:text"`
-	Status       string           `gorm:"type:varchar(50);default:'initial'"` // initial, pending, running, completed, error
-	Position     Position         `gorm:"type:jsonb;default:'{\"x\":0,\"y\":0}'"`
-	Metadata     datatypes.JSON   `gorm:"type:jsonb;default:'{}'"`
-	Dependencies Dependencies     `gorm:"type:jsonb;default:'[]'"`
-	CreatedAt    time.Time        `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
-	UpdatedAt    time.Time        `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
-	DeletedAt    gorm.DeletedAt   `gorm:"index" json:"-"`
+	SerialID      int64            `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
+	ID            string           `gorm:"type:uuid;uniqueIndex"`
+	MapID         string           `gorm:"type:uuid;not null;index"`
+	ParentID      string           `gorm:"type:uuid;index"`
+	NodeType      string           `gorm:"type:varchar(50);not null"` // root, analysis, conclusion, custom
+	Question      string           `gorm:"type:text;not null"`
+	Target        string           `gorm:"type:text"`
+	Context       DependentContext `gorm:"type:text;default:'{}'"` // 上下文
+	Decomposition Decomposition    `gorm:"type:jsonb;default:'{}'"`
+	Conclusion    Conclusion       `gorm:"type:jsonb;default:'{}'"`
+	Status        string           `gorm:"type:varchar(50);default:'initial'"` // initial, pending, running, completed, error
+	Position      Position         `gorm:"type:jsonb;default:'{\"x\":0,\"y\":0}'"`
+	Metadata      datatypes.JSON   `gorm:"type:jsonb;default:'{}'"`
+	Dependencies  Dependencies     `gorm:"type:jsonb;default:'[]'"`
+	CreatedAt     time.Time        `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+	UpdatedAt     time.Time        `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+	DeletedAt     gorm.DeletedAt   `gorm:"index" json:"-"`
 }
 
 func (t *ThinkingNode) BeforeCreate(tx *gorm.DB) error {
@@ -71,6 +72,51 @@ type NodeContext struct {
 	Conclusion string `json:"conclusion"`
 	Abstract   string `json:"abstract"`
 	Status     string `json:"status"`
+}
+type Decomposition struct {
+	IsDecompose   bool   `json:"isDecompose"`   // 是否分解
+	LastMessageId string `json:"lastMessageId"` // 最后一条消息ID
+}
+
+// Scan implements the Scanner interface for Decompose
+func (d *Decomposition) Scan(value interface{}) error {
+	if value == nil {
+		*d = Decomposition{}
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal JSON value: %v", value)
+	}
+	return json.Unmarshal(bytes, d)
+}
+
+// Value implements the Valuer interface for Decompose
+func (d Decomposition) Value() (driver.Value, error) {
+	return json.Marshal(d)
+}
+
+type Conclusion struct {
+	LastMessageId string `json:"lastMessageId"` // 最后一条消息ID
+	Content       string `json:"content"`       // 最终结论
+}
+
+// Scan implements the Scanner interface for Conclusion
+func (c *Conclusion) Scan(value interface{}) error {
+	if value == nil {
+		*c = Conclusion{}
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal JSON value: %v", value)
+	}
+	return json.Unmarshal(bytes, c)
+}
+
+// Value implements the Valuer interface for Conclusion
+func (c Conclusion) Value() (driver.Value, error) {
+	return json.Marshal(c)
 }
 
 // Position 实现 Scanner 接口

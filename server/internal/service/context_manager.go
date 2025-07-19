@@ -149,7 +149,7 @@ func (cm *ContextManager) getAncestorsContext(ctx context.Context, nodeID string
 			NodeID:     parent.ID,
 			Question:   parent.Question,
 			Target:     parent.Target,
-			Conclusion: parent.Conclusion,
+			Conclusion: parent.Conclusion.Content,
 			Status:     parent.Status,
 		}}, ancestors...)
 
@@ -183,7 +183,7 @@ func (cm *ContextManager) getDependencyContext(ctx context.Context, nodeID strin
 			NodeID:     depNode.ID,
 			Question:   depNode.Question,
 			Target:     depNode.Target,
-			Conclusion: depNode.Conclusion,
+			Conclusion: depNode.Conclusion.Content,
 			Status:     depNode.Status,
 		})
 	}
@@ -204,7 +204,7 @@ func (cm *ContextManager) getChildrenContext(ctx context.Context, nodeID string)
 			NodeID:     child.ID,
 			Question:   child.Question,
 			Target:     child.Target,
-			Conclusion: child.Conclusion,
+			Conclusion: child.Conclusion.Content,
 			Status:     child.Status,
 		})
 	}

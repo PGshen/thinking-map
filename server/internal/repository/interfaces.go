@@ -48,18 +48,6 @@ type ThinkingNode interface {
 	UpdateStatus(ctx context.Context, id string, status int) error
 }
 
-// NodeDetail 节点详情仓储接口
-type NodeDetail interface {
-	Create(ctx context.Context, detail *model.NodeDetail) error
-	Update(ctx context.Context, detail *model.NodeDetail) error
-	Delete(ctx context.Context, id string) error
-	FindByID(ctx context.Context, id string) (*model.NodeDetail, error)
-	FindByNodeID(ctx context.Context, nodeID string) ([]*model.NodeDetail, error)
-	FindByNodeIDAndType(ctx context.Context, nodeID string, tabType string) (*model.NodeDetail, error)
-	UpdateContent(ctx context.Context, id string, content model.JSONB) error
-	UpdateStatus(ctx context.Context, id string, status int) error
-}
-
 // Message 消息仓储接口
 type Message interface {
 	Create(ctx context.Context, message *model.Message) error
