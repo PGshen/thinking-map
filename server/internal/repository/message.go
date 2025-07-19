@@ -70,9 +70,9 @@ func (r *messageRepository) List(ctx context.Context, offset, limit int) ([]*mod
 	return messages, total, nil
 }
 
-func (r *messageRepository) FindByChatID(ctx context.Context, chatID string) ([]*model.Message, error) {
+func (r *messageRepository) FindByConversationID(ctx context.Context, conversationID string) ([]*model.Message, error) {
 	var messages []*model.Message
-	err := r.db.WithContext(ctx).Where("chat_id = ?", chatID).Find(&messages).Error
+	err := r.db.WithContext(ctx).Where("conversation_id = ?", conversationID).Find(&messages).Error
 	if err != nil {
 		return nil, err
 	}

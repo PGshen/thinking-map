@@ -27,15 +27,15 @@ type UpdateMessageRequest struct {
 
 // MessageResponse represents the message data in responses
 type MessageResponse struct {
-	ID          string               `json:"id"`
-	ParentID    string               `json:"parentID"`
-	ChatID      string               `json:"chatID"`
-	MessageType string               `json:"messageType"`
-	Role        schema.RoleType      `json:"role"`
-	Content     model.MessageContent `json:"content"`
-	Metadata    interface{}          `json:"metadata"`
-	CreatedAt   time.Time            `json:"createdAt"`
-	UpdatedAt   time.Time            `json:"updatedAt"`
+	ID             string               `json:"id"`
+	ParentID       string               `json:"parentID"`
+	ConversationID string               `json:"conversationID"`
+	MessageType    string               `json:"messageType"`
+	Role           schema.RoleType      `json:"role"`
+	Content        model.MessageContent `json:"content"`
+	Metadata       interface{}          `json:"metadata"`
+	CreatedAt      time.Time            `json:"createdAt"`
+	UpdatedAt      time.Time            `json:"updatedAt"`
 }
 
 // MessageListResponse represents the paginated list of messages
@@ -49,14 +49,14 @@ type MessageListResponse struct {
 // ToMessageResponse 将 model.Message 转为 dto.MessageResponse
 func ToMessageResponse(m *model.Message) MessageResponse {
 	return MessageResponse{
-		ID:          m.ID,
-		ParentID:    m.ParentID,
-		ChatID:      m.ChatID,
-		MessageType: m.MessageType,
-		Role:        m.Role,
-		Content:     m.Content,
-		Metadata:    m.Metadata,
-		CreatedAt:   m.CreatedAt,
-		UpdatedAt:   m.UpdatedAt,
+		ID:             m.ID,
+		ParentID:       m.ParentID,
+		ConversationID: m.ConversationID,
+		MessageType:    m.MessageType,
+		Role:           m.Role,
+		Content:        m.Content,
+		Metadata:       m.Metadata,
+		CreatedAt:      m.CreatedAt,
+		UpdatedAt:      m.UpdatedAt,
 	}
 }

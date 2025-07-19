@@ -289,13 +289,13 @@ class ContextManager:
             'conclusion': child.conclusion
         } for child in children]
     
-    def _get_conversation_context(self, node_id):
-        """获取节点的对话历史上下文"""
+    def _get_conversation_context(self, node_id, parent_msg_id):
+        """获取节点的对话历史上下文,通过parent_msg_id查找消息链"""
         if not self.conversation_manager:
             return []
         
         # 获取最近的对话历史，用于问题拆解和结论生成的对话框交互
-        recent_messages = self.conversation_manager.get_recent_node_conversation(node_id, limit=10)
+        recent_messages = self.conversation_manager.get_recent_node_conversation(node_id, parent_msg_id, limit=10)
         
         # 格式化对话历史，提供给Agent作为上下文
         formatted_history = []
@@ -366,7 +366,7 @@ def format_conversation_history(messages):
 
 **职责**：通过工程化方式检查节点的依赖关系，确保执行顺序的正确性
 
-**实现方式**：
+**实现伪代码**：
 ```python
 class DependencyChecker:
     def __init__(self, thinking_tree):
@@ -423,9 +423,9 @@ class KnowledgeRetrievalTool:
 
 ### 3.4 对话管理器 (Conversation Manager)
 
-**职责**：通过工程化方式管理对话状态，一个思考导图对应一个会话
+**职责**：通过工程化方式管理对话状态，一个思考导图存在两个对话：一个是拆解tab页对话、一个是总结tab页对话
 
-**实现方式**：
+**实现伪代码**：
 ```python
 class ConversationManager:
     def __init__(self, session_id):

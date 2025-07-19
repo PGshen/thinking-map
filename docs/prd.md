@@ -252,7 +252,7 @@ ThinkingMap 是一款交互式AI问题解决可视化助手，将AI的思考和�
 + `POST /api/thinking/analyze` - 开始问题分析
 + `POST /api/thinking/decompose` - 开始问题拆解
 + `POST /api/thinking/conclude` - 开始结论生成
-+ `POST /api/thinking/chat` - 对话交互
++ `POST /api/thinking/conversation` - 对话交互
 
 ### 3.5 用户体验设计
 #### 3.5.1 响应式设计

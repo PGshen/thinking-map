@@ -29,8 +29,8 @@ type ConcludeRequest struct {
 	ReasoningType string   `json:"reasoningType" binding:"required,oneof=deductive inductive abductive"`
 }
 
-// ChatRequest represents the request body for chat interaction
-type ChatRequest struct {
+// ConversationRequest represents the request body for conversation interaction
+type ConversationRequest struct {
 	NodeID  string `json:"nodeID" binding:"required,uuid"`
 	Message string `json:"message" binding:"required,max=1000"`
 	Context string `json:"context" binding:"required,oneof=decompose conclude"`
@@ -44,8 +44,8 @@ type TaskResponse struct {
 	EstimatedTime int    `json:"estimatedTime"`
 }
 
-// ChatResponse represents the response for chat messages
-type ChatResponse struct {
+// ConversationResponse represents the response for conversation messages
+type ConversationResponse struct {
 	MessageID string    `json:"messageID"`
 	Content   string    `json:"content"`
 	Role      string    `json:"role"`

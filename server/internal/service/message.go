@@ -31,28 +31,28 @@ func NewMessageService(messageRepo repository.Message) *MessageService {
 
 // CreateMessage 创建消息
 func (s *MessageService) CreateMessage(ctx context.Context, userID string, req dto.CreateMessageRequest) (*dto.MessageResponse, error) {
-	// 获取chatID
-	var chatID string
+	// 获取conversationID
+	var conversationID string
 	if req.ParentID == "" {
-		chatID = uuid.NewString()
+		conversationID = uuid.NewString()
 	} else {
 		// 通过parentID获取
 		if parentMsg, err := s.messageRepo.FindByID(ctx, req.ParentID); err == nil {
-			chatID = parentMsg.ChatID
+			conversationID = parentMsg.ConversationID
 		} else {
-			chatID = uuid.NewString()
+			conversationID = uuid.NewString()
 		}
 	}
 	msg := &model.Message{
-		ID:          req.ID,
-		ParentID:    req.ParentID,
-		ChatID:      chatID,
-		UserID:      userID,
-		MessageType: req.MessageType,
-		Role:        req.Role,
-		Content:     req.Content,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		ID:             req.ID,
+		ParentID:       req.ParentID,
+		ConversationID: conversationID,
+		UserID:         userID,
+		MessageType:    req.MessageType,
+		Role:           req.Role,
+		Content:        req.Content,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 	}
 	if err := s.messageRepo.Create(ctx, msg); err != nil {
 		return nil, err
@@ -146,8 +146,8 @@ func (s *MessageService) GetMessageByID(ctx context.Context, id string) (*dto.Me
 	return &resp, nil
 }
 
-func (s *MessageService) GetMessageByChatID(ctx context.Context, chatID string) ([]*dto.MessageResponse, error) {
-	msgs, err := s.messageRepo.FindByChatID(ctx, chatID)
+func (s *MessageService) GetMessageByConversationID(ctx context.Context, conversationID string) ([]*dto.MessageResponse, error) {
+	msgs, err := s.messageRepo.FindByConversationID(ctx, conversationID)
 	if err != nil {
 		return nil, err
 	}

@@ -67,7 +67,7 @@ type Message interface {
 	Delete(ctx context.Context, id string) error
 	FindByID(ctx context.Context, id string) (*model.Message, error)
 	FindByParentID(ctx context.Context, parentID string) ([]*model.Message, error)
-	FindByChatID(ctx context.Context, chatID string) ([]*model.Message, error)
+	FindByConversationID(ctx context.Context, conversationID string) ([]*model.Message, error)
 }
 
 // RAGRecord RAG检索记录仓储接口

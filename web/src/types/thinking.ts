@@ -22,7 +22,7 @@ export interface ConcludeRequest {
   reasoningType: string; // 'deductive' | 'inductive' | 'abductive'
 }
 
-export interface ChatRequest {
+export interface ConversationRequest {
   nodeID: string;
   message: string;
   context: string; // 'decompose' | 'conclude'
@@ -35,7 +35,7 @@ export interface TaskResponse {
   estimatedTime: number;
 }
 
-export interface ChatResponse {
+export interface ConversationResponse {
   messageID: string;
   content: string;
   role: string;

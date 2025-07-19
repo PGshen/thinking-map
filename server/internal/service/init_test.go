@@ -12,12 +12,13 @@ import (
 )
 
 var (
-	testDB        *gorm.DB
-	testRedis     *redis.Client
-	authSvc       AuthService
-	mapSvc        *MapService
-	nodeSvc       *NodeService
-	nodeDetailSvc *NodeDetailService
+	testDB            *gorm.DB
+	testRedis         *redis.Client
+	authSvc           AuthService
+	mapSvc            *MapService
+	nodeSvc           *NodeService
+	nodeDetailSvc     *NodeDetailService
+	dependencyChecker *DependencyChecker
 )
 
 func TestMain(m *testing.M) {
@@ -52,6 +53,7 @@ func TestMain(m *testing.M) {
 	nodeDetailRepo := repository.NewNodeDetailRepository(testDB)
 	nodeSvc = NewNodeService(nodeRepo, nodeDetailRepo, mapRepo)
 	nodeDetailSvc = NewNodeDetailService(nodeDetailRepo)
+	dependencyChecker = NewDependencyChecker(nodeRepo)
 
 	code := m.Run()
 

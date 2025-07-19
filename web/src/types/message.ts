@@ -6,7 +6,7 @@ export type RoleType = 'system' | 'assistant' | 'user';
 export interface MessageResponse {
   id: string;
   parentID: string;
-  chatID: string;
+  conversationID: string;
   messageType: string;
   role: RoleType;
   content: any; // TODO: 可根据 model.MessageContent 进一步细化

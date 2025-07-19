@@ -569,7 +569,7 @@ CREATE TABLE "messages" (
     serial_id BIGSERIAL PRIMARY KEY,
     id UUID NOT NULL UNIQUE,
     parent_id UUID,
-    chat_id UUID,
+    conversation_id UUID,
     user_id UUID,
     message_type VARCHAR(20) NOT NULL DEFAULT 'text',
     role VARCHAR(48),
@@ -581,7 +581,7 @@ CREATE TABLE "messages" (
 );
 CREATE INDEX idx_messages_node_id ON "messages"(node_id);
 CREATE INDEX idx_messages_parent_id ON "messages"(parent_id);
-CREATE INDEX idx_messages_parent_id ON "messages"(chat_id);
+CREATE INDEX idx_messages_parent_id ON "messages"(conversation_id);
 CREATE INDEX idx_messages_deleted_at ON "messages"(deleted_at);
 ```
 > content 字段结构
