@@ -18,11 +18,13 @@ import (
 
 type UnderstandingService struct {
 	messageRepo repository.Message
+	nodeRepo    repository.ThinkingNode
 }
 
-func NewUnderstandingService(messageRepo repository.Message) *UnderstandingService {
+func NewUnderstandingService(messageRepo repository.Message, nodeRepo repository.ThinkingNode) *UnderstandingService {
 	return &UnderstandingService{
 		messageRepo: messageRepo,
+		nodeRepo:    nodeRepo,
 	}
 }
 
@@ -44,9 +46,9 @@ func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.Understan
 	}
 
 	// 2. 加载历史消息
-	msgService := NewMessageService(s.messageRepo)
+	msgService := NewMessageManager(s.messageRepo, s.nodeRepo)
 	var msgs []*dto.MessageResponse
-	msgs, err = msgService.GetMessageByParentID(ctx, req.ParentMsgID)
+	msgs, err = msgService.GetMessageChain(ctx, req.ParentMsgID)
 	if err != nil {
 		return
 	}

@@ -421,136 +421,18 @@ class KnowledgeRetrievalTool:
         return self.mcp_client.call_tool('domain_knowledge', request)
 ```
 
-### 3.4 对话管理器 (Conversation Manager)
+### 3.4 消息管理器 (Message Manager)
 
-**职责**：通过工程化方式管理对话状态
+**职责**：通过工程化方式管理消息状态
 * 一个节点存在两个对话：一个是拆解tab页对话、一个是总结tab页对话
 * 消息通过parent_id进行关联，可实现消息回溯
 * 消息记录表 messages
+* 在thinking_nodes表分别有字段decomposition、conclusion会保存对话的最后一个消息id
+* 当前对话状态可以保存到thinking_nodes表的metadata字段
 
 **实现伪代码**：
 ```python
-class ConversationManager:
-    def __init__(self, user_id, db_session):
-        self.user_id = user_id
-        self.db = db_session
-        self.current_node_id = None
-        self.conversation_state = "idle"
-    
-    def start_node_conversation(self, node_id, agent_type, conversation_id=None):
-        """开始节点对话"""
-        self.current_node_id = node_id
-        self.conversation_state = f"{agent_type}_processing"
-        
-        # 如果没有提供conversation_id，则创建新的对话ID
-        if not conversation_id:
-            conversation_id = str(uuid.uuid4())
-        
-        self._log_conversation_start(node_id, agent_type, conversation_id)
-        return conversation_id
-    
-    def add_message(self, role, content, conversation_id, parent_id=None, 
-                   message_type="text", metadata=None):
-        """添加对话消息到数据库"""
-        message = Message(
-            id=str(uuid.uuid4()),
-            parent_id=parent_id,
-            conversation_id=conversation_id,
-            user_id=self.user_id,
-            message_type=message_type,
-            role=role,
-            content=MessageContent(
-                text=content if message_type == "text" else "",
-                rag=content if message_type == "rag" else [],
-                notice=content if message_type == "notice" else []
-            ),
-            metadata=metadata or {},
-            created_at=datetime.now(),
-            updated_at=datetime.now()
-        )
-        
-        self.db.add(message)
-        self.db.commit()
-        return message.id
-    
-    def get_conversation_messages(self, conversation_id, limit=None):
-        """获取特定对话的消息历史"""
-        query = self.db.query(Message).filter(
-            Message.conversation_id == conversation_id,
-            Message.user_id == self.user_id
-        ).order_by(Message.created_at)
-        
-        if limit:
-            query = query.limit(limit)
-        
-        return query.all()
-    
-    def get_recent_conversation_messages(self, conversation_id, limit=10):
-        """获取特定对话的最近消息历史"""
-        return self.db.query(Message).filter(
-            Message.conversation_id == conversation_id,
-            Message.user_id == self.user_id
-        ).order_by(Message.created_at.desc()).limit(limit).all()[::-1]
-    
-    def get_message_thread(self, message_id):
-        """通过parent_id获取消息线程（回溯功能）"""
-        messages = []
-        current_id = message_id
-        
-        while current_id:
-            message = self.db.query(Message).filter(
-                Message.id == current_id,
-                Message.user_id == self.user_id
-            ).first()
-            
-            if message:
-                messages.insert(0, message)
-                current_id = message.parent_id
-            else:
-                break
-        
-        return messages
-    
-    def clear_conversation(self, conversation_id):
-        """软删除特定对话的所有消息"""
-        self.db.query(Message).filter(
-            Message.conversation_id == conversation_id,
-            Message.user_id == self.user_id
-        ).update({"deleted_at": datetime.now()})
-        self.db.commit()
-    
-    def get_conversation_summary(self, conversation_id):
-        """获取对话的摘要信息"""
-        messages = self.get_conversation_messages(conversation_id)
-        if not messages:
-            return None
-        
-        return {
-            'total_messages': len(messages),
-            'first_message_time': messages[0].created_at,
-            'last_message_time': messages[-1].created_at,
-            'user_messages': len([msg for msg in messages if msg.role == 'user']),
-            'assistant_messages': len([msg for msg in messages if msg.role == 'assistant']),
-            'system_messages': len([msg for msg in messages if msg.role == 'system'])
-        }
-    
-    def get_node_conversations(self, node_id):
-        """获取节点的所有对话（拆解和总结）"""
-        # 通过metadata中的node_id字段查询
-        return self.db.query(Message.conversation_id).filter(
-            Message.user_id == self.user_id,
-            Message.metadata.contains({"node_id": node_id})
-        ).distinct().all()
-    
-    def _log_conversation_start(self, node_id, agent_type, conversation_id):
-        """记录对话开始"""
-        self.add_message(
-            role='system',
-            content=f'开始{agent_type}对话',
-            conversation_id=conversation_id,
-            message_type='notice',
-            metadata={"node_id": node_id, "agent_type": agent_type}
-        )
+
 ```
 
 ### 3.5 节点操作工具 (Node Operation Tools)

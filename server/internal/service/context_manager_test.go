@@ -159,7 +159,8 @@ func TestContextManager_GetNodeContextWithConversation(t *testing.T) {
 
 	// 3. 创建消息服务并添加测试消息
 	msgRepo := repository.NewMessageRepository(testDB)
-	msgService := NewMessageService(msgRepo)
+	nodeRepo := repository.NewThinkingNodeRepository(testDB)
+	msgService := NewMessageManager(msgRepo, nodeRepo)
 
 	// 创建用户消息
 	userMsgReq := dto.CreateMessageRequest{
@@ -301,8 +302,6 @@ func TestContextManager_RefreshNodeContext(t *testing.T) {
 	// 验证祖先上下文已设置
 	assert.GreaterOrEqual(t, len(updatedNodeResp.Context.Ancestor), 0)
 }
-
-
 
 func TestContextManager_EmptyContext(t *testing.T) {
 	ctx := context.Background()

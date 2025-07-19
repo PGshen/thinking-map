@@ -56,6 +56,7 @@ type Message interface {
 	FindByID(ctx context.Context, id string) (*model.Message, error)
 	FindByParentID(ctx context.Context, parentID string) ([]*model.Message, error)
 	FindByConversationID(ctx context.Context, conversationID string) ([]*model.Message, error)
+	List(ctx context.Context, offset, limit int) ([]*model.Message, int64, error)
 }
 
 // RAGRecord RAG检索记录仓储接口

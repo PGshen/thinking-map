@@ -46,6 +46,15 @@ type MessageListResponse struct {
 	Items []MessageResponse `json:"items"`
 }
 
+// MessageStatus 消息状态
+type MessageStatus struct {
+	ID        string     `json:"id"`
+	Status    string     `json:"status"` // active, deleted, archived
+	CreatedAt time.Time  `json:"createdAt"`
+	UpdatedAt time.Time  `json:"updatedAt"`
+	DeletedAt *time.Time `json:"deletedAt,omitempty"`
+}
+
 // ToMessageResponse 将 model.Message 转为 dto.MessageResponse
 func ToMessageResponse(m *model.Message) MessageResponse {
 	return MessageResponse{

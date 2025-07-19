@@ -61,3 +61,4 @@ export type CreateMapResponse = ApiResponse<Map>;
 export type MapListResponse = ApiResponse<MapList>;
 export type MapDetailResponse = ApiResponse<Map>;
 export type UpdateMapResponse = ApiResponse<Map>;
+export type DeleteMapResponse = ApiResponse<void>;

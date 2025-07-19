@@ -47,7 +47,7 @@ func SetupRouter(
 	authService := service.NewAuthService(db, redisClient, jwtConfig)
 	mapService := service.NewMapService(thinkingMapRepo)
 	nodeService := service.NewNodeService(nodeRepo, thinkingMapRepo)
-	understandingService := service.NewUnderstandingService(messageRepo)
+	understandingService := service.NewUnderstandingService(messageRepo, nodeRepo)
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)

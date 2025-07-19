@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fetchMapList } from "@/api/map";
+import { fetchMapList, deleteMap } from "@/api/map";
 import type { Map } from "@/types/map";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -66,6 +66,20 @@ export default function Page() {
 
   const handleView = (id: string) => {
     router.push(`/map/${id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const resp = await deleteMap(id);
+      if (resp.code !== 200) {
+        throw new Error(resp.message || "删除失败");
+      }
+      setMaps(prev => prev.filter(map => map.id !== id));
+      setTotal(prev => prev - 1);
+      toast.success("删除成功");
+    } catch (e: any) {
+      toast.error(e.message || "删除失败");
+    }
   };
 
   return (
@@ -142,7 +156,7 @@ export default function Page() {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>取消</AlertDialogCancel>
-                    <AlertDialogAction>
+                    <AlertDialogAction onClick={() => handleDelete(map.id)}>
                       确认
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -168,4 +182,4 @@ export default function Page() {
       )}
     </div>
   );
-} 
+}

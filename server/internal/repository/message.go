@@ -72,7 +72,7 @@ func (r *messageRepository) List(ctx context.Context, offset, limit int) ([]*mod
 
 func (r *messageRepository) FindByConversationID(ctx context.Context, conversationID string) ([]*model.Message, error) {
 	var messages []*model.Message
-	err := r.db.WithContext(ctx).Where("conversation_id = ?", conversationID).Find(&messages).Error
+	err := r.db.WithContext(ctx).Where("conversation_id = ?", conversationID).Order("created_at ASC").Find(&messages).Error
 	if err != nil {
 		return nil, err
 	}

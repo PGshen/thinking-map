@@ -234,8 +234,8 @@ func (cm *ContextManager) getRecentNodeConversation(ctx context.Context, nodeID 
 	}
 
 	// 通过MessageService获取对话历史
-	msgService := NewMessageService(cm.messageRepo)
-	messages, err := msgService.GetMessageByParentID(ctx, parentMsgID)
+	msgService := NewMessageManager(cm.messageRepo, cm.nodeRepo)
+	messages, err := msgService.GetMessageChain(ctx, parentMsgID)
 	if err != nil {
 		return nil, err
 	}

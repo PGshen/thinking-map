@@ -7,7 +7,8 @@ import type {
   MapListQuery,
   UpdateMapRequest,
   MapDetailResponse,
-  UpdateMapResponse
+  UpdateMapResponse,
+  DeleteMapResponse
 } from "@/types/map";
 
 export async function createMap(params: CreateMapRequest): Promise<CreateMapResponse> {
@@ -35,6 +36,6 @@ export async function updateMap(mapID: string, params: UpdateMapRequest): Promis
   return put(API_ENDPOINTS.MAP.UPDATE.replace(':mapID', mapID), params);
 }
 
-export async function deleteMap(mapID: string): Promise<void> {
-  del(API_ENDPOINTS.MAP.DELETE.replace(':mapID', mapID));
+export async function deleteMap(mapID: string): Promise<DeleteMapResponse> {
+  return del(API_ENDPOINTS.MAP.DELETE.replace(':mapID', mapID));
 }
