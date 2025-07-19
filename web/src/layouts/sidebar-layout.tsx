@@ -12,15 +12,18 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useRouter } from 'next/navigation';
 import { logout } from '@/api/auth';
 import { removeToken, getToken } from '@/lib/auth';
+import { useGlobalStore } from '@/store/globalStore';
 import { toast } from 'sonner';
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const setUser = useGlobalStore((state) => state.setUser);
 
   const handleLogout = async () => {
     try {
       await logout();
       removeToken();
+      setUser(null); // 清除store中的用户信息
       toast.info("已登出！")
       router.push('/login');
     } catch (error) {
@@ -39,4 +42,4 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       </div>
     </SidebarProvider>
   );
-} 
+}

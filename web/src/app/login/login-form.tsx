@@ -15,7 +15,7 @@ import { useState } from "react"
 import { loginUser } from "@/api/auth"
 import { useGlobalStore } from "@/store/globalStore"
 import { useRouter } from "next/navigation"
-import { setToken } from "@/lib/auth"
+import { setToken, setUser as setUserToStorage } from "@/lib/auth"
 import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react"
 
@@ -43,10 +43,13 @@ export function LoginForm({
       const response = await loginUser({ email, password });
       if (response.code === 200 && response.data) {
         const data = response.data;
+        const userData = { userID: data.userID, username: data.username, email: data.email, fullName: data.fullName };
+        
         if (typeof window !== 'undefined') {
           setToken(data.accessToken || '', data.refreshToken || '');
+          setUserToStorage(userData);
         }
-        setUser({ userID: data.userID, username: data.username, email: data.email, fullName: data.fullName });
+        setUser(userData);
         toast.success("登录成功！")
         router.push("/");
       } else {

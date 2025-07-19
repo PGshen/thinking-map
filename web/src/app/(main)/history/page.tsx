@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchMapList } from "@/api/map";
-import type { MapInfo } from "@/types/map";
+import type { Map } from "@/types/map";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { AlertDialogHeader, AlertDialogFooter, AlertDialog, AlertDialogTrigger, 
 
 export default function Page() {
   // Placeholder state for future data
-  const [maps, setMaps] = useState<MapInfo[]>([]);
+  const [maps, setMaps] = useState<Map[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -120,18 +120,18 @@ export default function Page() {
               <p className="text-sm text-muted-foreground mb-2">{map.target}</p>
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="secondary">{map.problemType}</Badge>
-                <Badge variant="outline">{`完成度: ${map.metadata?.progress}%`}</Badge>
+                <Badge variant="outline">{`完成度: ${map.metadata?.progress|0}%`}</Badge>
               </div>
               <div className="text-sm text-muted-foreground">
                 {map.createdAt}
               </div>
             </CardContent>
             <CardFooter className="flex flex-wrap gap-2">
-              <Button size="sm" variant="default" onClick={() => handleView(map.id)}>继续</Button>
-              <Button size="sm" variant="outline">导出</Button>
+              <Button size="sm" variant="default" className="cursor-pointer" onClick={() => handleView(map.id)}>继续</Button>
+              <Button size="sm" variant="outline" className="cursor-pointer">导出</Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive">删除</Button>
+                  <Button size="sm" variant="destructive" className="cursor-pointer">删除</Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>

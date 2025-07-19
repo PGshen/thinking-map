@@ -10,6 +10,7 @@ import axios from "axios";
 
 const TOKEN_KEY = 'token';
 const REFRESH_TOKEN_KEY = 'refreshToken';
+const USER_KEY = 'user';
 const apiBaseURL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
 export function setToken(token: string, refreshToken: string): void {
@@ -37,6 +38,34 @@ export function removeToken(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  }
+}
+
+// 用户信息存储和获取
+export function setUser(user: any): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
+}
+
+export function getUser(): any {
+  if (typeof window !== 'undefined') {
+    const userStr = localStorage.getItem(USER_KEY);
+    if (userStr) {
+      try {
+        return JSON.parse(userStr);
+      } catch (e) {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+export function removeUser(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(USER_KEY);
   }
 }
 
