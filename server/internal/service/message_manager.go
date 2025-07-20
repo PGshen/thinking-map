@@ -46,9 +46,15 @@ func (s *MessageManager) CreateMessage(ctx context.Context, userID string, req d
 			conversationID = uuid.NewString()
 		}
 	}
+	// 处理空ParentID
+	parentID := req.ParentID
+	if parentID == "" {
+		parentID = uuid.Nil.String()
+	}
+
 	msg := &model.Message{
 		ID:             req.ID,
-		ParentID:       req.ParentID,
+		ParentID:       parentID,
 		ConversationID: conversationID,
 		UserID:         userID,
 		MessageType:    req.MessageType,
@@ -127,10 +133,15 @@ func (s *MessageManager) UpdateMessage(ctx context.Context, req dto.UpdateMessag
 		// 这里可以根据需要序列化 req.Metadata
 	}
 	msg.UpdatedAt = time.Now()
-	if err := s.messageRepo.Update(ctx, msg); err != nil {
+	if err = s.messageRepo.Update(ctx, msg); err != nil {
 		return nil, err
 	}
-	resp := dto.ToMessageResponse(msg)
+	// 重新从数据库获取更新后的记录
+	updatedMsg, err := s.messageRepo.FindByID(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	resp := dto.ToMessageResponse(updatedMsg)
 	return &resp, nil
 }
 

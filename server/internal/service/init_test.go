@@ -18,7 +18,7 @@ var (
 	mapSvc            *MapService
 	nodeSvc           *NodeService
 	dependencyChecker *DependencyChecker
-	messageService    *MessageManager
+	messageManager    *MessageManager
 )
 
 func TestMain(m *testing.M) {
@@ -54,7 +54,7 @@ func TestMain(m *testing.M) {
 	dependencyChecker = NewDependencyChecker(nodeRepo)
 
 	messageRepo := repository.NewMessageRepository(testDB)
-	messageService = NewMessageManager(messageRepo, nodeRepo)
+	messageManager = NewMessageManager(messageRepo, nodeRepo)
 
 	code := m.Run()
 

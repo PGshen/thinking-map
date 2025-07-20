@@ -1,0 +1,353 @@
+# ThinkingMap Cursor Rules
+
+## Project Overview
+This is a thinking map application with a Go backend (server/) and Next.js frontend (web/). The project uses modern development practices with TypeScript, shadcn/ui, Zustand, and ReactFlow for the frontend, and Go with Gin, GORM, eino and Redis for the backend.
+
+## Frontend Rules (web/)
+
+### Technology Stack
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript (strict mode)
+- **UI Library**: shadcn/ui + Radix UI
+- **Styling**: Tailwind CSS
+- **State Management**: Zustand
+- **Visualization**: ReactFlow
+- **Package Manager**: pnpm
+- **Icons**: Lucide React
+
+### File Organization
+- Use the established directory structure in `src/`:
+  - `/app` - Next.js App Router pages
+  - `/components` - Reusable UI components
+  - `/features` - Business logic modules (map, panel, home, chat)
+  - `/store` - Zustand state management
+  - `/api` - API client and SSE handling
+  - `/hooks` - Custom React hooks
+  - `/types` - TypeScript type definitions
+  - `/utils` - Utility functions
+  - `/layouts` - Layout components
+
+### Component Guidelines
+- Use shadcn/ui components as the primary UI library
+- **IMPORTANT**: Use `sonner` for toasts instead of deprecated toast components
+- Follow the established component patterns in the codebase
+- Use TypeScript interfaces for all props and state
+- Implement proper error boundaries and loading states
+
+### State Management
+- Use Zustand for global state management
+- Split stores by feature (mapStore, globalStore, etc.)
+- Use TypeScript interfaces for all store types
+- Implement proper selectors to avoid unnecessary re-renders
+- Follow the established patterns in `/store/` directory
+
+### API Integration
+- Use the established API patterns in `/api/` directory
+- Implement proper error handling and loading states
+- Use SSE for real-time updates (see `use-sse-connection.ts`)
+- Follow the established request/response patterns
+
+### Styling
+- Use Tailwind CSS for all styling
+- Follow the established design system in `components.json`
+- Use CSS variables for theming
+- Implement responsive design patterns
+
+### Code Quality
+- Use ESLint and Prettier for code formatting
+- Follow TypeScript strict mode guidelines
+- Use proper import/export patterns
+- Implement proper error handling
+
+## Backend Rules (server/)
+
+### Technology Stack
+- **Language**: Go 1.24+
+- **Framework**: Gin
+- **Framework**: eino
+- **ORM**: GORM with PostgreSQL
+- **Cache**: Redis
+- **Authentication**: JWT
+- **Logging**: Zap
+- **Testing**: Testify
+
+### Project Structure
+- Follow the established directory structure:
+  - `/cmd` - Application entry points
+  - `/internal` - Private application code
+  - `/configs` - Configuration files
+  - `/scripts` - Database and deployment scripts
+
+### Code Organization
+- Use proper Go package naming conventions
+- Follow the established service/repository pattern
+- Implement proper error handling with custom error types
+- Use interfaces for dependency injection
+- Follow the established middleware patterns
+
+### Database
+- Use GORM for database operations
+- Follow the established model patterns
+- Implement proper migrations
+- Use transactions for complex operations
+- Follow the established repository pattern
+
+### API Design
+- Use RESTful conventions
+- Implement proper validation using the validator package
+- Use DTOs for request/response handling
+- Follow the established handler patterns
+- Implement proper CORS configuration
+
+### Testing
+- Use the established test utilities in `/internal/service/`
+- Follow the test patterns in existing test files
+- Use proper test setup and teardown
+- Implement integration tests for critical paths
+
+### Configuration
+- Use Viper for configuration management
+- Follow the established config patterns
+- Use environment-specific config files
+- Implement proper validation for config values
+
+## General Development Rules
+
+### Git Workflow
+- Use conventional commit messages
+- Follow the established branching strategy
+- Implement proper PR reviews
+- Use meaningful commit messages
+
+### Documentation
+- Update relevant documentation when making changes
+- Follow the established documentation patterns
+- Use proper code comments for complex logic
+- Maintain API documentation
+
+### Error Handling
+- Implement proper error handling in both frontend and backend
+- Use appropriate error types and messages
+- Implement proper logging
+- Provide user-friendly error messages
+
+### Performance
+- Implement proper caching strategies
+- Use pagination for large datasets
+- Optimize database queries
+- Implement proper loading states
+
+### Security
+- Implement proper authentication and authorization
+- Use HTTPS in production
+- Validate all user inputs
+- Follow security best practices
+
+### Testing
+- Write tests for critical business logic
+- Implement proper test coverage
+- Use proper test data management
+- Follow the established testing patterns
+
+## Specific Patterns to Follow
+
+### Frontend Patterns
+- Use the established layout patterns (SidebarLayout, WorkspaceLayout)
+- Follow the component composition patterns
+- Use proper TypeScript types for all data structures
+- Implement proper loading and error states
+- Use the established API client patterns
+
+### Backend Patterns
+- Follow the established service layer patterns
+- Use proper repository interfaces
+- Implement proper middleware patterns
+- Follow the established error handling patterns
+- Use proper logging throughout the application
+
+### Database Patterns
+- Use proper GORM models with tags
+- Implement proper relationships
+- Use transactions for complex operations
+- Follow the established migration patterns
+
+### API Patterns
+- Use proper HTTP status codes
+- Implement proper request/response validation
+- Use consistent error response formats
+- Follow the established routing patterns
+
+## Common Pitfalls to Avoid
+
+### Frontend
+- Don't use deprecated toast components (use sonner instead)
+- Don't forget to handle loading and error states
+- Don't ignore TypeScript errors
+- Don't forget to implement proper accessibility
+- Don't use inline styles when Tailwind classes are available
+
+### Backend
+- Don't ignore error handling
+- Don't use global variables for configuration
+- Don't forget to implement proper logging
+- Don't ignore database transaction requirements
+- Don't forget to validate user inputs
+
+### General
+- Don't commit sensitive information
+- Don't ignore test failures
+- Don't forget to update documentation
+- Don't ignore code review feedback
+- Don't forget to implement proper error handling
+
+## Development Environment
+
+### Prerequisites
+- Go 1.24+
+- Node.js 18+
+- PostgreSQL 14+
+- Redis 7+
+- pnpm
+
+### Setup Commands
+```bash
+# Backend
+cd server
+go mod download
+go run cmd/server/main.go
+
+# Frontend
+cd web
+pnpm install
+pnpm run dev
+```
+
+### Testing
+```bash
+# Backend tests
+cd server
+go test ./internal/service -v
+
+# Frontend tests
+cd web
+pnpm test
+```
+
+## File Naming Conventions
+
+### Frontend
+- Components: camelCase (e.g., `workspace-layout.tsx`)
+- Hooks: camelCase with `use` prefix (e.g., `use-sse-connection.ts`)
+- Utilities: camelCase (e.g., `dependency-utils.ts`)
+- Types: camelCase (e.g., `map.ts`, `node.ts`)
+
+### Backend
+- Packages: lowercase (e.g., `service`, `repository`)
+- Files: snake_case (e.g., `auth_service.go`)
+- Structs: PascalCase (e.g., `User`, `ThinkingMap`)
+- Functions: PascalCase for exported, camelCase for private
+
+## Import Organization
+
+### Frontend
+- Group imports: React, external libraries, internal modules, relative imports
+- Use absolute imports with `@/` prefix for internal modules
+- Use relative imports for closely related files
+
+### Backend
+- Group imports: standard library, external packages, internal packages
+- Use proper package naming conventions
+- Avoid circular dependencies
+
+## Code Style
+
+### Frontend
+- Use functional components with hooks
+- Use proper TypeScript types
+- Use destructuring for props and state
+- Use proper naming conventions
+
+### Backend
+- Use proper Go formatting (gofmt)
+- Use meaningful variable and function names
+- Use proper error handling patterns
+- Use proper logging patterns
+
+## Performance Considerations
+
+### Frontend
+- Use React.memo for expensive components
+- Use proper key props for lists
+- Implement proper code splitting
+- Use proper caching strategies
+
+### Backend
+- Use proper database indexing
+- Implement proper caching
+- Use connection pooling
+- Optimize database queries
+
+## Security Considerations
+
+### Frontend
+- Validate all user inputs
+- Use proper authentication
+- Implement proper authorization
+- Use HTTPS in production
+
+### Backend
+- Validate all inputs
+- Use proper authentication middleware
+- Implement proper authorization
+- Use proper session management
+- Follow OWASP guidelines
+
+## Monitoring and Logging
+
+### Frontend
+- Use proper error boundaries
+- Implement proper logging
+- Use proper analytics
+- Monitor performance metrics
+
+### Backend
+- Use structured logging with Zap
+- Implement proper metrics
+- Monitor application health
+- Use proper error tracking
+
+## Deployment
+
+### Frontend
+- Use Next.js build optimization
+- Implement proper environment variables
+- Use proper CDN configuration
+- Implement proper caching headers
+
+### Backend
+- Use proper Docker configuration
+- Implement proper health checks
+- Use proper environment variables
+- Implement proper logging configuration
+
+## Maintenance
+
+### Code Quality
+- Regular dependency updates
+- Code review processes
+- Automated testing
+- Performance monitoring
+
+### Documentation
+- Keep documentation up to date
+- Use proper code comments
+- Maintain API documentation
+- Update README files
+
+### Security
+- Regular security audits
+- Dependency vulnerability scanning
+- Security best practices
+- Regular updates
+
+This comprehensive set of rules should guide development and maintain consistency across the ThinkingMap project. 
