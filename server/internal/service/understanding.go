@@ -46,9 +46,9 @@ func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.Understan
 	}
 
 	// 2. 加载历史消息
-	msgService := NewMessageManager(s.messageRepo, s.nodeRepo)
+	msgManager := NewMessageManager(s.messageRepo, s.nodeRepo)
 	var msgs []*dto.MessageResponse
-	msgs, err = msgService.GetMessageChain(ctx, req.ParentMsgID)
+	msgs, err = msgManager.GetMessageChain(ctx, req.ParentMsgID)
 	if err != nil {
 		return
 	}
@@ -72,7 +72,7 @@ func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.Understan
 		},
 	}
 	var msgResp *dto.MessageResponse
-	msgResp, err = msgService.CreateMessage(ctx, userID, msgRequest)
+	msgResp, err = msgManager.CreateMessage(ctx, userID, msgRequest)
 	if err != nil {
 		return
 	}
@@ -80,6 +80,6 @@ func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.Understan
 	srs := sr.Copy(2)
 	sr = srs[0]
 	// 流式消息，提前确定消息ID
-	go msgService.SaveStreamMessage(ctx, srs[1], req.MsgID, msgResp.ID)
+	go msgManager.SaveStreamMessage(ctx, srs[1], req.MsgID, msgResp.ID)
 	return
 }

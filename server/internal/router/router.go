@@ -10,7 +10,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/handler"
 	thinkinghandler "github.com/PGshen/thinking-map/server/internal/handler/thinking"
 	"github.com/PGshen/thinking-map/server/internal/middleware"
-	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
+	"github.com/PGshen/thinking-map/server/internal/pkg/global"
 	"github.com/PGshen/thinking-map/server/internal/repository"
 	"github.com/PGshen/thinking-map/server/internal/service"
 
@@ -39,27 +39,30 @@ func SetupRouter(
 	}))
 
 	// Create repositories
-	thinkingMapRepo := repository.NewThinkingMapRepository(db)
+	mapRepo := repository.NewThinkingMapRepository(db)
 	nodeRepo := repository.NewThinkingNodeRepository(db)
 	messageRepo := repository.NewMessageRepository(db)
 
 	// Create services
 	authService := service.NewAuthService(db, redisClient, jwtConfig)
-	mapService := service.NewMapService(thinkingMapRepo)
-	nodeService := service.NewNodeService(nodeRepo, thinkingMapRepo)
+	mapService := service.NewMapService(mapRepo)
+	nodeService := service.NewNodeService(nodeRepo, mapRepo)
+	contextManager := service.NewContextManager(nodeRepo, mapRepo, messageRepo)
+	messageManager := service.NewMessageManager(messageRepo, nodeRepo)
+
 	understandingService := service.NewUnderstandingService(messageRepo, nodeRepo)
+	intentService := service.NewIntentService(contextManager, messageManager)
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)
 	mapHandler := handler.NewMapHandler(mapService)
 	nodeHandler := handler.NewNodeHandler(nodeService)
 	understandingHandler := thinkinghandler.NewUnderstandingHandler(understandingService)
+	intentRecognitionHandler := thinkinghandler.NewIntentRecognitionHandler(intentService)
 	repeaterHandler := thinkinghandler.NewRepeaterHandler()
 
-	// 新增：创建 broker
-	store := sse.NewMemorySessionStore() // internal/sse/store.go
-	broker := sse.NewBroker(store, 10*time.Second, 60*time.Second)
-	sseHandler := handler.NewSSEHandler(broker, thinkingMapRepo)
+	// 使用全局 broker
+	sseHandler := handler.NewSSEHandler(global.GetBroker(), mapRepo)
 
 	// API v1 group
 	v1 := r.Group("/api/v1")
@@ -82,26 +85,27 @@ func SetupRouter(
 			{
 				maps.POST("", mapHandler.CreateMap)
 				maps.GET("", mapHandler.ListMaps)
-				maps.PUT("/:mapID", middleware.MapOwnershipMiddleware(thinkingMapRepo), mapHandler.UpdateMap)
-				maps.DELETE("/:mapID", middleware.MapOwnershipMiddleware(thinkingMapRepo), mapHandler.DeleteMap)
-				maps.GET("/:mapID", middleware.MapOwnershipMiddleware(thinkingMapRepo), mapHandler.GetMap)
+				maps.PUT("/:mapID", middleware.MapOwnershipMiddleware(mapRepo), mapHandler.UpdateMap)
+				maps.DELETE("/:mapID", middleware.MapOwnershipMiddleware(mapRepo), mapHandler.DeleteMap)
+				maps.GET("/:mapID", middleware.MapOwnershipMiddleware(mapRepo), mapHandler.GetMap)
 			}
 
 			// Node routes
 			nodes := protected.Group("/maps/:mapID/nodes")
 			{
-				nodes.GET("", middleware.MapOwnershipMiddleware(thinkingMapRepo), nodeHandler.ListNodes)
+				nodes.GET("", middleware.MapOwnershipMiddleware(mapRepo), nodeHandler.ListNodes)
 				nodes.POST("", nodeHandler.CreateNode)
-				nodes.PUT("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.UpdateNode)
-				nodes.DELETE("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.DeleteNode)
-				nodes.PUT("/:nodeID/context", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.UpdateNodeContext)
-				nodes.PUT("/:nodeID/context/reset", middleware.NodeOwnershipMiddleware(nodeRepo, thinkingMapRepo), nodeHandler.ResetNodeContext)
+				nodes.PUT("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.UpdateNode)
+				nodes.DELETE("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.DeleteNode)
+				nodes.PUT("/:nodeID/context", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.UpdateNodeContext)
+				nodes.PUT("/:nodeID/context/reset", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.ResetNodeContext)
 			}
 
 			// Thinking routes
 			thinking := protected.Group("/thinking")
 			{
 				thinking.POST("/understanding", thinkinghandler.NewStreamReply(understandingHandler))
+				thinking.POST("/intent-recognition", thinkinghandler.NewStreamReply(intentRecognitionHandler))
 				thinking.POST("/repeat", thinkinghandler.NewStreamReply(repeaterHandler))
 			}
 

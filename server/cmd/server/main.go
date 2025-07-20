@@ -13,7 +13,9 @@ import (
 
 	"github.com/PGshen/thinking-map/server/internal/config"
 	"github.com/PGshen/thinking-map/server/internal/pkg/database"
+	"github.com/PGshen/thinking-map/server/internal/pkg/global"
 	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
+	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
 	"github.com/PGshen/thinking-map/server/internal/pkg/validator"
 	"github.com/PGshen/thinking-map/server/internal/router"
 	"github.com/PGshen/thinking-map/server/internal/service"
@@ -55,6 +57,10 @@ func main() {
 		logger.Fatal("Failed to connect to Redis", zap.Error(err))
 	}
 	redisClient := redisClientRaw
+
+	// 初始化全局SSE broker
+	store := sse.NewMemorySessionStore()
+	global.InitBroker(store, 10*time.Second, 60*time.Second)
 
 	// 解析 JWT 配置
 	expireDuration, err := time.ParseDuration(cfg.JWT.Expire)

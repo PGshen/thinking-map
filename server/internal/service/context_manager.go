@@ -63,8 +63,8 @@ type ConversationMessage struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// GetNodeContext 获取节点的完整上下文
-func (cm *ContextManager) GetNodeContext(ctx context.Context, nodeID string) (*ContextInfo, error) {
+// GetContextInfo 获取节点的完整上下文
+func (cm *ContextManager) GetContextInfo(ctx context.Context, nodeID string) (*ContextInfo, error) {
 	// 获取当前节点
 	node, err := cm.nodeRepo.FindByID(ctx, nodeID)
 	if err != nil {
@@ -109,7 +109,7 @@ func (cm *ContextManager) GetNodeContext(ctx context.Context, nodeID string) (*C
 // GetNodeContextWithConversation 获取包含对话历史的节点完整上下文
 func (cm *ContextManager) GetNodeContextWithConversation(ctx context.Context, nodeID string, parentMsgID string) (*ContextInfo, error) {
 	// 先获取基础上下文
-	contextInfo, err := cm.GetNodeContext(ctx, nodeID)
+	contextInfo, err := cm.GetContextInfo(ctx, nodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -266,9 +266,9 @@ func (cm *ContextManager) getUserContext(nodeID string) map[string]interface{} {
 }
 
 // FormatContextForAgent 格式化上下文信息供Agent使用
-func (cm *ContextManager) FormatContextForAgent(contextInfo *ContextInfo, userMessage string) string {
+func (cm *ContextManager) FormatContextForAgent(contextInfo *ContextInfo) string {
 	if contextInfo == nil {
-		return userMessage
+		return ""
 	}
 
 	// 添加导图信息
@@ -329,9 +329,6 @@ func (cm *ContextManager) FormatContextForAgent(contextInfo *ContextInfo, userMe
 			prompt += fmt.Sprintf("%s: %s\n", msg.Role, msg.Content)
 		}
 	}
-
-	prompt += fmt.Sprintf("\n用户消息：%s", userMessage)
-
 	return prompt
 }
 
@@ -354,7 +351,7 @@ func (cm *ContextManager) RefreshNodeContext(ctx *gin.Context, nodeID string) (*
 	}
 
 	// 重新计算上下文
-	contextInfo, err := cm.GetNodeContext(ctx, nodeID)
+	contextInfo, err := cm.GetContextInfo(ctx, nodeID)
 	if err != nil {
 		return nil, err
 	}

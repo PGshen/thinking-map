@@ -17,6 +17,9 @@ const (
 	NodeCreatedEventType           = "nodeCreated"
 	NodeUpdatedEventType           = "nodeUpdated"
 	ThinkingProgressEventType      = "thinkingProgress"
+	MsgToolEventType               = "msgTool"
+	MsgUserChoiceEventType         = "msgUserChoice"
+	MsgTextEventType               = "msgText"
 	ErrorEventType                 = "error"
 	CustomEventType                = "custom"
 )
@@ -51,6 +54,38 @@ type ThinkingProgressEvent struct {
 	NodeID    string    `json:"nodeID"`
 	Stage     string    `json:"stage"`
 	Progress  int       `json:"progress"`
+	Message   string    `json:"message"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+type MsgToolEvent struct {
+	NodeID    string    `json:"nodeID"`
+	MsgID     string    `json:"msgID"`
+	Tool      string    `json:"tool"`
+	Arguments string    `json:"arguments"`
+	Status    string    `json:"status"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// MsgUserChoiceEvent represents the user choice event
+type MsgUserChoiceEvent struct {
+	MapID     string    `json:"mapID" jsonschema:"description=思考图ID"`
+	NodeID    string    `json:"nodeID" jsonschema:"description=节点ID"`
+	MsgID     string    `json:"msgID" jsonschema:"description=消息ID"`
+	Choices   []Choice  `json:"choices" jsonschema:"description=用户选择的选项列表"`
+	Timestamp time.Time `json:"timestamp" jsonschema:"description=消息时间"`
+}
+
+type Choice struct {
+	Index  int    `json:"index" jsonschema:"description=用户选择的选项索引"`
+	Name   string `json:"name" jsonschema:"description=选项名称,enum=拆解,enum=结论"`
+	Action string `json:"action" jsonschema:"description=选项执行的操作,enum=decompose,enum=conclude"`
+}
+
+// MsgTextEvent represents the text event
+type MsgTextEvent struct {
+	NodeID    string    `json:"nodeID"`
+	MsgID     string    `json:"msgID"`
 	Message   string    `json:"message"`
 	Timestamp time.Time `json:"timestamp"`
 }

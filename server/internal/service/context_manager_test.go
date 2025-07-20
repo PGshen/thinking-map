@@ -91,7 +91,7 @@ func TestContextManager_GetNodeContext(t *testing.T) {
 	assert.NoError(t, err)
 
 	// 7. 测试获取节点上下文
-	contextInfo, err := cm.GetNodeContext(ctx, nodeID)
+	contextInfo, err := cm.GetContextInfo(ctx, nodeID)
 	assert.NoError(t, err)
 	assert.NotNil(t, contextInfo)
 
@@ -231,12 +231,11 @@ func TestContextManager_FormatContextForAgent(t *testing.T) {
 
 	// 3. 获取节点上下文
 	cm := NewContextManager(nodeSvc.nodeRepo, mapSvc.mapRepo, nil)
-	contextInfo, err := cm.GetNodeContext(ctx, nodeID)
+	contextInfo, err := cm.GetContextInfo(ctx, nodeID)
 	assert.NoError(t, err)
 
 	// 4. 测试格式化上下文
-	userMessage := "请帮我分析这个问题"
-	formattedPrompt := cm.FormatContextForAgent(contextInfo, userMessage)
+	formattedPrompt := cm.FormatContextForAgent(contextInfo)
 
 	// 5. 验证格式化结果
 	assert.Contains(t, formattedPrompt, "当前节点信息")
@@ -335,7 +334,7 @@ func TestContextManager_EmptyContext(t *testing.T) {
 
 	// 3. 测试获取空上下文
 	cm := NewContextManager(nodeSvc.nodeRepo, mapSvc.mapRepo, nil)
-	contextInfo, err := cm.GetNodeContext(ctx, nodeID)
+	contextInfo, err := cm.GetContextInfo(ctx, nodeID)
 	assert.NoError(t, err)
 	assert.NotNil(t, contextInfo)
 
