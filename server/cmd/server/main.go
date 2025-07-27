@@ -7,7 +7,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/cloudwego/eino-ext/devops"
 	"log"
 	"time"
 
@@ -24,6 +26,12 @@ import (
 )
 
 func main() {
+	// Init eino devops server
+	err := devops.Init(context.Background())
+	if err != nil {
+		log.Fatalf("[eino dev] init failed, err=%v", err)
+		return
+	}
 	// 加载配置
 	cfg, err := config.LoadConfig("configs/config.yaml")
 	if err != nil {

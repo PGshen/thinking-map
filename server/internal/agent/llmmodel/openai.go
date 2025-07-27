@@ -18,7 +18,7 @@ func DefaultOpenAIModelConfig(ctx context.Context) (*openai.ChatModelConfig, err
 	return config, nil
 }
 
-func NewOpenAIModel(ctx context.Context, responseFormat *openai2.ChatCompletionResponseFormat) (cm model.ChatModel, err error) {
+func NewOpenAIModel(ctx context.Context, responseFormat *openai2.ChatCompletionResponseFormat) (cm model.ToolCallingChatModel, err error) {
 	cfg, _ := DefaultOpenAIModelConfig(ctx)
 	if responseFormat != nil {
 		cfg.ResponseFormat = responseFormat

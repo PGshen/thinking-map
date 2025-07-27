@@ -30,7 +30,7 @@ func (r *RepeaterHandler) Handle(c *gin.Context) (msgID, event string, sr *schem
 		Role:    schema.User,
 		Content: message,
 	})
-	var cm model.ChatModel
+	var cm model.ToolCallingChatModel
 	cm, err = llmmodel.NewOpenAIModel(c, nil)
 	if err != nil {
 		return

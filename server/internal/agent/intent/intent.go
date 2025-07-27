@@ -4,15 +4,15 @@ import (
 	"context"
 
 	"github.com/PGshen/thinking-map/server/internal/agent/llmmodel"
+	"github.com/PGshen/thinking-map/server/internal/agent/react"
 	"github.com/PGshen/thinking-map/server/internal/agent/tool/messaging"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
-	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
 )
 
 // 意图识别Agent
-func BuildIntentRecognitionAgent(ctx context.Context) (r compose.Runnable[[]*schema.Message, *schema.Message], err error) {
+func BuildIntentRecognitionAgent(ctx context.Context, option react.AgentOption) (r compose.Runnable[[]*schema.Message, *schema.Message], err error) {
 	cm, err := llmmodel.NewOpenAIModel(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -22,16 +22,16 @@ func BuildIntentRecognitionAgent(ctx context.Context) (r compose.Runnable[[]*sch
 		return nil, err
 	}
 	agent, err := react.NewAgent(ctx, &react.AgentConfig{
-		Model: cm,
+		ToolCallingModel: cm,
 		ToolsConfig: compose.ToolsNodeConfig{
 			Tools: []tool.BaseTool{
 				userChoiceTool,
 			},
 		},
-		ToolReturnDirectly: map[string]struct{}{
-			"user_choice": {},
+		ToolReturnDirectly: map[string]bool{
+			"user_choice": true,
 		},
-	})
+	}, option)
 	if err != nil {
 		return nil, err
 	}

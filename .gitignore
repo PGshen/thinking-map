@@ -34,3 +34,8 @@ go.work.sum
 logs
 
 __debug_bin*
+.idea/.gitignore
+.idea/modules.xml
+.idea/thinking-map.iml
+.idea/vcs.xml
+.idea/inspectionProfiles/Project_Default.xml

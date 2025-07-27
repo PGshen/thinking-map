@@ -1,7 +1,16 @@
 package service
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"strings"
+
+	"github.com/PGshen/thinking-map/server/internal/agent/react"
+	"github.com/PGshen/thinking-map/server/internal/pkg/global"
+	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
+	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
+	"go.uber.org/zap"
 
 	"github.com/PGshen/thinking-map/server/internal/agent/callback"
 	"github.com/PGshen/thinking-map/server/internal/agent/intent"
@@ -43,11 +52,64 @@ func (s *IntentService) RecognizeIntent(ctx *gin.Context, req dto.IntentRequest)
 
 	messages := []*schema.Message{ctxMsg, userMsg}
 
+	option, future := react.WithMessageFuture()
 	// 4. 调用意图识别Agent
-	agent, err := intent.BuildIntentRecognitionAgent(ctx)
+	agent, err := intent.BuildIntentRecognitionAgent(ctx, option)
 	if err != nil {
 		return
 	}
+
+	go func() {
+		sIter := future.GetMessageStreams()
+
+		for {
+			// First message should be the assistant message for tool calling
+			stream, hasNext, err := sIter.Next()
+			if err != nil {
+				break
+			}
+			if !hasNext {
+				break
+			}
+			// 开启新协程处理
+			go func(ctx *gin.Context, mapID string, s *schema.StreamReader[*schema.Message]) {
+				fullMsgs := make([]*schema.Message, 0)
+				defer func() {
+					s.Close()
+					fullMsg, err := schema.ConcatMessages(fullMsgs)
+					if err != nil {
+						logger.Warn("concat message failed", zap.Error(err))
+						return
+					}
+					fullMsg.Content = strings.ReplaceAll(fullMsg.Content, "&nbsp;", " ")
+					fmt.Println("fullMsg.Content", fullMsg.Content)
+				}()
+			outer:
+				for {
+					select {
+					case <-ctx.Done():
+						fmt.Println("context done", ctx.Err())
+						return
+					default:
+						chunk, err := s.Recv()
+						if err != nil {
+							if errors.Is(err, io.EOF) {
+								break outer
+							}
+						}
+
+						fullMsgs = append(fullMsgs, chunk)
+						msgPart, err := schema.ConcatMessages(fullMsgs)
+						global.GetBroker().Publish(mapID, sse.Event{
+							ID:   mapID,
+							Type: dto.MsgTextEventType,
+							Data: msgPart,
+						})
+					}
+				}
+			}(ctx, contextInfo.MapInfo.ID, stream)
+		}
+	}()
 
 	// 5. 执行意图识别
 	sr, err = agent.Stream(ctx, messages, compose.WithCallbacks(callback.LogCbHandler))
