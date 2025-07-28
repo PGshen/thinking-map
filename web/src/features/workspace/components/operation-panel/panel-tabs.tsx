@@ -87,8 +87,8 @@ export function PanelTabs({ nodeID }: PanelTabsProps) {
             </div>
           </TabsContent>
 
-          <TabsContent value="decompose" className="h-full m-0 p-0 overflow-x-auto overflow-y-auto">
-            <div className="p-4 min-w-fit">
+          <TabsContent value="decompose" className="h-full m-0 p-0">
+            <div className="h-full p-4 min-w-fit">
               <DecomposeTab nodeID={nodeID} node={currentNode} />
             </div>
           </TabsContent>

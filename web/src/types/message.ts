@@ -21,3 +21,43 @@ export type MessageListResponse = ApiResponse<{
   limit: number;
   items: MessageResponse[];
 }>; 
+
+export interface ChatMsg {
+  type: 'text' | 'tool' | 'action';
+  textMsg?: ChatTextMessage;
+  toolMsg?: ChatToolMessage;
+  actionMsg?: ChatActionMessage;
+};
+
+export interface ChatTextMessage {
+  id: string;
+  role: RoleType;
+  content: string;
+}
+
+export interface ChatToolMessage {
+  id: string;
+  role: RoleType;
+  toolCall: ToolCall;
+}
+
+export interface ToolCall {
+  id: string;
+  type: string;
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+export interface ChatActionMessage {
+  id: string;
+  role: RoleType;
+  actions: ChatAction[];
+}
+
+export interface ChatAction {
+  name: string;
+  url: string;
+  arguments: string;
+}

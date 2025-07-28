@@ -39,3 +39,4 @@ __debug_bin*
 .idea/thinking-map.iml
 .idea/vcs.xml
 .idea/inspectionProfiles/Project_Default.xml
+.vercel/project.json
