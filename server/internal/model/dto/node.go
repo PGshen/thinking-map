@@ -12,6 +12,11 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model"
 )
 
+const (
+	ConversationTypeDecomposition = "decomposition"
+	ConversationTypeConclusion    = "conclusion"
+)
+
 // CreateNodeRequest represents the request body for creating a node
 type CreateNodeRequest struct {
 	MapID    string         `json:"MapID" binding:"required,uuid"`

@@ -286,11 +286,11 @@ func (s *MessageManager) LinkMessageToNode(ctx context.Context, nodeID string, m
 	switch conversationType {
 	case "decompose":
 		decomposition := node.Decomposition
-		decomposition.LastMessageId = messageID
+		decomposition.LastMessageID = messageID
 		node.Decomposition = decomposition
 	case "conclusion":
 		conclusion := node.Conclusion
-		conclusion.LastMessageId = messageID
+		conclusion.LastMessageID = messageID
 		node.Conclusion = conclusion
 	default:
 		return fmt.Errorf("unsupported message type: %s", conversationType)
@@ -312,10 +312,10 @@ func (s *MessageManager) GetNodeMessages(ctx context.Context, nodeID string, con
 
 	var lastMessageID string
 	switch conversationType {
-	case "decompose":
-		lastMessageID = node.Decomposition.LastMessageId
-	case "conclusion":
-		lastMessageID = node.Conclusion.LastMessageId
+	case dto.ConversationTypeDecomposition:
+		lastMessageID = node.Decomposition.LastMessageID
+	case dto.ConversationTypeConclusion:
+		lastMessageID = node.Conclusion.LastMessageID
 	default:
 		return nil, fmt.Errorf("unsupported conversation type: %s", conversationType)
 	}

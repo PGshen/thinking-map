@@ -40,6 +40,15 @@ func (s *NodeService) ListNodes(ctx *gin.Context, mapID string) ([]dto.NodeRespo
 	return res, nil
 }
 
+func (s *NodeService) GetNode(ctx context.Context, nodeID string) (*dto.NodeResponse, error) {
+	node, err := s.nodeRepo.FindByID(ctx, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	resp := dto.ToNodeResponse(node)
+	return &resp, nil
+}
+
 func (s *NodeService) GetNodeContext(ctx *gin.Context, node *model.ThinkingNode) model.DependentContext {
 	// 获取节点上下文，parentProblem是所有祖先节点的问题和目标，subProblem是所有直接子节点的问题、目标和结论
 	ancestor := node.Context.Ancestor
@@ -126,6 +135,14 @@ func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.Crea
 		Position: model.Position{
 			X: req.Position.X,
 			Y: req.Position.Y,
+		},
+		Decomposition: model.Decomposition{
+			IsDecompose:   false,
+			LastMessageID: "",
+		},
+		Conclusion: model.Conclusion{
+			LastMessageID: "",
+			Content:       "",
 		},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),

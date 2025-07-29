@@ -13,11 +13,12 @@ import (
 
 // NodeHandler 节点相关接口
 type NodeHandler struct {
-	NodeService *service.NodeService
+	NodeService    *service.NodeService
+	MessageManager *service.MessageManager
 }
 
-func NewNodeHandler(nodeService *service.NodeService) *NodeHandler {
-	return &NodeHandler{NodeService: nodeService}
+func NewNodeHandler(nodeService *service.NodeService, messageManager *service.MessageManager) *NodeHandler {
+	return &NodeHandler{NodeService: nodeService, MessageManager: messageManager}
 }
 
 // ListNodes handles retrieving all nodes in a map
@@ -250,6 +251,76 @@ func (h *NodeHandler) DeleteNode(c *gin.Context) {
 		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      nil,
+		Timestamp: time.Now(),
+		RequestID: uuid.New().String(),
+	})
+}
+
+func (h *NodeHandler) GetNodeMessages(c *gin.Context) {
+	nodeID := c.Param("nodeID")
+	if nodeID == "" {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "node ID is required",
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+	node, err := h.NodeService.GetNode(c.Request.Context(), nodeID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "node not found",
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+	conversationType := c.Query("conversationType")
+	if conversationType == "" {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "conversationType is required",
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+	var lastMessageID string
+	if conversationType == dto.ConversationTypeDecomposition {
+		lastMessageID = node.Decomposition.LastMessageID
+	} else if conversationType == dto.ConversationTypeConclusion {
+		lastMessageID = node.Conclusion.LastMessageID
+	} else {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "conversationType is invalid",
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+
+	messages, err := h.MessageManager.GetMessageChain(c.Request.Context(), lastMessageID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
+		Message:   "success",
+		Data:      messages,
 		Timestamp: time.Now(),
 		RequestID: uuid.New().String(),
 	})

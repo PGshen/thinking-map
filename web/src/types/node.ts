@@ -74,6 +74,9 @@ export interface NodeResponse {
     prevSibling: NodeContextItem[];
     children: NodeContextItem[];
   };
+  decompose:{
+    lastMsgID:  string;
+  }
   conclusion: string;
   status: string;
   position: Position;

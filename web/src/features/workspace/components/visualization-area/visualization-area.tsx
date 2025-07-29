@@ -21,6 +21,7 @@ import ReactFlow, {
   NodeTypes,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { Loader } from 'lucide-react';
 
 import { CustomNode } from '@/features/workspace/components/custome-node/custom-node';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
@@ -191,7 +192,7 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+          <Loader className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">加载思维导图中...</p>
         </div>
       </div>

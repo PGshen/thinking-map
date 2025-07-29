@@ -31,6 +31,7 @@ export const API_ENDPOINTS = {
     DELETE: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID`,
     CONTEXT: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID/context`,
     CONTEXT_RESET: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID/context/reset`,
+    MESSAGES: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID/messages`,
   },
   // 其他模块分组
 };

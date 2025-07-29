@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useState } from "react";
-import { Command } from "lucide-react";
+import { Command, Loader } from "lucide-react";
 import { useGlobalStore } from "@/store/globalStore";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EditableTextarea } from "@/components/ui/editable-textarea";
@@ -220,7 +220,7 @@ export default function HomePage() {
             <div className="max-h-[60vh] overflow-y-auto space-y-4 py-4">
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <Loader className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
                   <span className="ml-2">正在分析问题...</span>
                 </div>
               ) : (

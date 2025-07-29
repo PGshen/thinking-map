@@ -7,36 +7,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { GitBranch, Loader2, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { GitBranch } from 'lucide-react';
 import { DecomposeArea } from './decompose-area';
 import { ChatMsg } from '@/types/message';
+import { CustomNodeModel } from '@/types/node';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { toast } from 'sonner';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
 
 interface DecomposeTabProps {
   nodeID: string;
-  node: any; // TODO: 使用正确的节点类型
+  nodeData: CustomNodeModel;
 }
 
-interface DecomposeStep {
-  id: string;
-  name: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  description: string;
-}
-
-interface SubProblem {
-  id: string;
-  title: string;
-  description: string;
-  status: 'suggested' | 'confirmed' | 'rejected';
-}
-
-export function DecomposeTab({ nodeID, node }: DecomposeTabProps) {
+export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [isDecomposing, setIsDecomposing] = useState(false);
-  const [decomposeSteps, setDecomposeSteps] = useState<DecomposeStep[]>([]);
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -45,27 +31,6 @@ export function DecomposeTab({ nodeID, node }: DecomposeTabProps) {
 
   // 初始化拆解流程步骤
   useEffect(() => {
-    const steps: DecomposeStep[] = [
-      {
-        id: 'rag-search',
-        name: 'RAG知识检索',
-        status: 'pending',
-        description: '搜索相关知识和案例'
-      },
-      {
-        id: 'ai-analysis',
-        name: 'AI分析',
-        status: 'pending',
-        description: '分析问题并生成拆解建议'
-      },
-      {
-        id: 'node-creation',
-        name: '节点创建',
-        status: 'pending',
-        description: '创建子问题节点'
-      }
-    ];
-    setDecomposeSteps(steps);
 
     // 初始化消息
     const initialMessages: ChatMsg[] = [
@@ -88,24 +53,20 @@ export function DecomposeTab({ nodeID, node }: DecomposeTabProps) {
 
     try {
       // 步骤1: RAG检索
-      updateStepStatus('rag-search', 'running');
       addSystemMessage('🔍 开始RAG知识检索...');
       setProgress(20);
 
       // 模拟RAG检索
       await new Promise(resolve => setTimeout(resolve, 1500));
-      updateStepStatus('rag-search', 'completed');
       addSystemMessage('✅ RAG检索完成，找到相关知识');
       setProgress(40);
 
       // 步骤2: AI分析
-      updateStepStatus('ai-analysis', 'running');
       addSystemMessage('🤖 AI正在分析问题...');
       setProgress(60);
 
       // 模拟AI分析
       await new Promise(resolve => setTimeout(resolve, 2000));
-      updateStepStatus('ai-analysis', 'completed');
 
       // 添加AI分析结果
       const analysisMessage: ChatMsg = {
@@ -113,7 +74,7 @@ export function DecomposeTab({ nodeID, node }: DecomposeTabProps) {
         textMsg: {
           id: `analysis-${Date.now()}`,
           role: 'assistant',
-          content: `基于RAG检索的知识，我建议将"${node.data?.question || '当前问题'}"拆解为以下几个子问题：\n1. 需求分析与用户研究\n2. 技术方案设计\n3. 实现与测试\n4. 部署与维护\n您可以通过对话调整这些建议，或者直接确认创建子节点。`
+          content: `基于RAG检索的知识，我建议将"${nodeData?.question || '当前问题'}"拆解为以下几个子问题：\n1. 需求分析与用户研究\n2. 技术方案设计\n3. 实现与测试\n4. 部署与维护\n您可以通过对话调整这些建议，或者直接确认创建子节点。`
         }
       };
       setMessages(prev => [...prev, analysisMessage]);
@@ -123,34 +84,20 @@ export function DecomposeTab({ nodeID, node }: DecomposeTabProps) {
         textMsg: {
           id: `analysis2-${Date.now()}`,
           role: 'assistant',
-          content: `基于RAG检索的知识，我建议将"${node.data?.question || '当前问题'}"拆解为以下几个子问题：\n\n1. 需求分析与用户研究\n2. 技术方案设计\n3. 实现与测试\n4. 部署与维护\n\n您可以通过对话调整这些建议，或者直接确认创建子节点。`
+          content: `基于RAG检索的知识，我建议将"${nodeData?.question || '当前问题'}"拆解为以下几个子问题：\n\n1. 需求分析与用户研究\n2. 技术方案设计\n3. 实现与测试\n4. 部署与维护\n\n您可以通过对话调整这些建议，或者直接确认创建子节点。`
         }
       };
       setMessages(prev => [...prev, analysisMessage2]);
       setProgress(80);
 
       // 步骤3: 节点创建准备
-      updateStepStatus('node-creation', 'running');
       addSystemMessage('📝 子问题建议已生成，等待您的确认');
       setProgress(100);
-
-      updateStepStatus('node-creation', 'completed');
-
     } catch (error) {
       toast('拆解过程中出现错误，请重试');
-      setDecomposeSteps(prev => prev.map(step =>
-        step.status === 'running' ? { ...step, status: 'failed' } : step
-      ));
     } finally {
       setIsDecomposing(false);
     }
-  };
-
-  // 更新步骤状态
-  const updateStepStatus = (stepId: string, status: DecomposeStep['status']) => {
-    setDecomposeSteps(prev => prev.map(step =>
-      step.id === stepId ? { ...step, status } : step
-    ));
   };
 
   // 添加系统消息
@@ -207,7 +154,7 @@ export function DecomposeTab({ nodeID, node }: DecomposeTabProps) {
           <ChatInputTextArea variant='unstyled' placeholder="Type a message..." />
           <div className="flex items-center gap-2">
             {/* 开始拆解按钮 */}
-            {!isDecomposing && decomposeSteps.every(step => step.status === 'pending') && (
+            {!isDecomposing && (
               <button
                 onClick={handleStartDecompose}
                 className="px-3 py-1.5 bg-primary cursor-pointer text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5 shrink-0"

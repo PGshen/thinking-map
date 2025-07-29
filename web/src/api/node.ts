@@ -18,6 +18,8 @@ import type {
   DeleteNodeResponse,
   ResetNodeContextResponse
 } from '@/types/node';
+import { MessageListResponse, MessageResponse } from '@/types/message';
+import { ApiResponse } from '@/types/response';
 
 // 获取思维导图的所有节点
 export async function getMapNodes(mapID: string): Promise<NodeListResponse> {
@@ -47,4 +49,13 @@ export async function resetNodeContext(mapID: string, nodeID: string): Promise<R
 // 删除节点
 export async function deleteNode(mapID: string, nodeID: string): Promise<DeleteNodeResponse> {
   return del(API_ENDPOINTS.NODE.DELETE.replace(':mapID', mapID).replace(':nodeID', nodeID));
+}
+
+// 查询消息列表
+export async function getMessages(mapID: string, nodeID: string, conversationType: string): Promise<ApiResponse<MessageResponse[]>> {
+  return get(API_ENDPOINTS.NODE.MESSAGES.replace(':mapID', mapID).replace(':nodeID', nodeID), {
+    params: {
+      conversationType,
+    }
+  });
 }

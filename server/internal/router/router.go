@@ -56,7 +56,7 @@ func SetupRouter(
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)
 	mapHandler := handler.NewMapHandler(mapService)
-	nodeHandler := handler.NewNodeHandler(nodeService)
+	nodeHandler := handler.NewNodeHandler(nodeService, messageManager)
 	understandingHandler := thinkinghandler.NewUnderstandingHandler(understandingService)
 	intentRecognitionHandler := thinkinghandler.NewIntentRecognitionHandler(intentService)
 	repeaterHandler := thinkinghandler.NewRepeaterHandler()
@@ -99,6 +99,7 @@ func SetupRouter(
 				nodes.DELETE("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.DeleteNode)
 				nodes.PUT("/:nodeID/context", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.UpdateNodeContext)
 				nodes.PUT("/:nodeID/context/reset", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.ResetNodeContext)
+				nodes.GET("/:nodeID/messages", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.GetNodeMessages)
 			}
 
 			// Thinking routes
