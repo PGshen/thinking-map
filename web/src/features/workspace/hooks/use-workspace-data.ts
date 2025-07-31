@@ -64,6 +64,7 @@ export function useWorkspaceData(mapID?: string) {
           nodeType: nodeData.nodeType,
           question: nodeData.question,
           target: nodeData.target,
+          decomposition: nodeData.decomposition,
           conclusion: nodeData.conclusion,
           status: nodeData.status,
           context: nodeData.context,

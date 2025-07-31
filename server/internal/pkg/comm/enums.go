@@ -58,6 +58,7 @@ const (
 	MessageTypeText   = "text"   // 文本
 	MessageTypeRag    = "rag"    // RAG
 	MessageTypeNotice = "notice" // 通知
+	MessageTypeAction = "action" // 操作
 )
 
 // RAG 记录状态

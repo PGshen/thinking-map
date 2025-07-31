@@ -48,7 +48,15 @@ func (Message) TableName() string {
 // Notice 通知信息
 type Notice struct {
 	Type    string `json:"type"`
+	Name    string `json:"name"`
 	Content string `json:"content"`
+}
+
+type Action struct {
+	Name   string         `json:"name"`
+	URL    string         `json:"url"`
+	Method string         `json:"method"`
+	Param  map[string]any `json:"param,omitempty"`
 }
 
 // MessageContent 消息内容
@@ -56,6 +64,7 @@ type MessageContent struct {
 	Text   string   `json:"text,omitempty"`
 	RAG    []string `json:"rag,omitempty"`
 	Notice []Notice `json:"notice,omitempty"`
+	Action []Action `json:"action,omitempty"`
 }
 
 // MessageContent 实现 Scanner 接口

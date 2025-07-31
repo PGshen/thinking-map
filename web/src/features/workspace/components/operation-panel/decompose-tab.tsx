@@ -9,11 +9,12 @@
 import React, { useState, useEffect } from 'react';
 import { GitBranch } from 'lucide-react';
 import { DecomposeArea } from './decompose-area';
-import { ChatMsg } from '@/types/message';
+import { MessageResponse } from '@/types/message';
 import { CustomNodeModel } from '@/types/node';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { toast } from 'sonner';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
+import { getMessages } from '@/api/node';
 
 interface DecomposeTabProps {
   nodeID: string;
@@ -21,7 +22,8 @@ interface DecomposeTabProps {
 }
 
 export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const { mapID } = useWorkspaceStore();
+  const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [isDecomposing, setIsDecomposing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -29,22 +31,52 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
 
   const { actions } = useWorkspaceStore();
 
-  // 初始化拆解流程步骤
+  // 初始化拆解流程步骤                                                                                                                                                                                                                                                                                                                                                                      
   useEffect(() => {
-
-    // 初始化消息
-    const initialMessages: ChatMsg[] = [
-      {
-        type: 'text',
-        textMsg: {
-          id: 'welcome',
-          role: 'assistant',
-          content: '我将帮您分析这个问题并进行智能拆解。点击开始拆解按钮启动流程，或者直接与我对话调整拆解建议。'
+    const initializeDecomposition = async () => {
+      console.log("mapID", mapID)
+      if (!mapID) {
+        return;
+      }
+      if (nodeData.decomposition?.messages === undefined) {
+        // 初始化加载，如果为空，从后端加载
+        setLoading(true);
+        try {
+           let res = await getMessages(mapID, nodeID, 'decomposition');
+           if (res.code !== 200) {
+             toast.error(`加载失败: ${res.message}`);
+             setLoading(false);
+             return;
+           }
+           actions.updateNodeDecomposition(nodeID, {
+             messages: res.data,
+           });
+         } catch (error) {
+           toast.error('网络错误，请重试');
+        } finally {
+          setLoading(false);
         }
       }
-    ];
-    setMessages(initialMessages);
-  }, [nodeID]);
+      // 初始化消息
+      const initialMessages: MessageResponse[] = [
+        {
+            id: 'welcome',
+            role: 'assistant',
+            messageType: 'text',
+            content: {
+              text: '我将帮您分析这个问题并进行智能拆解。点击开始拆解按钮启动流程，或者直接与我对话调整拆解建议。'
+            },
+            metadata: {},
+            createdAt: '',
+            updatedAt: '',
+          },
+        ...(nodeData.decomposition?.messages || []),
+      ];
+      setMessages(initialMessages);
+    };
+
+    initializeDecomposition();
+  }, [mapID, nodeID, nodeData]);
 
   // 开始拆解流程
   const handleStartDecompose = async () => {
@@ -69,22 +101,22 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // 添加AI分析结果
-      const analysisMessage: ChatMsg = {
-        type: 'text',
-        textMsg: {
-          id: `analysis-${Date.now()}`,
-          role: 'assistant',
-          content: `基于RAG检索的知识，我建议将"${nodeData?.question || '当前问题'}"拆解为以下几个子问题：\n1. 需求分析与用户研究\n2. 技术方案设计\n3. 实现与测试\n4. 部署与维护\n您可以通过对话调整这些建议，或者直接确认创建子节点。`
+      const analysisMessage: MessageResponse = {
+        id: `analysis-${Date.now()}`,
+        role: 'assistant',
+        messageType: 'text',
+        content: {
+          text: `基于RAG检索的知识，我建议将"${nodeData?.question || '当前问题'}"拆解为以下几个子问题：\n1. 需求分析与用户研究\n2. 技术方案设计\n3. 实现与测试\n4. 部署与维护\n您可以通过对话调整这些建议，或者直接确认创建子节点。`
         }
       };
       setMessages(prev => [...prev, analysisMessage]);
 
-      const analysisMessage2: ChatMsg = {
-        type: 'text',
-        textMsg: {
-          id: `analysis2-${Date.now()}`,
-          role: 'assistant',
-          content: `基于RAG检索的知识，我建议将"${nodeData?.question || '当前问题'}"拆解为以下几个子问题：\n\n1. 需求分析与用户研究\n2. 技术方案设计\n3. 实现与测试\n4. 部署与维护\n\n您可以通过对话调整这些建议，或者直接确认创建子节点。`
+      const analysisMessage2: MessageResponse = {
+        id: `analysis2-${Date.now()}`,
+        role: 'assistant',
+        messageType: 'text',
+        content: {
+          text: `基于RAG检索的知识，我建议将"${nodeData?.question || '当前问题'}"拆解为以下几个子问题：\n\n1. 需求分析与用户研究\n2. 技术方案设计\n3. 实现与测试\n4. 部署与维护\n\n您可以通过对话调整这些建议，或者直接确认创建子节点。`
         }
       };
       setMessages(prev => [...prev, analysisMessage2]);
@@ -102,15 +134,15 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
 
   // 添加系统消息
   const addSystemMessage = (content: string) => {
-    const systemMessage: ChatMsg = {
-      type: 'action',
-      actionMsg: {
-        id: `system-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        role: 'system',
-        actions: [{
+    const systemMessage: MessageResponse = {
+      id: `system-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      role: 'system',
+      messageType: 'notice',
+      content: {
+        notice: [{
+          type: '',
           name: 'system_notification',
-          url: '',
-          arguments: content
+          content: content
         }]
       }
     };
@@ -122,16 +154,18 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
       return;
     }
     if (inputValue.trim() === "") {
+      toast('请输入消息');
       return;
     }
-    messages.push({
-      type: 'text',
-      textMsg: {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content: inputValue
+    const userMessage: MessageResponse = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      messageType: 'text',
+      content: {
+        text: inputValue
       }
-    });
+    };
+    setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     // handleSubmit();
   };

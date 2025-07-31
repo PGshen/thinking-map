@@ -5,6 +5,7 @@
  * @FilePath: /thinking-map/web/src/types/node.ts
  */
 // 与后端 dto/node.go 对齐的节点类型定义
+import { MessageResponse } from './message';
 import type { ApiResponse } from './response';
 
 export interface Position {
@@ -31,9 +32,10 @@ export interface CustomNodeModel {
   nodeType: string;
   question: string;
   target: string;
-  conclusion?: string;
   status: 'initial' | 'pending' | 'running' | 'completed' | 'error';
   context?: DependentContext;
+  decomposition?: Decomposition;
+  conclusion?: Conclusion;
   metadata?: any;
   selected?: boolean;
   isEditing?: boolean;
@@ -62,6 +64,18 @@ export interface NodeContextItem {
   status: string;
 }
 
+export interface Decomposition {
+  isDecompose: boolean;
+  lastMessageID: string;
+  messages: MessageResponse[];
+}
+
+export interface Conclusion {
+  lastMessageID: string;
+  content: string;
+  messages: MessageResponse[];
+}
+
 export interface NodeResponse {
   id: string;
   mapID: string;
@@ -74,10 +88,8 @@ export interface NodeResponse {
     prevSibling: NodeContextItem[];
     children: NodeContextItem[];
   };
-  decompose:{
-    lastMsgID:  string;
-  }
-  conclusion: string;
+  decomposition: Decomposition;
+  conclusion: Conclusion;
   status: string;
   position: Position;
   metadata: Record<string, any>;

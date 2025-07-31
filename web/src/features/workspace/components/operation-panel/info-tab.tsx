@@ -82,7 +82,7 @@ export function InfoTab({ nodeID, nodeData }: InfoTabProps) {
     
     setIsSaving(true);
     try {
-      // TODO: 调用API保存节点信息
+      // 调用API保存节点上下文 
       let res = await updateNodeContext(mapID, nodeID, formData);
       if (res.code !== 200) {
         throw new Error(res.message);
@@ -194,7 +194,7 @@ export function InfoTab({ nodeID, nodeData }: InfoTabProps) {
           <div className="space-y-2">
             <Label>结论内容</Label>
             <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-800">{nodeData.conclusion}</p>
+              <p className="text-sm text-green-800">{nodeData.conclusion.content}</p>
             </div>
           </div>
         )}

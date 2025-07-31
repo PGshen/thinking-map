@@ -8,7 +8,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Node, Edge } from 'reactflow';
 import { Map } from '@/types/map';
-import { CustomNodeModel } from '@/types/node';
+import { Conclusion, CustomNodeModel, Decomposition } from '@/types/node';
 
 // 工作区状态接口
 interface WorkspaceState {
@@ -72,6 +72,10 @@ interface WorkspaceActions {
   selectNode: (nodeID: string | null) => void;
   setEditing: (nodeID: string | null) => void;
   clearSelection: () => void;
+
+  // 节点拆解操作
+  updateNodeDecomposition: (nodeID: string, updates: Partial<Decomposition>) => void;
+  updateNodeConclusion: (nodeID: string, updates: Partial<Conclusion>) => void;
   
   // 边操作
   setEdges: (edges: Edge[]) => void;
@@ -357,6 +361,33 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
             }),
             false,
             'clearSelection'
+          );
+        },
+
+        setNodeDecomposition: async (nodeID: string, decomposition: Partial<Decomposition>) => {
+          set(
+            (state) => ({
+              nodes: state.nodes.map((node) => {
+                if (node.id === nodeID) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      decomposition: {
+                        isDecompose: false,
+                        lastMessageID: '',
+                        messages: [],
+                        ...node.data.decomposition,
+                        ...decomposition,
+                      },
+                    },
+                  };
+                }
+                return node;
+              }),
+            }),
+            false,
+            'setNodeDecomposition'
           );
         },
         

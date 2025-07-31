@@ -284,11 +284,11 @@ func (s *MessageManager) LinkMessageToNode(ctx context.Context, nodeID string, m
 
 	// 根据对话类型更新节点的相应字段
 	switch conversationType {
-	case "decompose":
+	case dto.ConversationTypeDecomposition:
 		decomposition := node.Decomposition
 		decomposition.LastMessageID = messageID
 		node.Decomposition = decomposition
-	case "conclusion":
+	case dto.ConversationTypeConclusion:
 		conclusion := node.Conclusion
 		conclusion.LastMessageID = messageID
 		node.Conclusion = conclusion
