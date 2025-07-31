@@ -32,48 +32,43 @@ type ConnectionEstablishedEvent struct {
 
 // NodeCreatedEvent represents the node creation event
 type NodeCreatedEvent struct {
-	NodeID    string         `json:"nodeID"`
-	ParentID  string         `json:"parentID"`
-	NodeType  string         `json:"nodeType"`
-	Question  string         `json:"question"`
-	Target    string         `json:"target"`
-	Position  model.Position `json:"position"`
-	Timestamp time.Time      `json:"timestamp"`
+	NodeID   string         `json:"nodeID"`
+	ParentID string         `json:"parentID"`
+	NodeType string         `json:"nodeType"`
+	Question string         `json:"question"`
+	Target   string         `json:"target"`
+	Position model.Position `json:"position"`
 }
 
 // NodeUpdatedEvent represents the node update event
 type NodeUpdatedEvent struct {
-	NodeID    string                 `json:"nodeID"`
-	Mode      string                 `json:"mode"` // 更新模式：repeace/append
-	Updates   map[string]interface{} `json:"updates"`
-	Timestamp time.Time              `json:"timestamp"`
+	NodeID  string                 `json:"nodeID"`
+	Mode    string                 `json:"mode"` // 更新模式：repeace/append
+	Updates map[string]interface{} `json:"updates"`
 }
 
 // ThinkingProgressEvent represents the thinking progress event
 type ThinkingProgressEvent struct {
-	NodeID    string    `json:"nodeID"`
-	Stage     string    `json:"stage"`
-	Progress  int       `json:"progress"`
-	Message   string    `json:"message"`
-	Timestamp time.Time `json:"timestamp"`
+	NodeID   string `json:"nodeID"`
+	Stage    string `json:"stage"`
+	Progress int    `json:"progress"`
+	Message  string `json:"message"`
 }
 
 type MsgToolEvent struct {
-	NodeID    string    `json:"nodeID"`
-	MsgID     string    `json:"msgID"`
-	Tool      string    `json:"tool"`
-	Arguments string    `json:"arguments"`
-	Status    string    `json:"status"`
-	Timestamp time.Time `json:"timestamp"`
+	NodeID    string `json:"nodeID"`
+	MsgID     string `json:"msgID"`
+	Tool      string `json:"tool"`
+	Arguments string `json:"arguments"`
+	Status    string `json:"status"`
 }
 
 // MsgUserChoiceEvent represents the user choice event
 type MsgUserChoiceEvent struct {
-	MapID     string    `json:"mapID" jsonschema:"description=思考图ID"`
-	NodeID    string    `json:"nodeID" jsonschema:"description=节点ID"`
-	MsgID     string    `json:"msgID" jsonschema:"description=消息ID"`
-	Choices   []Choice  `json:"choices" jsonschema:"description=用户选择的选项列表"`
-	Timestamp time.Time `json:"timestamp" jsonschema:"description=消息时间"`
+	MapID   string   `json:"mapID" jsonschema:"description=思考图ID"`
+	NodeID  string   `json:"nodeID" jsonschema:"description=节点ID"`
+	MsgID   string   `json:"msgID" jsonschema:"description=消息ID"`
+	Choices []Choice `json:"choices" jsonschema:"description=用户选择的选项列表"`
 }
 
 type Choice struct {
@@ -84,18 +79,16 @@ type Choice struct {
 
 // MsgTextEvent represents the text event
 type MsgTextEvent struct {
-	NodeID    string    `json:"nodeID"`
-	MsgID     string    `json:"msgID"`
-	Message   string    `json:"message"`
-	Timestamp time.Time `json:"timestamp"`
+	NodeID  string `json:"nodeID"`
+	MsgID   string `json:"msgID"`
+	Message string `json:"message"`
 }
 
 // ErrorEvent represents the error event
 type ErrorEvent struct {
-	NodeID       string    `json:"nodeID"`
-	ErrorCode    string    `json:"errorCode"`
-	ErrorMessage string    `json:"errorMessage"`
-	Timestamp    time.Time `json:"timestamp"`
+	NodeID       string `json:"nodeID"`
+	ErrorCode    string `json:"errorCode"`
+	ErrorMessage string `json:"errorMessage"`
 }
 
 // TestEventRequest represents the request for testing SSE events

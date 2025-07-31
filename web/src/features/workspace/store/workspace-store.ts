@@ -202,7 +202,12 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
         // 节点操作
         setNodes: (nodes: Node<CustomNodeModel>[]) => {
           set(
-            (state) => ({ nodes: [...state.nodes, ...nodes] }),
+            (state) => {
+              // 通过节点ID去重，保证唯一性
+              const existingNodeIds = new Set(state.nodes.map(node => node.id));
+              const newNodes = nodes.filter(node => !existingNodeIds.has(node.id));
+              return { nodes: [...state.nodes, ...newNodes] };
+            },
             false,
             'setNodes'
           );
@@ -210,9 +215,16 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
         
         addNode: (node: Node<CustomNodeModel>) => {
           set(
-            (state) => ({
-              nodes: [...state.nodes, node],
-            }),
+            (state) => {
+              // 检查节点ID是否已存在，避免重复添加
+              const existingNode = state.nodes.find(n => n.id === node.id);
+              if (existingNode) {
+                return state; // 节点已存在，不添加
+              }
+              return {
+                nodes: [...state.nodes, node],
+              };
+            },
             false,
             'addNode'
           );
@@ -364,7 +376,7 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           );
         },
 
-        setNodeDecomposition: async (nodeID: string, decomposition: Partial<Decomposition>) => {
+        updateNodeDecomposition: async (nodeID: string, decomposition: Partial<Decomposition>) => {
           set(
             (state) => ({
               nodes: state.nodes.map((node) => {
@@ -387,7 +399,7 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
               }),
             }),
             false,
-            'setNodeDecomposition'
+            'updateNodeDecomposition'
           );
         },
         

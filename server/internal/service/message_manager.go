@@ -255,7 +255,7 @@ func (s *MessageManager) GetConversationMessages(ctx context.Context, conversati
 
 // GetMessageChain 获取消息链（从根消息到指定消息的完整路径）
 func (s *MessageManager) GetMessageChain(ctx context.Context, messageID string) ([]*dto.MessageResponse, error) {
-	var result []*dto.MessageResponse
+	result := []*dto.MessageResponse{}
 	currentID := messageID
 
 	for currentID != "" {

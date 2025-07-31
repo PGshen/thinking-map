@@ -38,11 +38,13 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
       if (!mapID) {
         return;
       }
+      console.log("messages", nodeData.decomposition?.messages)
       if (nodeData.decomposition?.messages === undefined) {
         // 初始化加载，如果为空，从后端加载
         setLoading(true);
         try {
            let res = await getMessages(mapID, nodeID, 'decomposition');
+           console.log("res", res);
            if (res.code !== 200) {
              toast.error(`加载失败: ${res.message}`);
              setLoading(false);
@@ -51,32 +53,20 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
            actions.updateNodeDecomposition(nodeID, {
              messages: res.data,
            });
+           setMessages(res.data);
          } catch (error) {
            toast.error('网络错误，请重试');
+           console.error('加载拆解消息失败', error);
         } finally {
           setLoading(false);
         }
+      } else {
+        setMessages(nodeData.decomposition.messages);
       }
-      // 初始化消息
-      const initialMessages: MessageResponse[] = [
-        {
-            id: 'welcome',
-            role: 'assistant',
-            messageType: 'text',
-            content: {
-              text: '我将帮您分析这个问题并进行智能拆解。点击开始拆解按钮启动流程，或者直接与我对话调整拆解建议。'
-            },
-            metadata: {},
-            createdAt: '',
-            updatedAt: '',
-          },
-        ...(nodeData.decomposition?.messages || []),
-      ];
-      setMessages(initialMessages);
     };
 
     initializeDecomposition();
-  }, [mapID, nodeID, nodeData]);
+  }, [nodeData]);
 
   // 开始拆解流程
   const handleStartDecompose = async () => {
@@ -166,6 +156,9 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
       }
     };
     setMessages(prev => [...prev, userMessage]);
+    actions.updateNodeDecomposition(nodeID, {
+      messages: [...messages, userMessage],
+    });
     setInputValue('');
     // handleSubmit();
   };

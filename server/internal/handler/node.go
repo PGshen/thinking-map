@@ -291,11 +291,12 @@ func (h *NodeHandler) GetNodeMessages(c *gin.Context) {
 		return
 	}
 	var lastMessageID string
-	if conversationType == dto.ConversationTypeDecomposition {
+	switch conversationType {
+	case dto.ConversationTypeDecomposition:
 		lastMessageID = node.Decomposition.LastMessageID
-	} else if conversationType == dto.ConversationTypeConclusion {
+	case dto.ConversationTypeConclusion:
 		lastMessageID = node.Conclusion.LastMessageID
-	} else {
+	default:
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
 			Message:   "conversationType is invalid",
