@@ -12,14 +12,16 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model"
 )
 
+// 事件类型
 const (
 	ConnectionEstablishedEventType = "connectionEstablished"
 	NodeCreatedEventType           = "nodeCreated"
 	NodeUpdatedEventType           = "nodeUpdated"
 	ThinkingProgressEventType      = "thinkingProgress"
-	MsgToolEventType               = "msgTool"
-	MsgUserChoiceEventType         = "msgUserChoice"
 	MsgTextEventType               = "msgText"
+	MsgNoticeEventType             = "msgNotice"
+	MsgActionEventType             = "msgAction"
+	MsgRagEventType                = "msgRag"
 	ErrorEventType                 = "error"
 	CustomEventType                = "custom"
 )
@@ -65,16 +67,8 @@ type MsgToolEvent struct {
 
 // MsgUserChoiceEvent represents the user choice event
 type MsgUserChoiceEvent struct {
-	MapID   string   `json:"mapID" jsonschema:"description=思考图ID"`
-	NodeID  string   `json:"nodeID" jsonschema:"description=节点ID"`
-	MsgID   string   `json:"msgID" jsonschema:"description=消息ID"`
-	Choices []Choice `json:"choices" jsonschema:"description=用户选择的选项列表"`
-}
-
-type Choice struct {
-	Index  int    `json:"index" jsonschema:"description=用户选择的选项索引"`
-	Name   string `json:"name" jsonschema:"description=选项名称,enum=拆解,enum=结论"`
-	Action string `json:"action" jsonschema:"description=选项执行的操作,enum=decompose,enum=conclude"`
+	Introduction string   `json:"introduction" jsonschema:"description=引导语，用于引导用户进行选择"`
+	Actions      []string `json:"actions" jsonschema:"description=用户可选择动作列表,enum=decompose,enum=conclude"`
 }
 
 // MsgTextEvent represents the text event

@@ -25,7 +25,7 @@ type Message struct {
 	ParentID       string          `gorm:"type:uuid;index"`
 	ConversationID string          `gorm:"type:uuid;index"`
 	UserID         string          `json:"user_id" gorm:"type:uuid;not null"`
-	MessageType    string          `gorm:"type:varchar(20);not null;default:text"` // text, rag, notice
+	MessageType    MsgType         `gorm:"type:varchar(20);not null;default:text"` // text, rag, notice, action
 	Role           schema.RoleType `gorm:"type:varchar(48)"`
 	Content        MessageContent  `gorm:"type:jsonb;not null"`
 	Metadata       datatypes.JSON  `gorm:"type:jsonb;default:'{}'"`
@@ -44,6 +44,16 @@ func (m *Message) BeforeCreate(tx *gorm.DB) error {
 func (Message) TableName() string {
 	return "messages"
 }
+
+// 消息类型
+type MsgType string
+
+const (
+	MsgTypeText   MsgType = "text"
+	MsgTypeRAG    MsgType = "rag"
+	MsgTypeNotice MsgType = "notice"
+	MsgTypeAction MsgType = "action"
+)
 
 // Notice 通知信息
 type Notice struct {

@@ -11,7 +11,7 @@ import (
 type CreateMessageRequest struct {
 	ID          string               `json:"ID"`
 	ParentID    string               `json:"parentID" binding:"omitempty,uuid"`
-	MessageType string               `json:"messageType" binding:"required,oneof=text rag notice"`
+	MessageType model.MsgType        `json:"messageType" binding:"required,oneof=text rag notice action"`
 	Role        schema.RoleType      `json:"role" binding:"required,oneof=system assistant user"`
 	Content     model.MessageContent `json:"content" binding:"required"`
 	Metadata    interface{}          `json:"metadata"`
@@ -20,7 +20,7 @@ type CreateMessageRequest struct {
 // UpdateMessageRequest represents the request body for updating a message
 type UpdateMessageRequest struct {
 	ID          string               `json:"id" binding:"required,uuid"`
-	MessageType string               `json:"messageType" binding:"omitempty,oneof=text rag notice"`
+	MessageType model.MsgType        `json:"messageType" binding:"omitempty,oneof=text rag notice action"`
 	Content     model.MessageContent `json:"content" binding:"omitempty"`
 	Metadata    interface{}          `json:"metadata"`
 }
@@ -30,7 +30,7 @@ type MessageResponse struct {
 	ID             string               `json:"id"`
 	ParentID       string               `json:"parentID"`
 	ConversationID string               `json:"conversationID"`
-	MessageType    string               `json:"messageType"`
+	MessageType    model.MsgType        `json:"messageType"`
 	Role           schema.RoleType      `json:"role"`
 	Content        model.MessageContent `json:"content"`
 	Metadata       interface{}          `json:"metadata"`

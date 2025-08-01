@@ -1,10 +1,5 @@
 "use client";
 import {
-	ChatInput,
-	ChatInputSubmit,
-	ChatInputTextArea,
-} from "@/components/ui/chat-input";
-import {
 	ChatMessageAvatar,
 	ChatMessageContent,
 	ChatMessage,
@@ -134,25 +129,25 @@ export function DecomposeArea({ messages }: DecomposeAreaProps) {
 							type="incoming"
 						>
 							<ChatMessageAvatar />
-							<div className="space-y-2">
+							<div className="flex flex-wrap gap-2">
 								{message.content.action?.map((action, index) => (
 									<button
 										key={index}
-										className="w-full px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm rounded-md border border-blue-200 transition-colors duration-200 text-left"
+										className="cursor-pointer px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm rounded-md border border-blue-200 transition-colors duration-200 text-left flex-shrink-0"
 										onClick={() => {
 											// TODO: 处理动作点击事件
 											console.log('Action clicked:', action);
 										}}
 									>
-										<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2">
 											<span className="font-medium">{action.name}</span>
-											<span className="text-xs text-blue-500 uppercase">{action.method}</span>
+											{/* <span className="text-xs text-blue-500 uppercase">{action.method}</span> */}
 										</div>
-										{action.url && (
+										{/* {action.url && (
 											<div className="text-xs text-blue-600 mt-1 opacity-75">
 												{action.url}
 											</div>
-										)}
+										)} */}
 									</button>
 								))}
 							</div>

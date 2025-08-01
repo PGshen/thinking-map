@@ -17,7 +17,7 @@ func BuildIntentRecognitionAgent(ctx context.Context, option react.AgentOption) 
 	if err != nil {
 		return nil, err
 	}
-	userChoiceTool, err := messaging.UserChoiceTool()
+	userChoiceTool, err := messaging.ActionTool()
 	if err != nil {
 		return nil, err
 	}

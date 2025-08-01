@@ -218,7 +218,7 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
                       {
                         type: 'success',
                         name: '成功提示',
-                        content: '这是一个成功类型的通知消息，使用绿色主题。'
+                        content: '这是一个成功类型的通知消息，使用绿色主题。这是一个成功类型的通知消息，使用绿色主题。这是一个成功类型的通知消息，使用绿色主题。'
                       }
                     ]
                   }
