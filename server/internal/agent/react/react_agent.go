@@ -2,15 +2,21 @@ package react
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
+	"github.com/PGshen/thinking-map/server/internal/pkg/utils"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
+	"go.uber.org/zap"
 )
 
 // AgentConfig is the configuration for the ReAct agent
@@ -20,6 +26,9 @@ type AgentConfig struct {
 
 	// ReasoningPrompt is the prompt template for reasoning
 	ReasoningPrompt string
+
+	// IsSupportStructuredOutput is whether the model supports structured output
+	IsSupportStructuredOutput bool
 
 	// Tools available to the agent
 	ToolsConfig compose.ToolsNodeConfig
@@ -49,6 +58,13 @@ type Agent struct {
 	agentOptions     []AgentOption
 	config           *AgentConfig
 	monitor          *Monitor // 监控调试模块
+}
+
+type ReasoningOutput struct {
+	Thought     string  `json:"thought"`
+	Action      string  `json:"action"`
+	FinalAnswer string  `json:"final_answer"`
+	Confidence  float64 `json:"confidence"`
 }
 
 // Node keys for the improved ReAct graph
@@ -223,9 +239,7 @@ func (a *Agent) addReasoningNode(graph *compose.Graph[[]*schema.Message, *schema
 	return graph.AddChatModelNode(nodeKeyReasoning, chatModel,
 		compose.WithStatePreHandler(a.reasoningNodePreHandler),
 		compose.WithStatePostHandler(a.reasoningNodePostHandler),
-		compose.WithStreamStatePostHandler(func(ctx context.Context, sr *schema.StreamReader[*schema.Message], state *AgentState) (*schema.StreamReader[*schema.Message], error) {
-			return sr, nil
-		}),
+		// compose.WithStreamStatePostHandler(a.reasoningNodeStreamPostHandler),
 	)
 }
 
@@ -291,6 +305,120 @@ func (a *Agent) reasoningNodePostHandler(ctx context.Context, output *schema.Mes
 	})
 
 	return output, nil
+}
+
+func (a *Agent) reasoningNodeStreamPostHandler(ctx context.Context, sr *schema.StreamReader[*schema.Message], state *AgentState) (*schema.StreamReader[*schema.Message], error) {
+	r, w := schema.Pipe[*schema.Message](10240)
+	// 使用流式JSON解析器解析ReasoningOutput
+	matcher := utils.NewSimplePathMatcher()
+	// 使用增量模式避免重复内容
+	parser := utils.NewStreamingJsonParser(matcher, true, true)
+
+	var thought, action, finalAnswer strings.Builder
+
+	// 注册路径匹配器来提取thought和final_answer字段
+	matcher.On("thought", func(value interface{}, path []interface{}) {
+		// fmt.Print("thought:", value)
+		if str, ok := value.(string); ok {
+			w.Send(&schema.Message{
+				Role:    schema.Assistant,
+				Content: str,
+			}, nil)
+			thought.WriteString(str)
+		}
+	})
+
+	matcher.On("action", func(value interface{}, path []interface{}) {
+		if str, ok := value.(string); ok {
+			action.WriteString(str)
+		}
+	})
+
+	matcher.On("final_answer", func(value interface{}, path []interface{}) {
+		if str, ok := value.(string); ok {
+			w.Send(&schema.Message{
+				Role:    schema.Assistant,
+				Content: str,
+			}, nil)
+			finalAnswer.WriteString(str)
+		}
+	})
+	ss := sr.Copy(2) // 复制流，一个用于组装解析工具和推理、一个用于实时解析
+	go func() {
+		fullMsgs := make([]*schema.Message, 0)
+		defer func() {
+			ss[1].Close()
+			fullMsg, err2 := schema.ConcatMessages(fullMsgs)
+			if err2 != nil {
+				logger.Warn("concat message failed", zap.Error(err2))
+				return
+			}
+			// Parse reasoning response
+			reasoning, err := parseReasoningResponse(fullMsg)
+			if err != nil {
+				a.monitor.Error("Reasoning", "解析推理响应失败", err)
+				return
+			}
+
+			// Update state with reasoning result
+			state.ReasoningHistory = append(state.ReasoningHistory, *reasoning)
+			state.Iteration++
+
+			// Record model response in state messages
+			state.Messages = append(state.Messages, fullMsg)
+
+			a.monitor.Info("Reasoning", "离开推理节点", map[string]interface{}{
+				"iteration": state.Iteration,
+				"action":    reasoning.Action,
+				"thought":   reasoning.Thought,
+				"output":    fullMsg,
+			})
+		}()
+	outer:
+		for {
+			select {
+			case <-ctx.Done():
+				fmt.Println("context done", ctx.Err())
+				return
+			default:
+				chunk, err2 := sr.Recv()
+				if err2 != nil {
+					if errors.Is(err2, io.EOF) {
+						fmt.Println()
+						break outer
+					}
+				}
+				// fmt.Printf("%s", chunk.Content)
+				fullMsgs = append(fullMsgs, chunk)
+			}
+		}
+	}()
+
+	// 实施解析输入流
+	for {
+		msg, err := ss[0].Recv()
+		if err != nil {
+			fmt.Println(err)
+			if err.Error() == "EOF" {
+				break
+			}
+			// 解析失败时回退到原始内容
+			return sr, nil
+		}
+
+		// fmt.Print(msg.Content)
+		// 尝试解析JSON
+		if err := parser.Write(msg.Content); err != nil {
+			fmt.Println(err)
+			a.monitor.Warn("Reasoning", "解析推理响应失败", map[string]interface{}{
+				"original_content": msg.Content,
+			})
+		}
+	}
+	w.Close()
+
+	// 创建新的StreamReader
+	return r, nil
 }
 
 // addToReasoningNode adds the to-reasoning conversion node
@@ -761,41 +889,48 @@ func buildReasoningSystemPrompt() string {
 3. **选择行动**：决定下一步要采取的行动
 4. **执行决策**：根据选择执行相应的操作
 
-## 行动选项
+## action行动选项,仅限以下取值
 - **continue**：需要继续思考或分析，还没有足够信息做决定
 - **tool_call**：需要调用工具来获取信息或执行操作
 - **final_answer**：已经有足够信息，可以提供最终答案
 
 ## 响应格式
-你必须严格按照以下格式回复：
+你必须严格按照以下JSON格式回复：
 
-Thought: [详细的推理过程，包括问题分析、策略制定等]
-Action: [continue/tool_call/final_answer]
-Final Answer: [仅在Action为final_answer时提供]
+{
+  "thought": "详细的推理过程，包括问题分析、策略制定等",
+  "action": "continue|tool_call|final_answer",
+  "final_answer": "仅在action为final_answer时提供",
+  "confidence": 0.8
+}
 
 ## 推理示例
 
 **用户问题**："帮我查找今天的天气情况"
 
 **正确的推理过程**：
-Thought: 用户想要了解今天的天气情况。为了提供准确的天气信息，我需要：
-1. 确定用户的地理位置（如果没有提供）
-2. 调用天气查询工具获取当前天气数据
-3. 整理并呈现天气信息
-由于我没有用户的具体位置信息，也没有实时天气数据，我需要调用天气查询工具。
-Action: tool_call
+{
+  "thought": "用户想要了解今天的天气情况。为了提供准确的天气信息，我需要：1. 确定用户的地理位置（如果没有提供）2. 调用天气查询工具获取当前天气数据 3. 整理并呈现天气信息。由于我没有用户的具体位置信息，也没有实时天气数据，我需要调用天气查询工具。",
+  "action": "tool_call",
+  "final_answer": "",
+  "confidence": 0.9
+}
 
 **如果有工具调用结果后**：
-Thought: 已经通过天气工具获取到了今天的天气数据，包括温度、湿度、风速等信息。现在可以为用户提供完整的天气报告。
-Action: final_answer
-Final Answer: 根据最新数据，今天天气晴朗，温度22-28°C，湿度65%，东南风3级，适合外出活动。
+{
+  "thought": "已经通过天气工具获取到了今天的天气数据，包括温度、湿度、风速等信息。现在可以为用户提供完整的天气报告。",
+  "action": "final_answer",
+  "final_answer": "根据最新数据，今天天气晴朗，温度22-28°C，湿度65%，东南风3级，适合外出活动。",
+  "confidence": 0.95
+}
 
 ## 重要原则
 - 始终先思考再行动，确保推理过程清晰完整
 - 如果信息不足，优先选择continue或tool_call获取更多信息
 - 只有在确信能够提供准确、完整答案时才选择final_answer
 - 保持推理过程的逻辑性和连贯性
-- 所有回复都使用中文`
+- 所有回复都使用中文
+- 必须严格按照JSON格式回复，不要添加任何额外的文本`
 }
 
 // parseReasoningResponse parses the reasoning response from the model
@@ -806,16 +941,58 @@ func parseReasoningResponse(message *schema.Message) (*ReasoningDecision, error)
 
 	content := message.Content
 
-	reasoning.Action = "continue"
 	// Check if there are tool calls in the message
 	if len(message.ToolCalls) > 0 {
 		// Parse from structured tool calls
 		reasoning.Action = "tool_call"
 		reasoning.ToolCalls = message.ToolCalls
+		// Set thought from content if available
+		if strings.TrimSpace(content) != "" {
+			reasoning.Thought = strings.TrimSpace(content)
+		}
+		return reasoning, nil
 	}
 
+	// Try to parse as JSON first
+	var jsonResponse ReasoningOutput
+
+	// Clean the content - remove markdown code blocks if present
+	cleanContent := strings.TrimSpace(content)
+	if strings.HasPrefix(cleanContent, "```json") {
+		cleanContent = strings.TrimPrefix(cleanContent, "```json")
+		cleanContent = strings.TrimSuffix(cleanContent, "```")
+		cleanContent = strings.TrimSpace(cleanContent)
+	} else if strings.HasPrefix(cleanContent, "```") {
+		cleanContent = strings.TrimPrefix(cleanContent, "```")
+		cleanContent = strings.TrimSuffix(cleanContent, "```")
+		cleanContent = strings.TrimSpace(cleanContent)
+	}
+
+	// Try to parse as JSON
+	if err := json.Unmarshal([]byte(cleanContent), &jsonResponse); err == nil {
+		// Successfully parsed as JSON
+		reasoning.Thought = jsonResponse.Thought
+		reasoning.Action = strings.ToLower(strings.TrimSpace(jsonResponse.Action))
+		reasoning.FinalAnswer = jsonResponse.FinalAnswer
+		if jsonResponse.Confidence > 0 {
+			reasoning.Confidence = jsonResponse.Confidence
+		}
+
+		// Validate action
+		if reasoning.Action == "" {
+			reasoning.Action = "continue"
+		}
+		if reasoning.Action != "continue" && reasoning.Action != "tool_call" && reasoning.Action != "final_answer" {
+			reasoning.Action = "continue"
+		}
+
+		return reasoning, nil
+	}
+
+	// Fallback to legacy text parsing if JSON parsing fails
+	reasoning.Action = "continue"
+
 	// Parse thought - support multi-line content
-	// Split content into lines and find thought section
 	lines := strings.Split(content, "\n")
 	var thoughtLines []string
 	var inThought bool
@@ -849,7 +1026,6 @@ func parseReasoningResponse(message *schema.Message) (*ReasoningDecision, error)
 		reasoning.Thought = strings.Join(thoughtLines, "\n")
 	} else {
 		// If no explicit "Thought:" found, check if content has no action/final answer markers
-		// If so, treat the entire content as thought
 		hasActionMarker := regexp.MustCompile(`(?i)(action|final\s*answer):`).MatchString(content)
 		if !hasActionMarker && strings.TrimSpace(content) != "" {
 			reasoning.Thought = strings.TrimSpace(content)

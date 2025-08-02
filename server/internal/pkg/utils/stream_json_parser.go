@@ -104,49 +104,40 @@ func (m *SimplePathMatcher) CheckPatterns(path []interface{}, value interface{})
 
 // matchPath 检查路径是否匹配模式
 func (m *SimplePathMatcher) matchPath(path []interface{}, pattern []interface{}) bool {
-	// 如果模式比路径长，不可能匹配
-	if len(pattern) > len(path) {
+	// 路径长度必须与模式长度完全匹配（精确匹配）
+	if len(pattern) != len(path) {
 		return false
 	}
 
-	// 从开头开始匹配，但允许模式匹配路径的任意后缀
-	for startPos := 0; startPos <= len(path)-len(pattern); startPos++ {
-		matched := true
-		for i := 0; i < len(pattern); i++ {
-			patternPart := pattern[i]
-			pathPart := path[startPos+i]
+	// 逐个比较路径元素
+	for i := 0; i < len(pattern); i++ {
+		patternPart := pattern[i]
+		pathPart := path[i]
 
-			// 处理通配符
-			if patternPart == "*" {
-				continue
-			}
+		// 处理通配符
+		if patternPart == "*" {
+			continue
+		}
 
-			// 处理数组索引
-			if patternInt, ok := patternPart.(int); ok {
-				if pathInt, ok := pathPart.(int); ok {
-					if patternInt != pathInt {
-						matched = false
-						break
-					}
-					continue
-				} else {
-					matched = false
-					break
+		// 处理数组索引
+		if patternInt, ok := patternPart.(int); ok {
+			if pathInt, ok := pathPart.(int); ok {
+				if patternInt != pathInt {
+					return false
 				}
-			}
-
-			// 处理属性名
-			if patternPart != pathPart {
-				matched = false
-				break
+				continue
+			} else {
+				return false
 			}
 		}
-		if matched {
-			return true
+
+		// 处理属性名
+		if patternPart != pathPart {
+			return false
 		}
 	}
 
-	return false
+	return true
 }
 
 // ParserState JSON 解析器的状态类型
@@ -176,6 +167,7 @@ const (
 type StreamingJsonParser struct {
 	matcher      *SimplePathMatcher
 	realtime     bool
+	incremental  bool // 新增：控制是返回增量内容还是累积内容
 	stack        []interface{}
 	path         []interface{}
 	state        ParserState
@@ -184,13 +176,17 @@ type StreamingJsonParser struct {
 	isInString   bool
 	currentKey   *string
 	arrayIndexes []int
+	lastSentPos  map[string]int // 新增：记录每个路径上次发送的位置
 }
 
 // NewStreamingJsonParser 创建新的流式JSON解析器
-func NewStreamingJsonParser(matcher *SimplePathMatcher, realtime bool) *StreamingJsonParser {
+// realtime: 控制是否实时返回解析结果
+// incremental: 控制是返回增量内容(true)还是累积内容(false)
+func NewStreamingJsonParser(matcher *SimplePathMatcher, realtime bool, incremental bool) *StreamingJsonParser {
 	parser := &StreamingJsonParser{
-		matcher:  matcher,
-		realtime: realtime,
+		matcher:     matcher,
+		realtime:    realtime,
+		incremental: incremental,
 	}
 	parser.Reset()
 	return parser
@@ -199,13 +195,14 @@ func NewStreamingJsonParser(matcher *SimplePathMatcher, realtime bool) *Streamin
 // Reset 重置解析器状态
 func (p *StreamingJsonParser) Reset() {
 	p.stack = make([]interface{}, 0)
-	p.path = []interface{}{"$"}
+	p.path = make([]interface{}, 0)
 	p.state = VALUE
 	p.buffer = ""
 	p.isEscaped = false
 	p.isInString = false
 	p.currentKey = nil
 	p.arrayIndexes = make([]int, 0)
+	p.lastSentPos = make(map[string]int)
 }
 
 // Write 逐字符处理输入流
@@ -243,6 +240,11 @@ func (p *StreamingJsonParser) processChar(char rune) error {
 				p.buffer = ""
 				p.state = COLON
 			} else if p.state == VALUE {
+				// 字符串值完成时，重置该路径的位置计数器
+				if p.incremental {
+					pathKey := p.getPathKey()
+					delete(p.lastSentPos, pathKey)
+				}
 				p.addValue(p.buffer)
 				p.buffer = ""
 				p.state = COMMA
@@ -254,7 +256,19 @@ func (p *StreamingJsonParser) processChar(char rune) error {
 		p.buffer += string(char)
 		// 实时触发回调
 		if p.realtime && p.state == VALUE && p.buffer != "" {
-			p.matcher.CheckPatterns(p.path, p.buffer)
+			if p.incremental {
+				// 增量模式：只发送新增的字符
+				pathKey := p.getPathKey()
+				lastPos := p.lastSentPos[pathKey]
+				if len(p.buffer) > lastPos {
+					incrementalContent := p.buffer[lastPos:]
+					p.matcher.CheckPatterns(p.path, incrementalContent)
+					p.lastSentPos[pathKey] = len(p.buffer)
+				}
+			} else {
+				// 累积模式：发送完整内容
+				p.matcher.CheckPatterns(p.path, p.buffer)
+			}
 		}
 		return nil
 	}
@@ -613,4 +627,16 @@ func (p *StreamingJsonParser) GetResult() interface{} {
 		return p.stack[0]
 	}
 	return nil
+}
+
+// getPathKey 生成路径的唯一标识符
+func (p *StreamingJsonParser) getPathKey() string {
+	var pathStr strings.Builder
+	for i, segment := range p.path {
+		if i > 0 {
+			pathStr.WriteString(".")
+		}
+		pathStr.WriteString(fmt.Sprintf("%v", segment))
+	}
+	return pathStr.String()
 }

@@ -26,6 +26,14 @@ export interface ThinkingProgressEvent {
   timestamp: string;
 }
 
+export interface MessageTextEvent {
+  nodeID: string;
+  messageID: string;
+  message: string;
+  mode: 'append' | 'replace';
+  timestamp: string;
+}
+
 export interface ErrorEvent {
   nodeID: string;
   errorCode: string;

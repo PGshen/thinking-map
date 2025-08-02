@@ -11,6 +11,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
+	"github.com/PGshen/thinking-map/server/internal/pkg/utils"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
@@ -75,29 +76,51 @@ func (s *IntentService) RecognizeDecomposition(ctx *gin.Context, req dto.Decompo
 				break
 			}
 			// 不开启新协程处理，按顺序接收消息
-			func(ctx *gin.Context, mapID string, sr *schema.StreamReader[*schema.Message]) {
-				fullMsgs := make([]*schema.Message, 0)
+			func(ctx *gin.Context, mapID string, nodeID string, sr *schema.StreamReader[*schema.Message]) {
+				// 使用流式JSON解析器解析ReasoningOutput
+				matcher := utils.NewSimplePathMatcher()
+				// 使用增量模式避免重复内容
+				parser := utils.NewStreamingJsonParser(matcher, true, true)
+
+				var thought, finalAnswer strings.Builder
+
+				// 注册路径匹配器来提取thought和final_answer字段
+				matcher.On("thought", func(value interface{}, path []interface{}) {
+					// fmt.Print("thought:", value)
+					if str, ok := value.(string); ok {
+						global.GetBroker().Publish(mapID, sse.Event{
+							ID:   nodeID,
+							Type: dto.MsgTextEventType,
+							Data: str,
+						})
+						thought.WriteString(str)
+					}
+				})
+
+				matcher.On("final_answer", func(value interface{}, path []interface{}) {
+					if str, ok := value.(string); ok {
+						global.GetBroker().Publish(mapID, sse.Event{
+							ID:   nodeID,
+							Type: dto.MsgTextEventType,
+							Data: str,
+						})
+						finalAnswer.WriteString(str)
+					}
+				})
 				defer func() {
 					sr.Close()
-					fullMsg, err2 := schema.ConcatMessages(fullMsgs)
-					if err2 != nil {
-						logger.Warn("concat message failed", zap.Error(err2))
+					if len(thought.String()) == 0 && len(finalAnswer.String()) == 0 {
 						return
 					}
-					// 不保存工具信息，工具调用时保存
-					if fullMsg.Role == schema.Tool {
-						return
-					}
-					fullMsg.Content = strings.ReplaceAll(fullMsg.Content, "&nbsp;", " ")
 					// fmt.Println("fullMsg.Content", fullMsg.Content)
 					messageID := uuid.NewString()
 					msgReq := dto.CreateMessageRequest{
 						ID:          messageID,
 						ParentID:    lastMessageID,
 						MessageType: model.MsgTypeText,
-						Role:        fullMsg.Role,
+						Role:        schema.Assistant,
 						Content: model.MessageContent{
-							Text: fullMsg.Content,
+							Text: thought.String() + finalAnswer.String(),
 						},
 					}
 					_, err = s.msgManager.CreateMessage(ctx, userID, msgReq)
@@ -127,17 +150,13 @@ func (s *IntentService) RecognizeDecomposition(ctx *gin.Context, req dto.Decompo
 						if chunk.Role == schema.Tool {
 							return
 						}
-						fmt.Printf("%s", chunk.Content)
-						fullMsgs = append(fullMsgs, chunk)
-						msgPart, _ := schema.ConcatMessages(fullMsgs)
-						global.GetBroker().Publish(mapID, sse.Event{
-							ID:   mapID,
-							Type: dto.MsgTextEventType,
-							Data: msgPart,
-						})
+						fmt.Print(chunk.Content)
+						if err = parser.Write(chunk.Content); err != nil {
+							logger.Error("parse reasoning response failed", zap.Error(err))
+						}
 					}
 				}
-			}(ctx, contextInfo.MapInfo.ID, stream)
+			}(ctx, contextInfo.MapInfo.ID, req.NodeID, stream)
 		}
 	}()
 
