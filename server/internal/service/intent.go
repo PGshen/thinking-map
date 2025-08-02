@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/PGshen/thinking-map/server/internal/agent/react"
+	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model"
-	"github.com/PGshen/thinking-map/server/internal/pkg/global"
 	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
 	"github.com/google/uuid"
@@ -25,14 +25,14 @@ import (
 // IntentService handles intent recognition business logic
 type IntentService struct {
 	contextManager *ContextManager
-	msgManager     *MessageManager
+	msgManager     *global.MessageManager
 }
 
 // NewIntentService creates a new intent service
-func NewIntentService(contextManager *ContextManager, msgManager *MessageManager) *IntentService {
+func NewIntentService(contextManager *ContextManager) *IntentService {
 	return &IntentService{
 		contextManager: contextManager,
-		msgManager:     msgManager,
+		msgManager:     global.GetMessageManager(),
 	}
 }
 

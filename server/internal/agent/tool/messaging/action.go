@@ -6,7 +6,7 @@ import (
 
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
-	"github.com/PGshen/thinking-map/server/internal/pkg/global"
+	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"

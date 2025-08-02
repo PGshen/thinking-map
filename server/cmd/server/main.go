@@ -9,16 +9,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/cloudwego/eino-ext/devops"
 	"log"
 	"time"
 
+	"github.com/cloudwego/eino-ext/devops"
+
 	"github.com/PGshen/thinking-map/server/internal/config"
+	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/pkg/database"
-	"github.com/PGshen/thinking-map/server/internal/pkg/global"
 	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
 	"github.com/PGshen/thinking-map/server/internal/pkg/validator"
+	"github.com/PGshen/thinking-map/server/internal/repository"
 	"github.com/PGshen/thinking-map/server/internal/router"
 	"github.com/PGshen/thinking-map/server/internal/service"
 
@@ -69,6 +71,9 @@ func main() {
 	// 初始化全局SSE broker
 	store := sse.NewMemorySessionStore()
 	global.InitBroker(store, 10*time.Second, 60*time.Second)
+
+	// 初始化全局消息管理器
+	global.InitMessageManager(repository.NewMessageRepository(db), repository.NewThinkingNodeRepository(db))
 
 	// 解析 JWT 配置
 	expireDuration, err := time.ParseDuration(cfg.JWT.Expire)

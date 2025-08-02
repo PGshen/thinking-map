@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
 	"github.com/PGshen/thinking-map/server/internal/repository"
@@ -234,7 +235,7 @@ func (cm *ContextManager) getRecentNodeConversation(ctx context.Context, nodeID 
 	}
 
 	// 通过MessageService获取对话历史
-	msgService := NewMessageManager(cm.messageRepo, cm.nodeRepo)
+	msgService := global.GetMessageManager()
 	messages, err := msgService.GetMessageChain(ctx, parentMsgID)
 	if err != nil {
 		return nil, err

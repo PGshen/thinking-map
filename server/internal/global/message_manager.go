@@ -1,4 +1,10 @@
-package service
+/*
+ * @Date: 2025-01-27 00:00:00
+ * @LastEditors: peng pgs1108pgs@gmail.com
+ * @LastEditTime: 2025-01-27 00:00:00
+ * @FilePath: /thinking-map/server/internal/global/message_manager.go
+ */
+package global
 
 import (
 	"context"
@@ -6,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/model"
@@ -20,16 +27,34 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	// GlobalMessageManager 全局消息管理器实例
+	GlobalMessageManager *MessageManager
+	messageManagerOnce   sync.Once
+)
+
+// MessageManager 消息管理器
 type MessageManager struct {
 	messageRepo repository.Message
 	nodeRepo    repository.ThinkingNode
 }
 
-func NewMessageManager(messageRepo repository.Message, nodeRepo repository.ThinkingNode) *MessageManager {
-	return &MessageManager{
-		messageRepo: messageRepo,
-		nodeRepo:    nodeRepo,
+// InitMessageManager 初始化全局消息管理器
+func InitMessageManager(messageRepo repository.Message, nodeRepo repository.ThinkingNode) {
+	messageManagerOnce.Do(func() {
+		GlobalMessageManager = &MessageManager{
+			messageRepo: messageRepo,
+			nodeRepo:    nodeRepo,
+		}
+	})
+}
+
+// GetMessageManager 获取全局消息管理器实例
+func GetMessageManager() *MessageManager {
+	if GlobalMessageManager == nil {
+		panic("message manager not initialized, call InitMessageManager first")
 	}
+	return GlobalMessageManager
 }
 
 // CreateMessage 创建消息

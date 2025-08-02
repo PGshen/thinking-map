@@ -7,10 +7,10 @@
 package router
 
 import (
+	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/handler"
 	thinkinghandler "github.com/PGshen/thinking-map/server/internal/handler/thinking"
 	"github.com/PGshen/thinking-map/server/internal/middleware"
-	"github.com/PGshen/thinking-map/server/internal/pkg/global"
 	"github.com/PGshen/thinking-map/server/internal/repository"
 	"github.com/PGshen/thinking-map/server/internal/service"
 
@@ -48,15 +48,13 @@ func SetupRouter(
 	mapService := service.NewMapService(mapRepo)
 	nodeService := service.NewNodeService(nodeRepo, mapRepo)
 	contextManager := service.NewContextManager(nodeRepo, mapRepo, messageRepo)
-	messageManager := service.NewMessageManager(messageRepo, nodeRepo)
-
 	understandingService := service.NewUnderstandingService(messageRepo, nodeRepo)
-	intentService := service.NewIntentService(contextManager, messageManager)
+	intentService := service.NewIntentService(contextManager)
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)
 	mapHandler := handler.NewMapHandler(mapService)
-	nodeHandler := handler.NewNodeHandler(nodeService, messageManager)
+	nodeHandler := handler.NewNodeHandler(nodeService)
 	understandingHandler := thinkinghandler.NewUnderstandingHandler(understandingService)
 	intentRecognitionHandler := thinkinghandler.NewDecompositionRecognitionHandler(intentService)
 	repeaterHandler := thinkinghandler.NewRepeaterHandler()

@@ -2,7 +2,7 @@
  * @Date: 2025-01-27 00:00:00
  * @LastEditors: peng pgs1108pgs@gmail.com
  * @LastEditTime: 2025-01-27 00:00:00
- * @FilePath: /thinking-map/server/internal/pkg/global/broker.go
+ * @FilePath: /thinking-map/server/internal/global/broker.go
  */
 package global
 
@@ -16,12 +16,12 @@ import (
 var (
 	// GlobalBroker 全局SSE broker实例
 	GlobalBroker *sse.Broker
-	once         sync.Once
+	brokerOnce   sync.Once
 )
 
 // InitBroker 初始化全局broker
 func InitBroker(store sse.SessionStore, pingInterval, clientTimeout time.Duration) {
-	once.Do(func() {
+	brokerOnce.Do(func() {
 		GlobalBroker = sse.NewBroker(store, pingInterval, clientTimeout)
 	})
 }

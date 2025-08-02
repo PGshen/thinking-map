@@ -9,6 +9,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
 	"github.com/PGshen/thinking-map/server/internal/repository"
@@ -159,8 +160,7 @@ func TestContextManager_GetNodeContextWithConversation(t *testing.T) {
 
 	// 3. 创建消息服务并添加测试消息
 	msgRepo := repository.NewMessageRepository(testDB)
-	nodeRepo := repository.NewThinkingNodeRepository(testDB)
-	msgService := NewMessageManager(msgRepo, nodeRepo)
+	msgService := global.GetMessageManager()
 
 	// 创建用户消息
 	userMsgReq := dto.CreateMessageRequest{

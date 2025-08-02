@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
 	"github.com/PGshen/thinking-map/server/internal/service"
 
@@ -13,12 +14,11 @@ import (
 
 // NodeHandler 节点相关接口
 type NodeHandler struct {
-	NodeService    *service.NodeService
-	MessageManager *service.MessageManager
+	NodeService *service.NodeService
 }
 
-func NewNodeHandler(nodeService *service.NodeService, messageManager *service.MessageManager) *NodeHandler {
-	return &NodeHandler{NodeService: nodeService, MessageManager: messageManager}
+func NewNodeHandler(nodeService *service.NodeService) *NodeHandler {
+	return &NodeHandler{NodeService: nodeService}
 }
 
 // ListNodes handles retrieving all nodes in a map
@@ -307,7 +307,7 @@ func (h *NodeHandler) GetNodeMessages(c *gin.Context) {
 		return
 	}
 
-	messages, err := h.MessageManager.GetMessageChain(c.Request.Context(), lastMessageID)
+	messages, err := global.GetMessageManager().GetMessageChain(c.Request.Context(), lastMessageID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,

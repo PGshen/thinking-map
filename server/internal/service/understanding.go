@@ -5,6 +5,7 @@ import (
 
 	"github.com/PGshen/thinking-map/server/internal/agent/callback"
 	"github.com/PGshen/thinking-map/server/internal/agent/understanding"
+	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
 	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
@@ -46,14 +47,14 @@ func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.Understan
 	}
 
 	// 2. 加载历史消息
-	msgManager := NewMessageManager(s.messageRepo, s.nodeRepo)
+	msgManager := global.GetMessageManager()
 	var msgs []*dto.MessageResponse
 	msgs, err = msgManager.GetMessageChain(ctx, req.ParentMsgID)
 	if err != nil {
 		return
 	}
 	// 消息转换为schema.Message
-	schemaMsgs := ConvertToSchemaMsg(msgs)
+	schemaMsgs := global.ConvertToSchemaMsg(msgs)
 	schemaMsgs = append(schemaMsgs, schema.UserMessage(userContent))
 
 	// 3. 调用agent理解

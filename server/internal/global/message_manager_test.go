@@ -3,7 +3,7 @@
  * @LastEditors: AI Assistant
  * @FilePath: /thinking-map/server/internal/service/message_manager_test.go
  */
-package service
+package global
 
 import (
 	"context"
@@ -338,56 +338,6 @@ func TestMessageManager_ClearConversation(t *testing.T) {
 	remainingMessages, err := messageManager.GetMessageByConversationID(ctx, conversationID)
 	assert.NoError(t, err)
 	assert.Len(t, remainingMessages, 0)
-}
-
-func TestMessageManager_LinkMessageToNode(t *testing.T) {
-	ctx := context.Background()
-	userID := uuid.NewString()
-
-	// 创建测试地图
-	createMapReq := dto.CreateMapRequest{
-		Title:       "测试地图",
-		Problem:     "测试问题",
-		ProblemType: "类型A",
-		Target:      "测试目标",
-	}
-	mapResp, err := mapSvc.CreateMap(ctx, createMapReq, userID)
-	assert.NoError(t, err)
-
-	// 创建测试节点
-	createNodeReq := dto.CreateNodeRequest{
-		MapID:    mapResp.ID,
-		ParentID: uuid.Nil.String(),
-		NodeType: "analysis",
-		Question: "测试问题",
-		Target:   "测试目标",
-		Position: model.Position{X: 0, Y: 0},
-	}
-	nodeResp, err := nodeSvc.CreateNode(ctx, mapResp.ID, createNodeReq)
-	assert.NoError(t, err)
-
-	// 创建消息
-	msgReq := dto.CreateMessageRequest{
-		ID:          uuid.NewString(),
-		ParentID:    "",
-		MessageType: comm.MessageTypeText,
-		Role:        schema.User,
-		Content: model.MessageContent{
-			Text: "节点关联消息",
-		},
-	}
-	msgResp, err := messageManager.CreateMessage(ctx, userID, msgReq)
-	assert.NoError(t, err)
-
-	// 将消息关联到节点
-	err = messageManager.LinkMessageToNode(ctx, nodeResp.ID, msgResp.ID, "decompose")
-	assert.NoError(t, err)
-
-	// 验证关联成功
-	nodeMessages, err := messageManager.GetNodeMessages(ctx, nodeResp.ID, "decompose")
-	assert.NoError(t, err)
-	assert.Len(t, nodeMessages, 1)
-	assert.Equal(t, msgResp.ID, nodeMessages[0].ID)
 }
 
 func TestMessageManager_ConvertToSchemaMsg(t *testing.T) {

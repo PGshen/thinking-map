@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/repository"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -18,7 +19,7 @@ var (
 	mapSvc            *MapService
 	nodeSvc           *NodeService
 	dependencyChecker *DependencyChecker
-	messageManager    *MessageManager
+	messageManager    *global.MessageManager
 )
 
 func TestMain(m *testing.M) {
@@ -53,8 +54,7 @@ func TestMain(m *testing.M) {
 	nodeSvc = NewNodeService(nodeRepo, mapRepo)
 	dependencyChecker = NewDependencyChecker(nodeRepo)
 
-	messageRepo := repository.NewMessageRepository(testDB)
-	messageManager = NewMessageManager(messageRepo, nodeRepo)
+	messageManager = global.GetMessageManager()
 
 	code := m.Run()
 
