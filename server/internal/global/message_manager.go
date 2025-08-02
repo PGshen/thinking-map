@@ -67,6 +67,9 @@ func (s *MessageManager) CreateMessage(ctx context.Context, userID string, req d
 		// 通过parentID获取
 		if parentMsg, err := s.messageRepo.FindByID(ctx, req.ParentID); err == nil {
 			conversationID = parentMsg.ConversationID
+			if userID == "" { // 没有传userID,则继承父消息的
+				userID = parentMsg.UserID
+			}
 		} else {
 			conversationID = uuid.NewString()
 		}
@@ -93,6 +96,27 @@ func (s *MessageManager) CreateMessage(ctx context.Context, userID string, req d
 	}
 	resp := dto.ToMessageResponse(msg)
 	return &resp, nil
+}
+
+// SaveDecompositionMessage 保存分解消息
+func (s *MessageManager) SaveDecompositionMessage(ctx context.Context, nodeID string, req dto.CreateMessageRequest) (*dto.MessageResponse, error) {
+	// 0. 找到节点
+	node, err := s.nodeRepo.FindByID(ctx, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	lastMessageID := node.Decomposition.LastMessageID
+	// 1. 保存消息
+	req.ParentID = lastMessageID
+	msg, err := s.CreateMessage(ctx, "", req)
+	if err != nil {
+		return nil, err
+	}
+	// 2. 更新节点的最后消息ID
+	if err := s.LinkMessageToNode(ctx, nodeID, msg.ID, dto.ConversationTypeDecomposition); err != nil {
+		return nil, err
+	}
+	return msg, nil
 }
 
 func (s *MessageManager) SaveStreamMessage(ctx *gin.Context, sr *schema.StreamReader[*schema.Message], ID, parentID string) {

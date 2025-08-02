@@ -18,6 +18,9 @@ type AgentConfig struct {
 	// Model for reasoning and tool calling
 	ToolCallingModel model.ToolCallingChatModel
 
+	// ReasoningPrompt is the prompt template for reasoning
+	ReasoningPrompt string
+
 	// Tools available to the agent
 	ToolsConfig compose.ToolsNodeConfig
 
@@ -220,6 +223,9 @@ func (a *Agent) addReasoningNode(graph *compose.Graph[[]*schema.Message, *schema
 	return graph.AddChatModelNode(nodeKeyReasoning, chatModel,
 		compose.WithStatePreHandler(a.reasoningNodePreHandler),
 		compose.WithStatePostHandler(a.reasoningNodePostHandler),
+		compose.WithStreamStatePostHandler(func(ctx context.Context, sr *schema.StreamReader[*schema.Message], state *AgentState) (*schema.StreamReader[*schema.Message], error) {
+			return sr, nil
+		}),
 	)
 }
 
@@ -232,7 +238,10 @@ func (a *Agent) reasoningNodePreHandler(ctx context.Context, input []*schema.Mes
 	})
 
 	// Build reasoning prompt with detailed tool information
-	reasoningPrompt := buildReasoningSystemPrompt()
+	if a.config.ReasoningPrompt == "" {
+		a.config.ReasoningPrompt = buildReasoningSystemPrompt()
+	}
+	reasoningPrompt := a.config.ReasoningPrompt
 
 	// Create messages for reasoning
 	messages := []*schema.Message{
@@ -742,20 +751,51 @@ func genToolInfos(ctx context.Context, config compose.ToolsNodeConfig) ([]*schem
 
 // buildReasoningSystemPrompt builds the system prompt for reasoning
 func buildReasoningSystemPrompt() string {
-	return `You are an intelligent AI assistant that follows a structured reasoning process.
+	return `你是一个智能AI助手，遵循结构化推理过程来解决问题。
 
-You must always follow this format:
-1. Think step by step about the problem
-2. Decide what action to take, options are: continue, tool_call, final_answer
-3. If you decide to call a tool, specify the tool and arguments in tools params
-4. If you can provide a final answer, do so
+## 推理框架
+你必须严格按照以下格式进行推理：
 
-Respond in this exact format:
-Thought: [your reasoning process]
-Action: [continue, tool_call, final_answer]
-Final Answer: [omitempty, provide when you have a final answer]
+1. **分析问题**：仔细理解用户的问题或需求
+2. **制定策略**：思考解决问题的步骤和方法
+3. **选择行动**：决定下一步要采取的行动
+4. **执行决策**：根据选择执行相应的操作
 
-Always think before acting. Be thorough in your reasoning. Response in chinese.`
+## 行动选项
+- **continue**：需要继续思考或分析，还没有足够信息做决定
+- **tool_call**：需要调用工具来获取信息或执行操作
+- **final_answer**：已经有足够信息，可以提供最终答案
+
+## 响应格式
+你必须严格按照以下格式回复：
+
+Thought: [详细的推理过程，包括问题分析、策略制定等]
+Action: [continue/tool_call/final_answer]
+Final Answer: [仅在Action为final_answer时提供]
+
+## 推理示例
+
+**用户问题**："帮我查找今天的天气情况"
+
+**正确的推理过程**：
+Thought: 用户想要了解今天的天气情况。为了提供准确的天气信息，我需要：
+1. 确定用户的地理位置（如果没有提供）
+2. 调用天气查询工具获取当前天气数据
+3. 整理并呈现天气信息
+由于我没有用户的具体位置信息，也没有实时天气数据，我需要调用天气查询工具。
+Action: tool_call
+
+**如果有工具调用结果后**：
+Thought: 已经通过天气工具获取到了今天的天气数据，包括温度、湿度、风速等信息。现在可以为用户提供完整的天气报告。
+Action: final_answer
+Final Answer: 根据最新数据，今天天气晴朗，温度22-28°C，湿度65%，东南风3级，适合外出活动。
+
+## 重要原则
+- 始终先思考再行动，确保推理过程清晰完整
+- 如果信息不足，优先选择continue或tool_call获取更多信息
+- 只有在确信能够提供准确、完整答案时才选择final_answer
+- 保持推理过程的逻辑性和连贯性
+- 所有回复都使用中文`
 }
 
 // parseReasoningResponse parses the reasoning response from the model
@@ -773,13 +813,81 @@ func parseReasoningResponse(message *schema.Message) (*ReasoningDecision, error)
 		reasoning.Action = "tool_call"
 		reasoning.ToolCalls = message.ToolCalls
 	}
-	// Parse thought
-	if thoughtMatch := regexp.MustCompile(`(?i)thought:?\s*(.+?)`).FindStringSubmatch(content); len(thoughtMatch) > 1 {
-		reasoning.Thought = strings.TrimSpace(thoughtMatch[1])
+
+	// Parse thought - support multi-line content
+	// Split content into lines and find thought section
+	lines := strings.Split(content, "\n")
+	var thoughtLines []string
+	var inThought bool
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// Check if this line starts a thought section
+		if regexp.MustCompile(`(?i)^thought:?\s*(.*)$`).MatchString(line) {
+			inThought = true
+			// Extract the thought content from this line
+			thoughtRegex := regexp.MustCompile(`(?i)^thought:?\s*(.*)$`)
+			if match := thoughtRegex.FindStringSubmatch(line); len(match) > 1 {
+				if thoughtContent := strings.TrimSpace(match[1]); thoughtContent != "" {
+					thoughtLines = append(thoughtLines, thoughtContent)
+				}
+			}
+			continue
+		}
+		// Check if this line starts action or final answer section
+		if regexp.MustCompile(`(?i)^(action|final\s*answer):?`).MatchString(line) {
+			inThought = false
+			continue
+		}
+		// If we're in thought section and line is not empty, add it
+		if inThought && line != "" {
+			thoughtLines = append(thoughtLines, line)
+		}
 	}
-	// Parse final answer
-	if finalMatch := regexp.MustCompile(`(?i)final\s*answer:?\s*(.+?)(?:\n|$)`).FindStringSubmatch(content); len(finalMatch) > 1 {
-		reasoning.FinalAnswer = strings.TrimSpace(finalMatch[1])
+
+	if len(thoughtLines) > 0 {
+		reasoning.Thought = strings.Join(thoughtLines, "\n")
+	} else {
+		// If no explicit "Thought:" found, check if content has no action/final answer markers
+		// If so, treat the entire content as thought
+		hasActionMarker := regexp.MustCompile(`(?i)(action|final\s*answer):`).MatchString(content)
+		if !hasActionMarker && strings.TrimSpace(content) != "" {
+			reasoning.Thought = strings.TrimSpace(content)
+		}
+	}
+
+	// Parse action - more flexible matching
+	actionRegex := regexp.MustCompile(`(?i)action:?\s*(continue|tool_call|final_answer)`)
+	if actionMatch := actionRegex.FindStringSubmatch(content); len(actionMatch) > 1 {
+		reasoning.Action = strings.ToLower(strings.TrimSpace(actionMatch[1]))
+	}
+
+	// Parse final answer - support multi-line content
+	var finalAnswerLines []string
+	var inFinalAnswer bool
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// Check if this line starts a final answer section
+		if regexp.MustCompile(`(?i)^final\s*answer:?\s*(.*)$`).MatchString(line) {
+			inFinalAnswer = true
+			// Extract the final answer content from this line
+			finalRegex := regexp.MustCompile(`(?i)^final\s*answer:?\s*(.*)$`)
+			if match := finalRegex.FindStringSubmatch(line); len(match) > 1 {
+				if finalContent := strings.TrimSpace(match[1]); finalContent != "" {
+					finalAnswerLines = append(finalAnswerLines, finalContent)
+				}
+			}
+			continue
+		}
+		// If we're in final answer section and line is not empty, add it
+		if inFinalAnswer && line != "" {
+			finalAnswerLines = append(finalAnswerLines, line)
+		}
+	}
+
+	if len(finalAnswerLines) > 0 {
+		reasoning.FinalAnswer = strings.Join(finalAnswerLines, "\n")
 		reasoning.Action = "final_answer"
 	}
 

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
-	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"
@@ -67,6 +67,14 @@ func SendActionMsg(ctx context.Context, msg *ActionChoice) (*ActionMsgResp, erro
 	fmt.Println("nodeID", ctx.Value("nodeID"))
 	global.GetBroker().Publish(ctx.Value("mapID").(string), event)
 	// 保存消息
+	global.GetMessageManager().SaveDecompositionMessage(ctx, nodeID, dto.CreateMessageRequest{
+		ID:          uuid.NewString(),
+		MessageType: model.MsgTypeAction,
+		Role:        schema.Tool,
+		Content: model.MessageContent{
+			Action: msgActions,
+		},
+	})
 	return &msgActions, nil
 }
 

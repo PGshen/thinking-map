@@ -84,6 +84,10 @@ func (s *IntentService) RecognizeDecomposition(ctx *gin.Context, req dto.Decompo
 						logger.Warn("concat message failed", zap.Error(err2))
 						return
 					}
+					// 不保存工具信息，工具调用时保存
+					if fullMsg.Role == schema.Tool {
+						return
+					}
 					fullMsg.Content = strings.ReplaceAll(fullMsg.Content, "&nbsp;", " ")
 					// fmt.Println("fullMsg.Content", fullMsg.Content)
 					messageID := uuid.NewString()
@@ -118,6 +122,10 @@ func (s *IntentService) RecognizeDecomposition(ctx *gin.Context, req dto.Decompo
 								fmt.Println()
 								break outer
 							}
+						}
+						// 不保存工具调用的
+						if chunk.Role == schema.Tool {
+							return
 						}
 						fmt.Printf("%s", chunk.Content)
 						fullMsgs = append(fullMsgs, chunk)

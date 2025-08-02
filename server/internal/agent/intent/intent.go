@@ -17,7 +17,7 @@ func BuildIntentRecognitionAgent(ctx context.Context, option react.AgentOption) 
 	if err != nil {
 		return nil, err
 	}
-	userChoiceTool, err := messaging.ActionTool()
+	sendActionMsg, err := messaging.ActionTool()
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func BuildIntentRecognitionAgent(ctx context.Context, option react.AgentOption) 
 		ToolCallingModel: cm,
 		ToolsConfig: compose.ToolsNodeConfig{
 			Tools: []tool.BaseTool{
-				userChoiceTool,
+				sendActionMsg,
 			},
 		},
 		ToolReturnDirectly: map[string]bool{

@@ -152,6 +152,39 @@ func TestParseReasoningResponse(t *testing.T) {
 				ToolCalls: nil, // Text parsing doesn't extract ToolCalls in current implementation
 			},
 		},
+		{
+			name: "multiline thought with final answer",
+			message: &schema.Message{
+				Content: "Thought: This is a complex problem that requires\nmultiple steps to solve.\nFirst, I need to analyze the data.\nThen, I need to calculate the result.\nAction: final_answer\nFinal Answer: The result is 42",
+			},
+			expected: ReasoningDecision{
+				Thought:     "This is a complex problem that requires\nmultiple steps to solve.\nFirst, I need to analyze the data.\nThen, I need to calculate the result.",
+				Action:      "final_answer",
+				FinalAnswer: "The result is 42",
+			},
+		},
+		{
+			name: "multiline thought with tool call",
+			message: &schema.Message{
+				Content: "Thought: I need to search for information about this topic.\nLet me think about what keywords to use.\nI should search for both general and specific terms.\nAction: tool_call\nTool: search\nArgs: {\"query\": \"complex search query\"}",
+			},
+			expected: ReasoningDecision{
+				Thought:   "I need to search for information about this topic.\nLet me think about what keywords to use.\nI should search for both general and specific terms.",
+				Action:    "tool_call",
+				ToolCalls: nil,
+			},
+		},
+		{
+			name: "multiline final answer",
+			message: &schema.Message{
+				Content: "Thought: I have analyzed all the data\nAction: final_answer\nFinal Answer: Based on my analysis:\n1. The first point is important\n2. The second point shows correlation\n3. Therefore, the conclusion is valid",
+			},
+			expected: ReasoningDecision{
+				Thought:     "I have analyzed all the data",
+				Action:      "final_answer",
+				FinalAnswer: "Based on my analysis:\n1. The first point is important\n2. The second point shows correlation\n3. Therefore, the conclusion is valid",
+			},
+		},
 	}
 
 	for _, tt := range tests {
