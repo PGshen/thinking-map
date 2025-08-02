@@ -19,6 +19,9 @@ export function DecomposeArea({ messages }: DecomposeAreaProps) {
 			{messages.map((message) => {
 				// 文本消息
 				if (message.messageType === 'text') {
+					if (message.content.text === undefined) {
+						return
+					}
 					if (message.role === 'user') {
 						return (
 							<ChatMessage

@@ -10,6 +10,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"
+	"github.com/cloudwego/eino/schema"
 	"github.com/google/uuid"
 )
 
@@ -20,8 +21,8 @@ const (
 
 // 用户选择消息
 type ActionChoice struct {
-	Introduction string   `json:"introduction" jsonschema:"description=引导语，用于引导用户进行选择"`
-	Actions      []string `json:"actions" jsonschema:"description=用户可选择动作列表,enum=decompose,enum=conclude"`
+	Introduction string   `json:"introduction"`
+	Actions      []string `json:"actions"`
 }
 
 type ActionMsgResp []model.Action
@@ -65,9 +66,30 @@ func SendActionMsg(ctx context.Context, msg *ActionChoice) (*ActionMsgResp, erro
 	fmt.Println("mapID", ctx.Value("mapID"))
 	fmt.Println("nodeID", ctx.Value("nodeID"))
 	global.GetBroker().Publish(ctx.Value("mapID").(string), event)
+	// 保存消息
 	return &msgActions, nil
 }
 
 func ActionTool() (tool.InvokableTool, error) {
-	return utils.InferTool("action", "发送可选操作给用户选择", SendActionMsg)
+	actionTool := utils.NewTool(&schema.ToolInfo{
+		Name: "sendActionMsg",
+		Desc: "发送可选操作消息让用户选择",
+		ParamsOneOf: schema.NewParamsOneOfByParams(
+			map[string]*schema.ParameterInfo{
+				"introduction": {
+					Type: schema.String,
+					Desc: "引导语，用于引导用户进行选择",
+				},
+				"actions": {
+					Type: schema.Array,
+					Desc: "用户可选择动作列表",
+					ElemInfo: &schema.ParameterInfo{
+						Type: schema.String,
+						Enum: []string{ActionDecompose, ActionConclude},
+					},
+				},
+			},
+		),
+	}, SendActionMsg)
+	return actionTool, nil
 }

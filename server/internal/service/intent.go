@@ -36,8 +36,8 @@ func NewIntentService(contextManager *ContextManager, msgManager *MessageManager
 	}
 }
 
-// RecognizeIntent performs intent recognition for a given node
-func (s *IntentService) RecognizeIntent(ctx *gin.Context, req dto.IntentRequest) (event string, sr *schema.StreamReader[*schema.Message], err error) {
+// RecognizeDecomposition performs intent recognition for a given node
+func (s *IntentService) RecognizeDecomposition(ctx *gin.Context, req dto.DecompositionRecognitionRequest) (event string, sr *schema.StreamReader[*schema.Message], err error) {
 	userID := ctx.GetString("user_id")
 	// 1. 构建上下文消息
 	contextInfo, err := s.contextManager.GetContextInfo(ctx, req.NodeID)

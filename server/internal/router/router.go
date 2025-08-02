@@ -58,7 +58,7 @@ func SetupRouter(
 	mapHandler := handler.NewMapHandler(mapService)
 	nodeHandler := handler.NewNodeHandler(nodeService, messageManager)
 	understandingHandler := thinkinghandler.NewUnderstandingHandler(understandingService)
-	intentRecognitionHandler := thinkinghandler.NewIntentRecognitionHandler(intentService)
+	intentRecognitionHandler := thinkinghandler.NewDecompositionRecognitionHandler(intentService)
 	repeaterHandler := thinkinghandler.NewRepeaterHandler()
 
 	// 使用全局 broker
@@ -106,7 +106,7 @@ func SetupRouter(
 			thinking := protected.Group("/thinking")
 			{
 				thinking.POST("/understanding", thinkinghandler.NewStreamReply(understandingHandler))
-				thinking.POST("/intent-recognition", thinkinghandler.NewStreamReply(intentRecognitionHandler))
+				thinking.POST("/decomposition-recognition", thinkinghandler.NewStreamReply(intentRecognitionHandler))
 				thinking.POST("/repeat", thinkinghandler.NewStreamReply(repeaterHandler))
 			}
 

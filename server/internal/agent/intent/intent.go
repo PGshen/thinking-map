@@ -29,7 +29,7 @@ func BuildIntentRecognitionAgent(ctx context.Context, option react.AgentOption) 
 			},
 		},
 		ToolReturnDirectly: map[string]bool{
-			"user_choice": true,
+			"sendActionMsg": true,
 		},
 	}, option)
 	if err != nil {
