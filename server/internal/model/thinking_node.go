@@ -74,8 +74,9 @@ type NodeContext struct {
 	Status     string `json:"status"`
 }
 type Decomposition struct {
-	IsDecompose   bool   `json:"isDecompose"`   // 是否分解
-	LastMessageID string `json:"lastMessageID"` // 最后一条消息ID
+	IsDecomposed   bool   `json:"isDecomposed"`   // 是否分解
+	ConversationID string `json:"conversationID"` // 对话ID
+	LastMessageID  string `json:"lastMessageID"`  // 最后一条消息ID
 }
 
 // Scan implements the Scanner interface for Decompose
@@ -97,8 +98,9 @@ func (d Decomposition) Value() (driver.Value, error) {
 }
 
 type Conclusion struct {
-	LastMessageID string `json:"lastMessageID"` // 最后一条消息ID
-	Content       string `json:"content"`       // 最终结论
+	ConversationID string `json:"conversationID"` // 对话ID
+	LastMessageID  string `json:"lastMessageID"`  // 最后一条消息ID
+	Content        string `json:"content"`        // 最终结论
 }
 
 // Scan implements the Scanner interface for Conclusion

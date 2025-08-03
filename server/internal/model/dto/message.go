@@ -69,3 +69,11 @@ func ToMessageResponse(m *model.Message) MessageResponse {
 		UpdatedAt:      m.UpdatedAt,
 	}
 }
+
+// 用户选择消息
+type ActionChoice struct {
+	Introduction string   `json:"introduction"`
+	Actions      []string `json:"actions"`
+}
+
+type ActionMsgResp []model.Action

@@ -12,6 +12,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
 	"github.com/PGshen/thinking-map/server/internal/pkg/utils"
+	"github.com/PGshen/thinking-map/server/internal/repository"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
@@ -23,22 +24,36 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// IntentService handles intent recognition business logic
-type IntentService struct {
+// DecompositionService handles intent recognition business logic
+type DecompositionService struct {
 	contextManager *ContextManager
 	msgManager     *global.MessageManager
+	nodeRepo       repository.ThinkingNode
 }
 
-// NewIntentService creates a new intent service
-func NewIntentService(contextManager *ContextManager) *IntentService {
-	return &IntentService{
+// NewDecompositionService creates a new intent service
+func NewDecompositionService(contextManager *ContextManager, nodeRepo repository.ThinkingNode) *DecompositionService {
+	return &DecompositionService{
 		contextManager: contextManager,
 		msgManager:     global.GetMessageManager(),
+		nodeRepo:       nodeRepo,
 	}
 }
 
-// RecognizeDecomposition performs intent recognition for a given node
-func (s *IntentService) RecognizeDecomposition(ctx *gin.Context, req dto.DecompositionRecognitionRequest) (event string, sr *schema.StreamReader[*schema.Message], err error) {
+func (s *DecompositionService) Decomposition(ctx *gin.Context, req dto.DecompositionRequest) (event string, sr *schema.StreamReader[*schema.Message], err error) {
+	node, err := s.nodeRepo.FindByID(ctx, req.NodeID)
+	if err != nil {
+		return
+	}
+	isDecompose := req.IsDecompose || node.Decomposition.IsDecomposed // 是否执行拆解
+	if isDecompose {
+		return s.Decompose(ctx, req)
+	}
+	return s.Recognize(ctx, req)
+}
+
+// Recognize performs intent recognition for a given node
+func (s *DecompositionService) Recognize(ctx *gin.Context, req dto.DecompositionRequest) (event string, sr *schema.StreamReader[*schema.Message], err error) {
 	userID := ctx.GetString("user_id")
 	// 1. 构建上下文消息
 	contextInfo, err := s.contextManager.GetContextInfo(ctx, req.NodeID)
@@ -75,6 +90,7 @@ func (s *IntentService) RecognizeDecomposition(ctx *gin.Context, req dto.Decompo
 			if !hasNext {
 				break
 			}
+			messageID := uuid.NewString()
 			// 不开启新协程处理，按顺序接收消息
 			func(ctx *gin.Context, mapID string, nodeID string, sr *schema.StreamReader[*schema.Message]) {
 				// 使用流式JSON解析器解析ReasoningOutput
@@ -90,8 +106,13 @@ func (s *IntentService) RecognizeDecomposition(ctx *gin.Context, req dto.Decompo
 					if str, ok := value.(string); ok {
 						global.GetBroker().Publish(mapID, sse.Event{
 							ID:   nodeID,
-							Type: dto.MsgTextEventType,
-							Data: str,
+							Type: dto.MessageTextEventType,
+							Data: dto.MessageTextEvent{
+								NodeID:    nodeID,
+								MessageID: messageID,
+								Message:   str,
+								Mode:      "append",
+							},
 						})
 						thought.WriteString(str)
 					}
@@ -101,8 +122,13 @@ func (s *IntentService) RecognizeDecomposition(ctx *gin.Context, req dto.Decompo
 					if str, ok := value.(string); ok {
 						global.GetBroker().Publish(mapID, sse.Event{
 							ID:   nodeID,
-							Type: dto.MsgTextEventType,
-							Data: str,
+							Type: dto.MessageTextEventType,
+							Data: dto.MessageTextEvent{
+								NodeID:    nodeID,
+								MessageID: messageID,
+								Message:   str,
+								Mode:      "append",
+							},
 						})
 						finalAnswer.WriteString(str)
 					}
@@ -113,7 +139,6 @@ func (s *IntentService) RecognizeDecomposition(ctx *gin.Context, req dto.Decompo
 						return
 					}
 					// fmt.Println("fullMsg.Content", fullMsg.Content)
-					messageID := uuid.NewString()
 					msgReq := dto.CreateMessageRequest{
 						ID:          messageID,
 						ParentID:    lastMessageID,
@@ -123,13 +148,13 @@ func (s *IntentService) RecognizeDecomposition(ctx *gin.Context, req dto.Decompo
 							Text: thought.String() + finalAnswer.String(),
 						},
 					}
-					_, err = s.msgManager.CreateMessage(ctx, userID, msgReq)
-					if err != nil {
-						logger.Error("create message failed", zap.Error(err))
+					msg, err2 := s.msgManager.CreateMessage(ctx, userID, msgReq)
+					if err2 != nil {
+						logger.Error("create message failed", zap.Error(err2))
 						return
 					}
 					// 将最新messageID挂载到节点上
-					s.msgManager.LinkMessageToNode(ctx, req.NodeID, messageID, dto.ConversationTypeDecomposition)
+					s.msgManager.LinkMessageToNode(ctx, req.NodeID, messageID, msg.ConversationID, dto.ConversationTypeDecomposition)
 					lastMessageID = messageID // 最新消息ID
 				}()
 			outer:
@@ -169,5 +194,10 @@ func (s *IntentService) RecognizeDecomposition(ctx *gin.Context, req dto.Decompo
 	// sr = srs[0]
 	// 6. 保存消息记录
 	// go s.msgManager.SaveStreamMessage(ctx, srs[1], req.MsgID, "")
+	return
+}
+
+// Decompose 拆解节点
+func (s *DecompositionService) Decompose(ctx *gin.Context, req dto.DecompositionRequest) (event string, sr *schema.StreamReader[*schema.Message], err error) {
 	return
 }

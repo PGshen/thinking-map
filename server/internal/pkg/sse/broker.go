@@ -72,6 +72,7 @@ func (b *Broker) Publish(sessionID string, event Event) {
 	clients, err := b.store.GetSessionClients(sessionID)
 	b.mutex.RUnlock()
 	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 	for clientID := range clients {

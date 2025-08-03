@@ -137,8 +137,9 @@ func (s *NodeService) CreateNode(ctx context.Context, mapID string, req dto.Crea
 			Y: req.Position.Y,
 		},
 		Decomposition: model.Decomposition{
-			IsDecompose:   false,
-			LastMessageID: "",
+			IsDecomposed:   false,
+			LastMessageID:  "",
+			ConversationID: "",
 		},
 		Conclusion: model.Conclusion{
 			LastMessageID: "",

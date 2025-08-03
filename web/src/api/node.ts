@@ -59,3 +59,11 @@ export async function getMessages(mapID: string, nodeID: string, conversationTyp
     }
   });
 }
+
+// 拆解
+export async function decomposition(nodeID: string, clarification: string): Promise<ApiResponse<any>> {
+  return post(API_ENDPOINTS.THINKING.DECOMPOSITION, {
+    nodeID,
+    clarification,
+  });
+}

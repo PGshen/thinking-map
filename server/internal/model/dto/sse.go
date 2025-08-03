@@ -18,10 +18,10 @@ const (
 	NodeCreatedEventType           = "nodeCreated"
 	NodeUpdatedEventType           = "nodeUpdated"
 	ThinkingProgressEventType      = "thinkingProgress"
-	MsgTextEventType               = "msgText"
-	MsgNoticeEventType             = "msgNotice"
-	MsgActionEventType             = "msgAction"
-	MsgRagEventType                = "msgRag"
+	MessageTextEventType           = "messageText"
+	MessageNoticeEventType         = "messageNotice"
+	MessageActionEventType         = "messageAction"
+	MessageRagEventType            = "messageRag"
 	ErrorEventType                 = "error"
 	CustomEventType                = "custom"
 )
@@ -57,25 +57,18 @@ type ThinkingProgressEvent struct {
 	Message  string `json:"message"`
 }
 
-type MsgToolEvent struct {
-	NodeID    string `json:"nodeID"`
-	MsgID     string `json:"msgID"`
-	Tool      string `json:"tool"`
-	Arguments string `json:"arguments"`
-	Status    string `json:"status"`
-}
-
-// MsgUserChoiceEvent represents the user choice event
-type MsgUserChoiceEvent struct {
-	Introduction string   `json:"introduction" jsonschema:"description=引导语，用于引导用户进行选择"`
-	Actions      []string `json:"actions" jsonschema:"description=用户可选择动作列表,enum=decompose,enum=conclude"`
+type MessageActionEvent struct {
+	NodeID    string         `json:"nodeID"`
+	MessageID string         `json:"messageID"`
+	Actions   []model.Action `json:"actions"`
 }
 
 // MsgTextEvent represents the text event
-type MsgTextEvent struct {
-	NodeID  string `json:"nodeID"`
-	MsgID   string `json:"msgID"`
-	Message string `json:"message"`
+type MessageTextEvent struct {
+	NodeID    string `json:"nodeID"`
+	MessageID string `json:"messageID"`
+	Message   string `json:"message"`
+	Mode      string `json:"mode"`
 }
 
 // ErrorEvent represents the error event

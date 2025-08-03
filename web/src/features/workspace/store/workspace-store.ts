@@ -386,7 +386,7 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
                     data: {
                       ...node.data,
                       decomposition: {
-                        isDecompose: false,
+                        isDecomposed: false,
                         lastMessageID: '',
                         messages: [],
                         ...node.data.decomposition,

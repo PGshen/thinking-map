@@ -254,7 +254,7 @@ func TestMessageManager_GetMessageChain(t *testing.T) {
 	assert.NoError(t, err)
 
 	// 获取消息链
-	chain, err := messageManager.GetMessageChain(ctx, child2Resp.ID)
+	chain, err := messageManager.GetMessageChain(ctx, child2Resp.ID, child2Resp.ConversationID)
 	assert.NoError(t, err)
 	assert.Len(t, chain, 3)
 	assert.Equal(t, rootResp.ID, chain[0].ID)

@@ -14,7 +14,12 @@ import { CustomNodeModel } from '@/types/node';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { toast } from 'sonner';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
-import { getMessages } from '@/api/node';
+import { getMessages, decomposition } from '@/api/node';
+import { useSSEConnection } from '@/hooks/use-sse-connection';
+import { MessageActionEvent, MessageTextEvent } from '@/types/sse';
+import { SseJsonStreamParser } from '@/lib/sse-parser';
+import API_ENDPOINTS from '@/api/endpoints';
+import { ApiResponse } from '@/types/response';
 
 interface DecomposeTabProps {
   nodeID: string;
@@ -24,12 +29,149 @@ interface DecomposeTabProps {
 export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
   const { mapID } = useWorkspaceStore();
   const [messages, setMessages] = useState<MessageResponse[]>([]);
-  const [isDecomposing, setIsDecomposing] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [isDecomposed, setIsDecomposed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [inputValue, setInputValue] = useState("");
 
   const { actions } = useWorkspaceStore();
+
+  // 处理消息操作事件
+  const handleMessageActionEvent = (data: MessageActionEvent) => {
+    setMessages(prevMessages => {
+      const existingMessageIndex = prevMessages.findIndex(msg => msg.id === data.messageID);
+      let updatedMessages: MessageResponse[];
+
+      if (existingMessageIndex !== -1) {
+        // 消息已存在，更新操作内容
+        updatedMessages = [...prevMessages];
+        const existingMessage = updatedMessages[existingMessageIndex];
+
+        updatedMessages[existingMessageIndex] = {
+          ...existingMessage,
+          content: {
+            ...existingMessage.content,
+            action: data.actions
+          },
+          updatedAt: data.timestamp
+        };
+      } else {
+        // 消息不存在，创建新的操作消息
+        const newMessage: MessageResponse = {
+          id: data.messageID,
+          messageType: 'action',
+          role: 'assistant',
+          content: {
+            action: data.actions
+          },
+          createdAt: data.timestamp,
+          updatedAt: data.timestamp
+        };
+
+        updatedMessages = [...prevMessages, newMessage];
+      }
+
+      // 同步更新到workspace store
+      actions.updateNodeDecomposition(nodeID, {
+        messages: updatedMessages,
+      });
+
+      return updatedMessages;
+    });
+  };
+
+  // 处理消息文本事件
+  const handleMessageTextEvent = (data: MessageTextEvent) => {
+    setMessages(prevMessages => {
+      const existingMessageIndex = prevMessages.findIndex(msg => msg.id === data.messageID);
+      let updatedMessages: MessageResponse[];
+
+      if (existingMessageIndex !== -1) {
+        // 消息已存在，根据mode更新
+        updatedMessages = [...prevMessages];
+        const existingMessage = updatedMessages[existingMessageIndex];
+
+        if (data.mode === 'replace') {
+          // 替换模式：直接替换文本内容
+          updatedMessages[existingMessageIndex] = {
+            ...existingMessage,
+            content: {
+              ...existingMessage.content,
+              text: data.message
+            },
+            updatedAt: data.timestamp
+          };
+        } else if (data.mode === 'append') {
+          // 追加模式：在现有文本后追加
+          const currentText = existingMessage.content.text || '';
+          updatedMessages[existingMessageIndex] = {
+            ...existingMessage,
+            content: {
+              ...existingMessage.content,
+              text: currentText + data.message
+            },
+            updatedAt: data.timestamp
+          };
+        }
+      } else {
+        // 消息不存在，创建新消息
+        const newMessage: MessageResponse = {
+          id: data.messageID,
+          messageType: 'text',
+          role: 'assistant',
+          content: {
+            text: data.message
+          },
+          createdAt: data.timestamp,
+          updatedAt: data.timestamp
+        };
+
+        updatedMessages = [...prevMessages, newMessage];
+      }
+
+      // 同步更新到workspace store
+      actions.updateNodeDecomposition(nodeID, {
+        messages: updatedMessages,
+      });
+
+      return updatedMessages;
+    });
+  };
+
+  // SSE连接处理 - 将useSSEConnection移到组件顶层
+  const sseCallbacks = React.useMemo(() => {
+    if (!mapID) return [];
+
+    return [
+      {
+        eventType: 'messageText' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as MessageTextEvent;
+            handleMessageTextEvent(data);
+          } catch (error) {
+            console.error('解析messageText事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'messageAction' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as MessageActionEvent;
+            handleMessageActionEvent(data);
+          } catch (error) {
+            console.error('解析messageAction事件失败:', error, event.data);
+          }
+        }
+      }
+    ];
+  }, [mapID]);
+
+  // 在组件顶层调用useSSEConnection
+  useSSEConnection({
+    mapID: mapID || '',
+    callbacks: sseCallbacks
+  });
 
   // 初始化拆解流程步骤                                                                                                                                                                                                                                                                                                                                                                      
   useEffect(() => {
@@ -40,103 +182,60 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
       }
       console.log("messages", nodeData.decomposition?.messages)
       if (nodeData.decomposition?.messages === undefined) {
+        if (loading) {
+          return;
+        }
         // 初始化加载，如果为空，从后端加载
         setLoading(true);
         try {
-           let res = await getMessages(mapID, nodeID, 'decomposition');
-           console.log("res", res);
-           if (res.code !== 200) {
-             toast.error(`加载失败: ${res.message}`);
-             setLoading(false);
-             return;
-           }
-           actions.updateNodeDecomposition(nodeID, {
-             messages: res.data,
-           });
-           setMessages(res.data);
-         } catch (error) {
-           toast.error('网络错误，请重试');
-           console.error('加载拆解消息失败', error);
+          let res = await getMessages(mapID, nodeID, 'decomposition');
+          console.log("res", res);
+          if (res.code !== 200) {
+            toast.error(`加载失败: ${res.message}`);
+            setLoading(false);
+            return;
+          }
+          actions.updateNodeDecomposition(nodeID, {
+            messages: res.data,
+          });
+          setMessages(res.data);
+        } catch (error) {
+          toast.error('网络错误，请重试');
+          console.error('加载拆解消息失败', error);
         } finally {
           setLoading(false);
         }
       } else {
         setMessages(nodeData.decomposition.messages);
+        setIsDecomposed(nodeData.decomposition.isDecomposed);
       }
     };
 
     initializeDecomposition();
-  }, [nodeData]);
+  }, []);
 
-  // 开始拆解流程
-  const handleStartDecompose = async () => {
-    setIsDecomposing(true);
-    setProgress(0);
-
-    try {
-      // 步骤1: RAG检索
-      addSystemMessage('🔍 开始RAG知识检索...');
-      setProgress(20);
-
-      // 模拟RAG检索
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      addSystemMessage('✅ RAG检索完成，找到相关知识');
-      setProgress(40);
-
-      // 步骤2: AI分析
-      addSystemMessage('🤖 AI正在分析问题...');
-      setProgress(60);
-
-      // 模拟AI分析
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // 添加AI分析结果
-      const analysisMessage: MessageResponse = {
-        id: `analysis-${Date.now()}`,
-        role: 'assistant',
-        messageType: 'text',
-        content: {
-          text: `基于RAG检索的知识，我建议将"${nodeData?.question || '当前问题'}"拆解为以下几个子问题：\n1. 需求分析与用户研究\n2. 技术方案设计\n3. 实现与测试\n4. 部署与维护\n您可以通过对话调整这些建议，或者直接确认创建子节点。`
-        }
-      };
-      setMessages(prev => [...prev, analysisMessage]);
-
-      const analysisMessage2: MessageResponse = {
-        id: `analysis2-${Date.now()}`,
-        role: 'assistant',
-        messageType: 'text',
-        content: {
-          text: `基于RAG检索的知识，我建议将"${nodeData?.question || '当前问题'}"拆解为以下几个子问题：\n\n1. 需求分析与用户研究\n2. 技术方案设计\n3. 实现与测试\n4. 部署与维护\n\n您可以通过对话调整这些建议，或者直接确认创建子节点。`
-        }
-      };
-      setMessages(prev => [...prev, analysisMessage2]);
-      setProgress(80);
-
-      // 步骤3: 节点创建准备
-      addSystemMessage('📝 子问题建议已生成，等待您的确认');
-      setProgress(100);
-    } catch (error) {
-      toast('拆解过程中出现错误，请重试');
-    } finally {
-      setIsDecomposing(false);
+  // 提交
+  const handleSubmit = (inputValue: string) => {
+    if (loading) {
+      return;
     }
-  };
 
-  // 添加系统消息
-  const addSystemMessage = (content: string) => {
-    const systemMessage: MessageResponse = {
-      id: `system-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      role: 'system',
-      messageType: 'notice',
-      content: {
-        notice: [{
-          type: '',
-          name: 'system_notification',
-          content: content
-        }]
-      }
-    };
-    setMessages(prev => [...prev, systemMessage]);
+    setLoading(true);
+    try {
+      decomposition(nodeID, inputValue).then(res => {
+        console.log("res", res);
+        if (res.code !== 200) {
+          toast.error(`加载失败: ${res.message}`);
+          setLoading(false);
+          return;
+        }
+      });
+    } catch (error) {
+      toast.error('网络错误，请重试');
+      console.error('加载拆解消息失败', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmitMessage = () => {
@@ -155,12 +254,13 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
         text: inputValue
       }
     };
-    setMessages(prev => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     actions.updateNodeDecomposition(nodeID, {
-      messages: [...messages, userMessage],
+      messages: newMessages,
     });
+    handleSubmit(inputValue);
     setInputValue('');
-    // handleSubmit();
   };
 
   return (
@@ -180,17 +280,15 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
         >
           <ChatInputTextArea variant='unstyled' placeholder="Type a message..." />
           <div className="flex items-center gap-2">
-            {/* 开始拆解按钮 */}
-            {!isDecomposing && (
-              <button
-                onClick={handleStartDecompose}
-                className="px-3 py-1.5 bg-primary cursor-pointer text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5 shrink-0"
-              >
-                <GitBranch className="w-3 h-3" />
-                拆解
-              </button>
-            )}
-            
+            {/* 拆解识别按钮 */}
+            <button
+              onClick={() => handleSubmit("")}
+              className="px-3 py-1.5 bg-primary cursor-pointer text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5 shrink-0"
+            >
+              <GitBranch className="w-3 h-3" />
+              拆解识别
+            </button>
+
             {/* 测试按钮 - 添加通知类消息 */}
             <button
               onClick={() => {
@@ -225,11 +323,11 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
                 };
                 setMessages(prev => [...prev, noticeMessage]);
               }}
-              className="px-2 py-1 bg-yellow-500 text-white rounded text-xs hover:bg-yellow-600 transition-colors shrink-0"
+              className="px-3 py-1.5 bg-primary cursor-pointer text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5 shrink-0"
             >
               测试通知
             </button>
-            
+
             {/* 测试按钮 - 添加动作类消息 */}
             <button
               onClick={() => {
@@ -260,7 +358,7 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
                 };
                 setMessages(prev => [...prev, actionMessage]);
               }}
-              className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors shrink-0"
+              className="px-3 py-1.5 bg-primary cursor-pointer text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5 shrink-0"
             >
               测试动作
             </button>

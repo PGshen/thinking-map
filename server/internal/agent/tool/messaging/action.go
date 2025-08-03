@@ -2,7 +2,6 @@ package messaging
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model"
@@ -19,18 +18,10 @@ const (
 	ActionConclude  = "conclude"
 )
 
-// 用户选择消息
-type ActionChoice struct {
-	Introduction string   `json:"introduction"`
-	Actions      []string `json:"actions"`
-}
-
-type ActionMsgResp []model.Action
-
-func SendActionMsg(ctx context.Context, msg *ActionChoice) (*ActionMsgResp, error) {
+func SendActionMsg(ctx context.Context, msg *dto.ActionChoice) (*dto.ActionMsgResp, error) {
 	mapID := ctx.Value("mapID").(string)
 	nodeID := ctx.Value("nodeID").(string)
-	msgActions := ActionMsgResp{}
+	msgActions := dto.ActionMsgResp{}
 	for _, action := range msg.Actions {
 		var msgAction model.Action
 		switch action {
@@ -57,14 +48,17 @@ func SendActionMsg(ctx context.Context, msg *ActionChoice) (*ActionMsgResp, erro
 		}
 		msgActions = append(msgActions, msgAction)
 	}
-	eventID := uuid.New().String()
+	messageID := uuid.NewString()
+	eventID := uuid.NewString()
 	event := sse.Event{
 		ID:   eventID,
-		Type: dto.MsgActionEventType,
-		Data: msgActions,
+		Type: dto.MessageActionEventType,
+		Data: dto.MessageActionEvent{
+			NodeID:    nodeID,
+			MessageID: messageID,
+			Actions:   msgActions,
+		},
 	}
-	fmt.Println("mapID", ctx.Value("mapID"))
-	fmt.Println("nodeID", ctx.Value("nodeID"))
 	global.GetBroker().Publish(ctx.Value("mapID").(string), event)
 	// 保存消息
 	global.GetMessageManager().SaveDecompositionMessage(ctx, nodeID, dto.CreateMessageRequest{

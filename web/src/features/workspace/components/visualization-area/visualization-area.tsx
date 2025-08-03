@@ -118,9 +118,66 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
   // 建立SSE连接
   const { isConnected } = useSSEConnection({
     mapID,
-    onNodeCreated: handleNodeCreated,
-    onNodeUpdated: handleNodeUpdated,
-    onConnectionEstablished: handleConnectionEstablished,
+    callbacks: [
+      {
+        eventType: 'nodeCreated',
+        callback: (event) => {
+          try {
+            const data = JSON.parse(event.data) as NodeCreatedEvent;
+            handleNodeCreated(data);
+          } catch (error) {
+            console.error('解析nodeCreated事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'nodeUpdated',
+        callback: (event) => {
+          try {
+            const data = JSON.parse(event.data) as NodeUpdatedEvent;
+            handleNodeUpdated(data);
+            console.log(data)
+          } catch (error) {
+            console.error('解析nodeUpdated事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'connection_established',
+        callback: (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            handleConnectionEstablished(data);
+          } catch (error) {
+            console.error('解析connection_established事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'error',
+        callback: (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.error('SSE业务错误:', data);
+          } catch (error) {
+            console.error('解析error事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'ping',
+        callback: (event) => {
+          // 心跳事件，通常不需要处理
+          console.log('收到ping事件');
+        }
+      }
+    ],
+    onOpen: () => {
+      console.log('SSE连接已建立');
+    },
+    onError: (error) => {
+      console.error('SSE连接错误:', error);
+    }
   });
 
   // 节点拖动结束时同步到 store

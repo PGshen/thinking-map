@@ -341,7 +341,7 @@ export default function HomePage() {
             </div>
 
             <DialogFooter className="flex-row justify-end space-x-2">
-              <Button variant="outline" onClick={() => {
+              <Button className="cursor-pointer" variant="outline" onClick={() => {
                 // 点击取消按钮时，清空所有状态数据
                 setTitle('');
                 setProblem('');
@@ -355,10 +355,10 @@ export default function HomePage() {
               }}>
                 取消
               </Button>
-              <Button variant="outline" onClick={handleUnderstanding}>
+              <Button className="cursor-pointer" variant="outline" onClick={handleUnderstanding}>
                 需要调整
               </Button>
-              <Button onClick={handleCreateMap} disabled={isLoading}>理解正确，开始分析</Button>
+              <Button className="cursor-pointer" onClick={handleCreateMap} disabled={isLoading}>理解正确，开始分析</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

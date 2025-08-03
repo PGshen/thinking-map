@@ -113,7 +113,7 @@ func (s *MessageManager) SaveDecompositionMessage(ctx context.Context, nodeID st
 		return nil, err
 	}
 	// 2. 更新节点的最后消息ID
-	if err := s.LinkMessageToNode(ctx, nodeID, msg.ID, dto.ConversationTypeDecomposition); err != nil {
+	if err := s.LinkMessageToNode(ctx, nodeID, msg.ID, msg.ConversationID, dto.ConversationTypeDecomposition); err != nil {
 		return nil, err
 	}
 	return msg, nil
@@ -303,7 +303,13 @@ func (s *MessageManager) GetConversationMessages(ctx context.Context, conversati
 }
 
 // GetMessageChain 获取消息链（从根消息到指定消息的完整路径）
-func (s *MessageManager) GetMessageChain(ctx context.Context, messageID string) ([]*dto.MessageResponse, error) {
+func (s *MessageManager) GetMessageChain(ctx context.Context, messageID string, conversationID string) ([]*dto.MessageResponse, error) {
+	// 如果conversationID不为空，使用优化的批量查询方式
+	if conversationID != "" {
+		return s.getMessageChainOptimized(ctx, messageID, conversationID)
+	}
+
+	// 原有的逐个查询方式（兼容没有conversationID的情况）
 	result := []*dto.MessageResponse{}
 	currentID := messageID
 
@@ -324,8 +330,46 @@ func (s *MessageManager) GetMessageChain(ctx context.Context, messageID string) 
 	return result, nil
 }
 
+// getMessageChainOptimized 优化的消息链获取方法，通过一次查询获取所有消息后在内存中构建链
+func (s *MessageManager) getMessageChainOptimized(ctx context.Context, messageID string, conversationID string) ([]*dto.MessageResponse, error) {
+	// 一次性获取该会话的所有消息
+	messages, err := s.messageRepo.FindByConversationID(ctx, conversationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get conversation messages: %w", err)
+	}
+
+	// 构建消息ID到消息的映射，提高查找效率
+	messageMap := make(map[string]*model.Message)
+	for _, msg := range messages {
+		messageMap[msg.ID] = msg
+	}
+
+	// 从指定消息开始，向上追溯构建消息链
+	result := []*dto.MessageResponse{}
+	currentID := messageID
+
+	for currentID != "" {
+		msg, exists := messageMap[currentID]
+		if !exists {
+			// 消息不存在，可能是数据不一致，停止追溯
+			break
+		}
+
+		resp := dto.ToMessageResponse(msg)
+		result = append([]*dto.MessageResponse{&resp}, result...)
+		currentID = msg.ParentID
+		
+		// 如果ParentID是uuid.Nil.String()，说明到达根消息
+		if currentID == uuid.Nil.String() {
+			break
+		}
+	}
+
+	return result, nil
+}
+
 // LinkMessageToNode 将消息关联到节点
-func (s *MessageManager) LinkMessageToNode(ctx context.Context, nodeID string, messageID string, conversationType string) error {
+func (s *MessageManager) LinkMessageToNode(ctx context.Context, nodeID string, messageID, conversationID string, conversationType string) error {
 	node, err := s.nodeRepo.FindByID(ctx, nodeID)
 	if err != nil {
 		return fmt.Errorf("failed to get node: %w", err)
@@ -336,10 +380,16 @@ func (s *MessageManager) LinkMessageToNode(ctx context.Context, nodeID string, m
 	case dto.ConversationTypeDecomposition:
 		decomposition := node.Decomposition
 		decomposition.LastMessageID = messageID
+		if conversationID != "" {
+			decomposition.ConversationID = conversationID
+		}
 		node.Decomposition = decomposition
 	case dto.ConversationTypeConclusion:
 		conclusion := node.Conclusion
 		conclusion.LastMessageID = messageID
+		if conversationID != "" {
+			conclusion.ConversationID = conversationID
+		}
 		node.Conclusion = conclusion
 	default:
 		return fmt.Errorf("unsupported message type: %s", conversationType)
@@ -360,11 +410,14 @@ func (s *MessageManager) GetNodeMessages(ctx context.Context, nodeID string, con
 	}
 
 	var lastMessageID string
+	var conversationID string
 	switch conversationType {
 	case dto.ConversationTypeDecomposition:
 		lastMessageID = node.Decomposition.LastMessageID
+		conversationID = node.Decomposition.ConversationID
 	case dto.ConversationTypeConclusion:
 		lastMessageID = node.Conclusion.LastMessageID
+		conversationID = node.Conclusion.ConversationID
 	default:
 		return nil, fmt.Errorf("unsupported conversation type: %s", conversationType)
 	}
@@ -374,12 +427,12 @@ func (s *MessageManager) GetNodeMessages(ctx context.Context, nodeID string, con
 	}
 
 	// 获取消息链
-	return s.GetMessageChain(ctx, lastMessageID)
+	return s.GetMessageChain(ctx, lastMessageID, conversationID)
 }
 
 // UpdateNodeLastMessage 更新节点的最后消息ID
-func (s *MessageManager) UpdateNodeLastMessage(ctx context.Context, nodeID string, messageID string, conversationType string) error {
-	return s.LinkMessageToNode(ctx, nodeID, messageID, conversationType)
+func (s *MessageManager) UpdateNodeLastMessage(ctx context.Context, nodeID string, messageID, conversationID string, conversationType string) error {
+	return s.LinkMessageToNode(ctx, nodeID, messageID, conversationID, conversationType)
 }
 
 // MarkMessageAsDeleted 标记消息为已删除

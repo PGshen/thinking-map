@@ -65,7 +65,7 @@ export interface NodeContextItem {
 }
 
 export interface Decomposition {
-  isDecompose: boolean;
+  isDecomposed: boolean;
   lastMessageID: string;
   messages: MessageResponse[];
 }

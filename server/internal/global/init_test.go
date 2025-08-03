@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/PGshen/thinking-map/server/internal/repository"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -26,6 +27,12 @@ func TestMain(m *testing.M) {
 	testDB = testConfig.DB
 	testRedis = testConfig.Redis
 
+	// 初始化repository
+	messageRepo := repository.NewMessageRepository(testDB)
+	nodeRepo := repository.NewThinkingNodeRepository(testDB)
+
+	// 初始化MessageManager
+	InitMessageManager(messageRepo, nodeRepo)
 	messageManager = GetMessageManager()
 
 	code := m.Run()

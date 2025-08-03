@@ -291,11 +291,14 @@ func (h *NodeHandler) GetNodeMessages(c *gin.Context) {
 		return
 	}
 	var lastMessageID string
+	var conversationID string
 	switch conversationType {
 	case dto.ConversationTypeDecomposition:
 		lastMessageID = node.Decomposition.LastMessageID
+		conversationID = node.Decomposition.ConversationID
 	case dto.ConversationTypeConclusion:
 		lastMessageID = node.Conclusion.LastMessageID
+		conversationID = node.Conclusion.ConversationID
 	default:
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
@@ -307,7 +310,7 @@ func (h *NodeHandler) GetNodeMessages(c *gin.Context) {
 		return
 	}
 
-	messages, err := global.GetMessageManager().GetMessageChain(c.Request.Context(), lastMessageID)
+	messages, err := global.GetMessageManager().GetMessageChain(c.Request.Context(), lastMessageID, conversationID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,

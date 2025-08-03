@@ -49,9 +49,19 @@ func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.Understan
 	// 2. 加载历史消息
 	msgManager := global.GetMessageManager()
 	var msgs []*dto.MessageResponse
-	msgs, err = msgManager.GetMessageChain(ctx, req.ParentMsgID)
-	if err != nil {
-		return
+	if req.ParentMsgID != "" {
+		// 先获取父消息以得到conversationID
+		parentMsg, err := msgManager.GetMessageByID(ctx, req.ParentMsgID)
+		if err != nil {
+			return "", nil, err
+		}
+		msgs, err = msgManager.GetMessageChain(ctx, req.ParentMsgID, parentMsg.ConversationID)
+		if err != nil {
+			return "", nil, err
+		}
+	} else {
+		// 没有父消息，使用空的消息链
+		msgs = []*dto.MessageResponse{}
 	}
 	// 消息转换为schema.Message
 	schemaMsgs := global.ConvertToSchemaMsg(msgs)
