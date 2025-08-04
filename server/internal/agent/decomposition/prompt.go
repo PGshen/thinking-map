@@ -1,4 +1,4 @@
-package intent
+package decomposition
 
 const systemPrompt = `
 你是一位专业的意图识别专家，擅长分析节点问题的处理需求，识别用户意图，决定后续处理策略。

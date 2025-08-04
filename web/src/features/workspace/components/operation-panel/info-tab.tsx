@@ -58,6 +58,9 @@ export function InfoTab({ nodeID, nodeData }: InfoTabProps) {
   }, [nodeData]);
 
 
+  useEffect(() => {
+    console.log("init info tab")
+  }, [])
 
   // 检查是否有未保存的更改
   useEffect(() => {

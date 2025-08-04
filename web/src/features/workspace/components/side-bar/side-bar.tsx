@@ -33,7 +33,7 @@ import useWorkspaceData from "../../hooks/use-workspace-data"
 export function InfoSidebar({ mapID, ...props }: React.ComponentProps<typeof Sidebar> & { mapID: string }) {
   const router = useRouter()
   const [showConfirm, setShowConfirm] = React.useState(false)
-  const { changedNodePositions } = useWorkspaceStore()
+  const { changedNodePositions, actions } = useWorkspaceStore()
   const { savePosition } = useWorkspaceData()
   const { setOpen, toggleSidebar } = useSidebar()
   const [activePanel, setActivePanel] = React.useState<'map-info' | 'settings'>('map-info')
@@ -42,6 +42,8 @@ export function InfoSidebar({ mapID, ...props }: React.ComponentProps<typeof Sid
     if (changedNodePositions.length > 0) {
       setShowConfirm(true)
     } else {
+      // 清理工作区状态
+      actions.reset()
       router.push('/')
     }
   }
@@ -49,6 +51,8 @@ export function InfoSidebar({ mapID, ...props }: React.ComponentProps<typeof Sid
   const confirmExit = () => {
     setShowConfirm(false)
     savePosition()
+    // 清理工作区状态
+    actions.reset()
     router.push('/')
   }
 

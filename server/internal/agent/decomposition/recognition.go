@@ -1,4 +1,4 @@
-package intent
+package decomposition
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 )
 
 // 意图识别Agent
-func BuildIntentRecognitionAgent(ctx context.Context, option react.AgentOption) (r compose.Runnable[[]*schema.Message, *schema.Message], err error) {
+func BuildRecognitionAgent(ctx context.Context, option react.AgentOption) (r compose.Runnable[[]*schema.Message, *schema.Message], err error) {
 	cm, err := llmmodel.NewOpenAIModel(ctx, nil)
 	if err != nil {
 		return nil, err

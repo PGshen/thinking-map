@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/PGshen/thinking-map/server/internal/agent/callback"
-	"github.com/PGshen/thinking-map/server/internal/agent/intent"
+	"github.com/PGshen/thinking-map/server/internal/agent/decomposition"
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
@@ -73,7 +73,7 @@ func (s *DecompositionService) Recognize(ctx *gin.Context, req dto.Decomposition
 
 	option, future := react.WithMessageFuture()
 	// 4. 调用意图识别Agent
-	agent, err := intent.BuildIntentRecognitionAgent(ctx, option)
+	agent, err := decomposition.BuildRecognitionAgent(ctx, option)
 	if err != nil {
 		return
 	}
