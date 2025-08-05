@@ -39,24 +39,29 @@ func (m *MockChatModel) Stream(ctx context.Context, messages []*schema.Message, 
 	return schema.StreamReaderFromArray([]*schema.Message{result}), nil
 }
 
-// TestPlanningMultiAgentBasic 测试基本的规划多智能体功能
+// TestPlanningMultiAgentBasic 测试基本功能
 func TestPlanningMultiAgentBasic(t *testing.T) {
 	// 创建模拟的ChatModel
-	plannerModel := &MockChatModel{response: "Planning response"}
+	plannerModel := &MockChatModel{response: `{"steps": [{"id": "step_1", "description": "Test step", "specialist_name": "TestSpecialist", "input": "Test input", "dependencies": []}]}`}
 	specialistModel := &MockChatModel{response: "Specialist response"}
 	summarizerModel := &MockChatModel{response: "Summary response"}
 
 	// 创建配置
 	config := &PlanningMultiAgentConfig{
 		PlannerAgent: &PlannerAgent{
-			ChatModel:       plannerModel,
-			PlanningPrompt:  "Please create a plan for: {{query}}",
-			UpdatePrompt:    "Please update the plan based on: {{results}}",
+			AgentMeta: &AgentMeta{
+				Name:        "TestPlanner",
+				IntendedUse: "Test planning agent",
+			},
+			ChatModel:      plannerModel,
+			PlanningPrompt: "Please create a plan for: {{query}}",
+			UpdatePrompt:   "Please update the plan based on: {{results}}",
 		},
 		Specialists: []*Specialist{
 			{
 				AgentMeta: &AgentMeta{
-					Name: "TestSpecialist",
+					Name:        "TestSpecialist",
+					IntendedUse: "Test specialist agent",
 				},
 				ChatModel:    specialistModel,
 				SystemPrompt: "You are a test specialist",
@@ -82,20 +87,25 @@ func TestPlanningMultiAgentBasic(t *testing.T) {
 // TestPlanningMultiAgentWithCallbacks 测试带回调的规划多智能体
 func TestPlanningMultiAgentWithCallbacks(t *testing.T) {
 	// 创建模拟的ChatModel
-	plannerModel := &MockChatModel{response: "Planning response"}
+	plannerModel := &MockChatModel{response: `{"steps": [{"id": "step_1", "description": "Test step", "specialist_name": "TestSpecialist", "input": "Test input", "dependencies": []}]}`}
 	specialistModel := &MockChatModel{response: "Specialist response"}
 
 	// 创建配置
 	config := &PlanningMultiAgentConfig{
 		PlannerAgent: &PlannerAgent{
-			ChatModel:       plannerModel,
-			PlanningPrompt:  "Please create a plan for: {{query}}",
-			UpdatePrompt:    "Please update the plan based on: {{results}}",
+			AgentMeta: &AgentMeta{
+				Name:        "TestPlanner",
+				IntendedUse: "Test planning agent",
+			},
+			ChatModel:      plannerModel,
+			PlanningPrompt: "Please create a plan for: {{query}}",
+			UpdatePrompt:   "Please update the plan based on: {{results}}",
 		},
 		Specialists: []*Specialist{
 			{
 				AgentMeta: &AgentMeta{
-					Name: "TestSpecialist",
+					Name:        "TestSpecialist",
+					IntendedUse: "Test specialist agent",
 				},
 				ChatModel:    specialistModel,
 				SystemPrompt: "You are a test specialist",
@@ -116,20 +126,25 @@ func TestPlanningMultiAgentWithCallbacks(t *testing.T) {
 // TestPlanningMultiAgentGenerate 测试生成功能
 func TestPlanningMultiAgentGenerate(t *testing.T) {
 	// 创建模拟的ChatModel
-	plannerModel := &MockChatModel{response: "Planning response"}
+	plannerModel := &MockChatModel{response: `{"steps": [{"id": "step_1", "description": "Test step", "specialist_name": "TestSpecialist", "input": "Test input", "dependencies": []}]}`}
 	specialistModel := &MockChatModel{response: "Specialist response"}
 
 	// 创建配置
 	config := &PlanningMultiAgentConfig{
 		PlannerAgent: &PlannerAgent{
-			ChatModel:       plannerModel,
-			PlanningPrompt:  "Please create a plan for: {{query}}",
-			UpdatePrompt:    "Please update the plan based on: {{results}}",
+			AgentMeta: &AgentMeta{
+				Name:        "TestPlanner",
+				IntendedUse: "Test planning agent",
+			},
+			ChatModel:      plannerModel,
+			PlanningPrompt: "Please create a plan for: {{query}}",
+			UpdatePrompt:   "Please update the plan based on: {{results}}",
 		},
 		Specialists: []*Specialist{
 			{
 				AgentMeta: &AgentMeta{
-					Name: "TestSpecialist",
+					Name:        "TestSpecialist",
+					IntendedUse: "Test specialist agent",
 				},
 				ChatModel:    specialistModel,
 				SystemPrompt: "You are a test specialist",
@@ -146,29 +161,37 @@ func TestPlanningMultiAgentGenerate(t *testing.T) {
 	ctx := context.Background()
 	input := schema.UserMessage("Test query")
 
-	response, err := agent.Generate(ctx, input)
+	response, err := agent.Generate(ctx, []*schema.Message{input})
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
-	assert.Equal(t, "Planning MultiAgent is under development", response.Content)
+	// 验证返回的是JSON格式的执行状态
+	assert.Contains(t, response.Content, "original_query")
+	assert.Contains(t, response.Content, "execution_plan")
+	assert.Contains(t, response.Content, "Test query")
 }
 
 // TestPlanningMultiAgentStream 测试流式生成功能
 func TestPlanningMultiAgentStream(t *testing.T) {
 	// 创建模拟的ChatModel
-	plannerModel := &MockChatModel{response: "Planning response"}
+	plannerModel := &MockChatModel{response: `{"steps": [{"id": "step_1", "description": "Test step", "specialist_name": "TestSpecialist", "input": "Test input", "dependencies": []}]}`}
 	specialistModel := &MockChatModel{response: "Specialist response"}
 
 	// 创建配置
 	config := &PlanningMultiAgentConfig{
 		PlannerAgent: &PlannerAgent{
-			ChatModel:       plannerModel,
-			PlanningPrompt:  "Please create a plan for: {{query}}",
-			UpdatePrompt:    "Please update the plan based on: {{results}}",
+			AgentMeta: &AgentMeta{
+				Name:        "TestPlanner",
+				IntendedUse: "Test planning agent",
+			},
+			ChatModel:      plannerModel,
+			PlanningPrompt: "Please create a plan for: {{query}}",
+			UpdatePrompt:   "Please update the plan based on: {{results}}",
 		},
 		Specialists: []*Specialist{
 			{
 				AgentMeta: &AgentMeta{
-					Name: "TestSpecialist",
+					Name:        "TestSpecialist",
+					IntendedUse: "Test specialist agent",
 				},
 				ChatModel:    specialistModel,
 				SystemPrompt: "You are a test specialist",
@@ -185,15 +208,23 @@ func TestPlanningMultiAgentStream(t *testing.T) {
 	ctx := context.Background()
 	input := schema.UserMessage("Test query")
 
-	stream, err := agent.Stream(ctx, input)
+	stream, err := agent.Stream(ctx, []*schema.Message{input})
 	assert.NoError(t, err)
 	assert.NotNil(t, stream)
 
-	// 读取流中的消息
-	msg, err := stream.Recv()
-	assert.NoError(t, err)
-	assert.NotNil(t, msg)
-	assert.Equal(t, "Planning MultiAgent is under development", msg.Content)
+	// 读取流式响应
+	for {
+		message, err := stream.Recv()
+		if err != nil {
+			break
+		}
+		assert.NotNil(t, message)
+		// 验证返回的是JSON格式的执行状态
+		assert.Contains(t, message.Content, "original_query")
+		assert.Contains(t, message.Content, "execution_plan")
+		assert.Contains(t, message.Content, "Test query")
+		break // 只测试第一个消息
+	}
 
 	// 关闭流
 	stream.Close()

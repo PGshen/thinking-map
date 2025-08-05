@@ -21,13 +21,15 @@ import (
 	"fmt"
 
 	"github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
 )
 
 // PlanningMultiAgent 是增强版的多智能体系统，具备规划和迭代执行能力
 type PlanningMultiAgent struct {
-	config *PlanningMultiAgentConfig
-	graph  interface{} // 实际类型为 *compose.Graph，这里用interface{}避免循环依赖
+	config   *PlanningMultiAgentConfig
+	graph    *compose.Graph[[]*schema.Message, *schema.Message]
+	runnable compose.Runnable[[]*schema.Message, *schema.Message]
 }
 
 // PlanningMultiAgentConfig 配置增强版多智能体系统
@@ -63,9 +65,9 @@ type Specialist struct {
 	// SystemPrompt 专家的系统提示词
 	SystemPrompt string `json:"system_prompt"`
 	// Invokable 可调用的组件（与ChatModel二选一）
-	Invokable interface{} `json:"invokable,omitempty"`
+	Invokable compose.Invoke[[]*schema.Message, *schema.Message, Option] `json:"invokable,omitempty"`
 	// Streamable 可流式调用的组件（与ChatModel二选一）
-	Streamable interface{} `json:"streamable,omitempty"`
+	Streamable compose.Stream[[]*schema.Message, *schema.Message, Option] `json:"streamable,omitempty"`
 }
 
 // AgentMeta 智能体元信息
@@ -143,18 +145,11 @@ type PlanningState struct {
 }
 
 // Generate 生成响应
-func (p *PlanningMultiAgent) Generate(ctx context.Context, input *schema.Message, opts ...model.Option) (*schema.Message, error) {
-	// 将单个消息转换为消息数组
-	messages := []*schema.Message{input}
-	return p.GenerateFromMessages(ctx, messages, opts...)
-}
-
-// GenerateFromMessages 从消息数组生成响应
-func (p *PlanningMultiAgent) GenerateFromMessages(ctx context.Context, messages []*schema.Message, opts ...model.Option) (*schema.Message, error) {
+func (p *PlanningMultiAgent) Generate(ctx context.Context, messages []*schema.Message, opts ...model.Option) (*schema.Message, error) {
 	if len(messages) == 0 {
 		return nil, fmt.Errorf("no input messages provided")
 	}
-	
+
 	// 获取最后一条用户消息作为查询
 	var userQuery string
 	for i := len(messages) - 1; i >= 0; i-- {
@@ -163,43 +158,43 @@ func (p *PlanningMultiAgent) GenerateFromMessages(ctx context.Context, messages 
 			break
 		}
 	}
-	
+
 	if userQuery == "" {
 		return nil, fmt.Errorf("no user query found in messages")
 	}
-	
-	// 编译并运行图
-	if p.graph == nil {
-		return nil, fmt.Errorf("graph not initialized")
+
+	// 检查runnable是否已初始化
+	if p.runnable == nil {
+		return nil, fmt.Errorf("runnable not initialized")
 	}
-	
-	// 这里需要类型断言，因为我们知道graph的实际类型
-	// 但为了避免循环依赖，我们在types.go中使用interface{}
-	// 实际实现中需要调用图的编译和运行方法
-	
-	// TODO: 实现图的编译和运行逻辑
-	// 这里先返回一个简单的响应
-	return schema.AssistantMessage("Planning MultiAgent is under development", nil), nil
+
+	// 运行图，传入消息数组
+	result, err := p.runnable.Invoke(ctx, messages)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run graph: %w", err)
+	}
+
+	return result, nil
 }
 
 // Stream 流式生成响应
-func (p *PlanningMultiAgent) Stream(ctx context.Context, input *schema.Message, opts ...model.Option) (*schema.StreamReader[*schema.Message], error) {
-	// 将单个消息转换为消息数组
-	messages := []*schema.Message{input}
-	return p.StreamFromMessages(ctx, messages, opts...)
-}
-
-// StreamFromMessages 从消息数组流式生成响应
-func (p *PlanningMultiAgent) StreamFromMessages(ctx context.Context, messages []*schema.Message, opts ...model.Option) (*schema.StreamReader[*schema.Message], error) {
-	// TODO: 实现流式生成逻辑
-	// 目前先调用Generate方法，然后包装为流
-	result, err := p.GenerateFromMessages(ctx, messages, opts...)
-	if err != nil {
-		return nil, err
+func (p *PlanningMultiAgent) Stream(ctx context.Context, messages []*schema.Message, opts ...model.Option) (*schema.StreamReader[*schema.Message], error) {
+	if len(messages) == 0 {
+		return nil, fmt.Errorf("no input messages provided")
 	}
-	
-	// 创建一个简单的流读取器，包含单个消息
-	return schema.StreamReaderFromArray([]*schema.Message{result}), nil
+
+	// 检查runnable是否已初始化
+	if p.runnable == nil {
+		return nil, fmt.Errorf("runnable not initialized")
+	}
+
+	// 流式运行图，传入消息数组
+	stream, err := p.runnable.Stream(ctx, messages)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stream graph: %w", err)
+	}
+
+	return stream, nil
 }
 
 // validate 验证配置
@@ -207,25 +202,25 @@ func (c *PlanningMultiAgentConfig) validate() error {
 	if c.PlannerAgent == nil {
 		return fmt.Errorf("planner agent is required")
 	}
-	
+
 	if err := c.PlannerAgent.validate(); err != nil {
 		return fmt.Errorf("invalid planner agent: %w", err)
 	}
-	
+
 	if len(c.Specialists) == 0 {
 		return fmt.Errorf("at least one specialist is required")
 	}
-	
+
 	for i, specialist := range c.Specialists {
 		if err := specialist.validate(); err != nil {
 			return fmt.Errorf("invalid specialist at index %d: %w", i, err)
 		}
 	}
-	
+
 	if c.MaxIterations <= 0 {
 		c.MaxIterations = 10 // 默认最大迭代次数
 	}
-	
+
 	return nil
 }
 
@@ -234,15 +229,15 @@ func (p *PlannerAgent) validate() error {
 	if p.AgentMeta == nil {
 		return fmt.Errorf("agent meta is required")
 	}
-	
+
 	if err := p.AgentMeta.validate(); err != nil {
 		return fmt.Errorf("invalid agent meta: %w", err)
 	}
-	
+
 	if p.ChatModel == nil {
 		return fmt.Errorf("chat model is required")
 	}
-	
+
 	return nil
 }
 
@@ -251,11 +246,11 @@ func (s *Specialist) validate() error {
 	if s.AgentMeta == nil {
 		return fmt.Errorf("agent meta is required")
 	}
-	
+
 	if err := s.AgentMeta.validate(); err != nil {
 		return fmt.Errorf("invalid agent meta: %w", err)
 	}
-	
+
 	// 确保至少有一个执行组件
 	componentCount := 0
 	if s.ChatModel != nil {
@@ -267,15 +262,15 @@ func (s *Specialist) validate() error {
 	if s.Streamable != nil {
 		componentCount++
 	}
-	
+
 	if componentCount == 0 {
 		return fmt.Errorf("specialist must have at least one of: ChatModel, Invokable, or Streamable")
 	}
-	
+
 	if componentCount > 1 {
 		return fmt.Errorf("specialist can only have one of: ChatModel, Invokable, or Streamable")
 	}
-	
+
 	return nil
 }
 
@@ -284,11 +279,11 @@ func (a *AgentMeta) validate() error {
 	if a.Name == "" {
 		return fmt.Errorf("agent name is required")
 	}
-	
+
 	if a.IntendedUse == "" {
 		return fmt.Errorf("agent intended use is required")
 	}
-	
+
 	return nil
 }
 
@@ -305,7 +300,7 @@ func (p *ExecutionPlan) GetNextStep() *ExecutionStep {
 					break
 				}
 			}
-			
+
 			if allDependenciesCompleted {
 				return step
 			}
@@ -333,7 +328,7 @@ func (p *ExecutionPlan) UpdateStepStatus(stepID string, status StepStatus, outpu
 			step.Output = output
 		}
 	}
-	
+
 	// 检查是否所有步骤都已完成
 	allCompleted := true
 	for _, s := range p.Steps {
