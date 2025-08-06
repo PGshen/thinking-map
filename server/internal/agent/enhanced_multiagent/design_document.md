@@ -4,6 +4,16 @@
 
 本文档描述了基于 Eino 框架的增强版多智能体系统设计。该系统在现有 Host 模式基础上，引入了 ReAct 思考模式、任务规划能力和持续反馈机制，实现了更智能的任务分解和执行。
 
+## 使用场景
+
+本系统专门设计用于**对话场景**，具有以下特点：
+
+1. **对话驱动**: 用户首次提出问题，agent系统根据情况进行解答（直接解答或拆解分步规划解答）
+2. **历史感知**: 用户可以继续进行对话，系统能够理解和处理历史对话上下文
+3. **无状态设计**: 每次调用agent时，全局状态都会重新初始化，不依赖之前的执行状态
+4. **消息传递**: 入参为`[]*schema.Message`（包含历史对话），出参为`*schema.Message`（当前回答）
+5. **上下文管理**: 历史对话由上层逻辑组织并传入，agent专注于基于完整对话历史生成回答
+
 ## 设计目标
 
 1. **智能主控**: 主控 Agent 采用 ReAct 模式，具备思考、规划和反馈能力
@@ -59,9 +69,9 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    START(["开始"]) --> INPUT["用户输入<br>[]*schema.Message"]
+    START(["开始"]) --> INPUT["对话历史输入<br>[]*schema.Message<br><br>包含完整对话历史<br>每次调用状态重新初始化"]
     
-    INPUT --> HOST_THINK["Host Think Node<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• OriginalMessages 保存<br>• CurrentThinking 设置<br>• ThinkingHistory 追加"]
+    INPUT --> HOST_THINK["Host Think Node<br>输入: []*schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• OriginalMessages 保存<br>• CurrentThinking 设置<br>• ThinkingHistory 追加"]
     
     HOST_THINK --> COMPLEXITY_BRANCH{"复杂度判断分支<br>ComplexityBranch<br><br>状态读取:<br>• CurrentThinking.Complexity"}
     
@@ -247,9 +257,13 @@ func (s *EnhancedState) Checkpoint() *StateCheckpoint {
 
 ```go
 // EnhancedState 增强版多智能体系统的全局状态
+// 注意：每次agent调用时，此状态都会重新初始化，不保留之前的执行状态
 type EnhancedState struct {
-    // 原始输入消息
+    // 原始输入消息（完整对话历史）
     OriginalMessages []*schema.Message
+    
+    // 对话上下文分析结果
+    ConversationContext *ConversationContext
     
     // 当前任务规划（Markdown格式）
     CurrentPlan *TaskPlan
@@ -269,10 +283,10 @@ type EnhancedState struct {
     // 当前思考结果
     CurrentThinkingResult *ThinkingResult
     
-    // 执行历史
+    // 执行历史（仅限当前调用）
     ExecutionHistory []*ExecutionRecord
     
-    // 思考历史
+    // 思考历史（仅限当前调用）
     ThinkingHistory []*ThinkingResult
     
     // 当前执行轮次
@@ -289,6 +303,42 @@ type EnhancedState struct {
     
     // 最终答案
     FinalAnswer *schema.Message
+    
+    // 会话ID（用于日志追踪）
+    SessionID string
+    
+    // 调用时间戳
+    CallTimestamp time.Time
+}
+
+// ConversationContext 对话上下文分析结果
+type ConversationContext struct {
+    // 对话轮次数
+    TurnCount int
+    
+    // 是否为首次对话
+    IsFirstTurn bool
+    
+    // 最新用户消息
+    LatestUserMessage *schema.Message
+    
+    // 最新助手回复
+    LatestAssistantMessage *schema.Message
+    
+    // 对话主题
+    ConversationTopic string
+    
+    // 用户意图分析
+    UserIntent string
+    
+    // 是否为延续性问题
+    IsContinuation bool
+    
+    // 相关历史上下文
+    RelevantHistory []*schema.Message
+    
+    // 上下文摘要
+    ContextSummary string
 }
 
 // ExecutionRecord 执行记录
@@ -422,6 +472,15 @@ type ThinkingResult struct {
     // 原始消息
     OriginalMessages []*schema.Message
     
+    // 对话上下文分析
+    ConversationAnalysis *ConversationContext
+    
+    // 是否需要参考历史对话
+    NeedsHistoryContext bool
+    
+    // 回答策略
+    ResponseStrategy string // direct, planned, clarification
+    
     // 时间戳
     Timestamp time.Time
 }
@@ -525,8 +584,11 @@ type EnhancedMultiAgentConfig struct {
     // 规划模板
     PlanTemplate string
     
-    // 思考提示模板
-    ThinkingPromptTemplate string
+    // 对话思考提示模板
+    ConversationalThinkingPromptTemplate string
+    
+    // 对话上下文分析提示模板
+    ContextAnalysisPromptTemplate string
     
     // 反思提示模板
     ReflectionPromptTemplate string
@@ -536,6 +598,24 @@ type EnhancedMultiAgentConfig struct {
     
     // 回调处理器
     Callbacks []EnhancedMultiAgentCallback
+    
+    // 会话配置
+    SessionConfig SessionConfig
+}
+
+// SessionConfig 会话配置
+type SessionConfig struct {
+    // 最大对话历史长度
+    MaxHistoryLength int
+    
+    // 上下文窗口大小
+    ContextWindowSize int
+    
+    // 是否启用上下文压缩
+    EnableContextCompression bool
+    
+    // 上下文相关性阈值
+    ContextRelevanceThreshold float64
 }
 
 // EnhancedHost 增强版主控Agent
@@ -586,6 +666,91 @@ type EnhancedSpecialist struct {
     OutputProcessor func(ctx context.Context, output *schema.Message) (*SpecialistResult, error)
 }
 ```
+
+## 对话场景设计调整
+
+### 核心设计
+#### 1. 接口签名
+
+```go
+// 对话场景：历史消息输入
+func (agent *EnhancedMultiAgent) Invoke(ctx context.Context, input []*schema.Message) (*schema.Message, error)
+```
+
+#### 2. 状态生命周期管理
+
+- **无状态原则**: 每次调用都重新初始化`EnhancedState`
+- **历史感知**: 通过输入的`[]*schema.Message`获取完整对话历史
+- **上下文分析**: 新增`ConversationContext`分析对话上下文
+- **会话追踪**: 通过`SessionID`进行日志追踪，但不保持状态
+
+#### 3. 对话上下文处理流程
+
+```mermaid
+flowchart TD
+    INPUT["[]*schema.Message<br>完整对话历史"] --> ANALYZE["对话上下文分析<br>analyzeConversationContext()"]
+    
+    ANALYZE --> CTX_RESULT["ConversationContext<br>• 对话轮次<br>• 用户意图<br>• 是否延续<br>• 相关历史"]
+    
+    CTX_RESULT --> THINK["增强思考<br>基于上下文的ReAct思考"]
+    
+    THINK --> DECISION{"复杂度判断"}
+    
+    DECISION -->|简单| DIRECT["直接回答<br>考虑对话历史"]
+    DECISION -->|复杂| PLAN["规划执行<br>基于上下文的任务分解"]
+    
+    DIRECT --> OUTPUT["*schema.Message<br>当前回答"]
+    PLAN --> OUTPUT
+```
+
+#### 4. 关键函数新增
+
+```go
+// 对话上下文分析
+func analyzeConversationContext(messages []*schema.Message) *ConversationContext
+
+// 对话感知的思考提示构建
+func buildConversationalThinkingPrompt(messages []*schema.Message, ctx *ConversationContext, state *EnhancedState) *schema.Message
+
+// 上下文相关性过滤
+func filterRelevantHistory(messages []*schema.Message, currentQuery string) []*schema.Message
+
+// 对话历史压缩
+func compressConversationHistory(messages []*schema.Message, maxLength int) []*schema.Message
+```
+
+### 对话场景特殊处理
+
+#### 1. 首次对话 vs 延续对话
+
+- **首次对话**: `ConversationContext.IsFirstTurn = true`，专注于理解用户需求
+- **延续对话**: `ConversationContext.IsContinuation = true`，需要理解上下文关联
+
+#### 2. 上下文窗口管理
+
+- **智能截断**: 保留最相关的历史消息
+- **上下文压缩**: 对长对话进行摘要压缩
+- **关键信息保持**: 确保重要上下文不丢失
+
+#### 3. 意图理解增强
+
+- **意图分析**: 分析用户当前问题的意图
+- **关联检测**: 检测与历史对话的关联性
+- **澄清机制**: 当意图不明确时主动澄清
+
+### 性能优化考虑
+
+#### 1. 上下文处理优化
+
+- **并行分析**: 对话上下文分析与思考过程并行
+- **缓存机制**: 对重复的上下文分析结果进行缓存
+- **增量处理**: 对新增消息进行增量分析
+
+#### 2. 内存管理
+
+- **及时清理**: 每次调用结束后清理状态
+- **大对话处理**: 对超长对话历史进行分段处理
+- **内存监控**: 监控内存使用情况，防止内存泄漏
 
 ## TaskPlan 动态更新机制
 
@@ -669,25 +834,28 @@ type StatePostHandler[O, S any] func(ctx context.Context, output O, state S) (O,
 
 ### 1. Host Think Node
 
-<mcreference link="https://www.cloudwego.io/zh/docs/eino/core_modules/chain_and_graph_orchestration/orchestration_design_principles/#statehandler-%E7%9A%84%E7%B1%BB%E5%9E%8B%E5%AF%B9%E9%BD%90" index="0">根据Eino框架的类型对齐原则</mcreference>，每个节点的输入输出类型必须严格匹配。
+根据Eino框架的类型对齐原则，每个节点的输入输出类型必须严格匹配。
 
-**输入类型**: `*schema.Message`  
+**输入类型**: `[]*schema.Message`（对话历史）  
 **输出类型**: `*schema.Message`  
-**功能**: 分析用户输入，进行初步思考和复杂度评估
+**功能**: 分析对话历史，进行上下文理解、思考和复杂度评估
 
 ```go
 // HostThinkNode 使用Eino图编排方式实现
 func NewHostThinkNode(config *EnhancedHost) *compose.GraphNode {
-    // 状态预处理器：从状态中构建思考提示
-    preHandler := func(ctx context.Context, input *schema.Message, state *EnhancedState) (*schema.Message, error) {
-        // 如果是首次处理，保存原始消息
-        if state.OriginalMessages == nil {
-            state.OriginalMessages = []*schema.Message{input}
-        }
+    // 状态预处理器：分析对话历史并构建思考提示
+    preHandler := func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+        // 保存原始对话历史
+        state.OriginalMessages = input
+        state.CallTimestamp = time.Now()
         
-        // 构建思考提示，包含历史上下文
-        thinkingPrompt := buildThinkingPrompt(state.OriginalMessages, state)
-        return thinkingPrompt, nil
+        // 分析对话上下文
+        conversationCtx := analyzeConversationContext(input)
+        state.ConversationContext = conversationCtx
+        
+        // 构建思考提示，包含完整对话历史和上下文分析
+        thinkingPrompt := buildConversationalThinkingPrompt(input, conversationCtx, state)
+        return []*schema.Message{thinkingPrompt}, nil
     }
     
     // 状态后处理器：解析思考结果并更新状态
@@ -695,6 +863,7 @@ func NewHostThinkNode(config *EnhancedHost) *compose.GraphNode {
         // 解析思考结果
         result := parseThinkingResult(output)
         result.OriginalMessages = state.OriginalMessages
+        result.ConversationAnalysis = state.ConversationContext
         result.Timestamp = time.Now()
         
         // 更新状态
@@ -1242,25 +1411,42 @@ type EnhancedMultiAgentCallback interface {
 
 ## 实现计划
 
-### 阶段一：核心框架
-1. 定义核心类型和接口
-2. 实现基础的状态管理
+### 阶段一：核心框架和对话适配
+1. 定义核心类型和接口（包括 `ConversationContext`、`SessionConfig`）
+2. 实现基础的状态管理（支持无状态重新初始化）
 3. 创建主要节点的骨架实现
+4. **对话场景新增**：
+   - 实现 `analyzeConversationContext` 函数
+   - 调整接口签名支持 `[]*schema.Message` 输入
+   - 实现对话历史预处理机制
 
-### 阶段二：思考和规划
-1. 实现 Host Think Node
-2. 实现 Plan Creation Node
-3. 实现复杂度判断逻辑
+### 阶段二：对话感知的思考和规划
+1. 实现增强的 Host Think Node（支持对话历史分析）
+2. 实现 Plan Creation Node（基于对话上下文的规划）
+3. 实现复杂度判断逻辑（考虑对话延续性）
+4. **对话场景新增**：
+   - 实现对话历史压缩和相关性过滤
+   - 实现上下文窗口管理
+   - 实现意图理解和关联检测
 
-### 阶段三：执行和反馈
-1. 实现专家调用机制
-2. 实现结果收集和反馈处理
-3. 实现规划更新逻辑
+### 阶段三：执行和反馈（对话场景优化）
+1. 实现专家调用机制（传递对话上下文）
+2. 实现结果收集和反馈处理（考虑对话连贯性）
+3. 实现规划更新逻辑（基于对话进展）
+4. **对话场景新增**：
+   - 实现澄清机制和意图确认
+   - 实现对话状态的无状态管理
+   - 实现上下文相关的专家选择
 
-### 阶段四：优化和测试
-1. 完善回调机制
-2. 添加错误处理和容错机制
-3. 性能优化和测试
+### 阶段四：优化和测试（对话场景专项）
+1. 完善回调机制（增加对话相关回调）
+2. 添加错误处理和容错机制（对话场景特殊错误）
+3. 性能优化和测试（大对话历史处理）
+4. **对话场景新增**：
+   - 实现对话场景的集成测试
+   - 实现内存管理和性能监控
+   - 实现对话质量评估机制
+   - 实现并发对话处理优化
 
 ## 技术特性
 
@@ -1361,7 +1547,47 @@ func generateFinalAnswer(results *CollectedResults, state *EnhancedState) *schem
 - **类型转换节点**: 使用`compose.NewLambdaNode`创建专门的类型转换节点
 - **序列化机制**: 将复杂类型序列化到`schema.Message`的Content字段中
 - **提取器节点**: 创建专门的提取器节点来反序列化数据
+
+## 对话场景设计总结
+
+### 核心设计原则
+
+本设计文档针对对话场景进行了全面的架构调整，遵循以下核心原则：
+
+1. **无状态设计**: 每次调用都重新初始化状态，确保系统的可靠性和可预测性
+2. **历史感知**: 通过输入的完整对话历史，实现上下文理解和连贯回答
+3. **智能分析**: 新增对话上下文分析，理解用户意图和对话关联性
+4. **性能优化**: 针对大对话历史进行优化，包括压缩、过滤和窗口管理
+
+### 关键技术创新
+
+1. **对话上下文分析**: `ConversationContext` 结构体提供全面的对话状态分析
+2. **智能历史管理**: 实现相关性过滤和上下文压缩，优化性能
+3. **增强思考机制**: 基于对话历史的 ReAct 思考，提升回答质量
+4. **无状态状态管理**: 创新性地实现了无状态的状态管理模式
+
+### 适用场景
+
+- **智能客服**: 支持多轮对话的客服系统
+- **知识问答**: 基于历史对话的深度问答
+- **任务助手**: 能够理解上下文的任务执行助手
+- **教育辅导**: 连贯性强的教学对话系统
+
+### 技术优势
+
+1. **高可靠性**: 无状态设计避免了状态污染和内存泄漏
+2. **强扩展性**: 基于 Eino 框架的模块化设计，易于扩展
+3. **智能化**: 深度理解对话上下文，提供更准确的回答
+4. **高性能**: 针对大对话历史的优化处理，保证响应速度
+
+通过这些设计调整，Enhanced MultiAgent 系统能够在对话场景下提供卓越的用户体验，同时保持系统的稳定性和可维护性。
+
+### 实现要点
+
 - **分离关注点**: 将输入处理和模型调用分离到不同的节点中
+- **类型安全**: 严格遵循 Eino 框架的类型对齐要求
+- **模块化设计**: 每个节点职责单一，便于测试和维护
+- **可观测性**: 通过回调机制提供完整的执行追踪
 
 这种设计确保了类型安全，同时保持了代码的清晰性和可维护性。
 
