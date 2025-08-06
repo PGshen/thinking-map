@@ -59,34 +59,34 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    START(["开始"]) --> INPUT["用户输入 []*schema.Message"]
+    START(["开始"]) --> INPUT["用户输入<br>[]*schema.Message"]
     
-    INPUT --> HOST_THINK["Host Think Node<br>输入: []*schema.Message<br>输出: *ThinkingResult"]
+    INPUT --> HOST_THINK["Host Think Node<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• OriginalMessages 保存<br>• CurrentThinking 设置<br>• ThinkingHistory 追加"]
     
-    HOST_THINK --> COMPLEXITY_BRANCH{"复杂度判断分支<br>ComplexityBranch"}
+    HOST_THINK --> COMPLEXITY_BRANCH{"复杂度判断分支<br>ComplexityBranch<br><br>状态读取:<br>• CurrentThinking.Complexity"}
     
-    COMPLEXITY_BRANCH -->|简单任务| DIRECT_ANSWER["Direct Answer Node<br>输入: *ThinkingResult<br>输出: *schema.Message"]
+    COMPLEXITY_BRANCH -->|简单任务| DIRECT_ANSWER["Direct Answer Node<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• IsSimpleTask = true<br>• IsCompleted = true<br>• FinalAnswer 设置"]
     
-    COMPLEXITY_BRANCH -->|复杂任务| PLAN_CREATE["Plan Creation Node<br>输入: *ThinkingResult<br>输出: *TaskPlan"]
+    COMPLEXITY_BRANCH -->|复杂任务| PLAN_CREATE["Plan Creation Node<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• CurrentPlan 创建<br>• Version = 1<br>• IsSimpleTask = false"]
     
-    PLAN_CREATE --> PLAN_EXECUTE["Plan Execution Node<br>输入: *TaskPlan<br>输出: *ExecutionContext"]
+    PLAN_CREATE --> PLAN_EXECUTE["Plan Execution Node<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• CurrentExecution 设置<br>• PlanStep.Status = Executing<br>• CurrentPlan.CurrentStep 更新"]
     
-    PLAN_EXECUTE --> SPECIALIST_BRANCH{"Specialist Branch<br>MultiBranch"}
+    PLAN_EXECUTE --> SPECIALIST_BRANCH{"Specialist Branch<br>MultiBranch<br><br>状态读取:<br>• CurrentExecution.PlanStep<br>• AssignedTo 专家选择"}
     
-    SPECIALIST_BRANCH --> SPEC1["Specialist 1<br>输入: *ExecutionContext<br>输出: *SpecialistResult"]
-    SPECIALIST_BRANCH --> SPEC2["Specialist 2<br>输入: *ExecutionContext<br>输出: *SpecialistResult"]
-    SPECIALIST_BRANCH --> SPECN["Specialist N<br>输入: *ExecutionContext<br>输出: *SpecialistResult"]
+    SPECIALIST_BRANCH --> SPEC1["Specialist 1<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• SpecialistResults[name] 设置<br>• 执行时长记录<br>• 置信度评估"]
+    SPECIALIST_BRANCH --> SPEC2["Specialist 2<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• SpecialistResults[name] 设置<br>• 执行时长记录<br>• 置信度评估"]
+    SPECIALIST_BRANCH --> SPECN["Specialist N<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• SpecialistResults[name] 设置<br>• 执行时长记录<br>• 置信度评估"]
     
-    SPEC1 --> RESULT_COLLECT["Result Collector<br>输入: map[string]*SpecialistResult<br>输出: *CollectedResults"]
+    SPEC1 --> RESULT_COLLECT["Result Collector<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• CurrentCollectedResults 设置<br>• ExecutionHistory 追加<br>• CurrentRound 记录"]
     SPEC2 --> RESULT_COLLECT
     SPECN --> RESULT_COLLECT
     
-    RESULT_COLLECT --> FEEDBACK_PROCESS["Feedback Processor<br>输入: *CollectedResults<br>输出: *FeedbackResult"]
+    RESULT_COLLECT --> FEEDBACK_PROCESS["Feedback Processor<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• CurrentFeedback 设置<br>• ShouldContinue 判断<br>• SuggestedAction 确定"]
     
-    FEEDBACK_PROCESS --> REFLECT_BRANCH{"Reflection Branch<br>StreamBranch"}
+    FEEDBACK_PROCESS --> REFLECT_BRANCH{"Reflection Branch<br>StreamBranch<br><br>状态读取:<br>• CurrentFeedback.ShouldContinue"}
     
-    REFLECT_BRANCH -->|需要继续| PLAN_UPDATE["Plan Update Node<br>输入: *FeedbackResult<br>输出: *TaskPlan"]
-    REFLECT_BRANCH -->|任务完成| FINAL_ANSWER["Final Answer Node<br>输入: *FeedbackResult<br>输出: *schema.Message"]
+    REFLECT_BRANCH -->|需要继续| PLAN_UPDATE["Plan Update Node<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• CurrentPlan.Version++<br>• UpdateHistory 追加<br>• CurrentRound++<br>• Steps 动态调整"]
+    REFLECT_BRANCH -->|任务完成| FINAL_ANSWER["Final Answer Node<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• IsCompleted = true<br>• FinalAnswer 设置"]
     
     PLAN_UPDATE --> PLAN_EXECUTE
     
@@ -100,6 +100,145 @@ flowchart TD
     style COMPLEXITY_BRANCH fill:#ffebee
     style SPECIALIST_BRANCH fill:#f1f8e9
     style REFLECT_BRANCH fill:#fce4ec
+    style PLAN_UPDATE fill:#e8f5e8
+```
+
+### 状态管理详解
+
+#### 全局状态 EnhancedState 的数据流转
+
+在增强版多智能体系统中，`EnhancedState` 作为全局状态管理器，贯穿整个执行流程。每个节点都会读取和更新特定的状态字段，确保数据的一致性和可追溯性。
+
+##### 状态字段更新时序
+
+```mermaid
+gantt
+    title 状态字段更新时序图
+    dateFormat X
+    axisFormat %s
+    
+    section 初始化阶段
+    OriginalMessages     :active, init1, 0, 1
+    
+    section 思考阶段
+    CurrentThinking      :active, think1, 1, 2
+    ThinkingHistory      :active, think2, 1, 2
+    
+    section 规划阶段
+    CurrentPlan          :active, plan1, 2, 3
+    IsSimpleTask         :active, plan2, 2, 3
+    
+    section 执行阶段
+    CurrentExecution     :active, exec1, 3, 4
+    SpecialistResults    :active, exec2, 4, 5
+    CurrentCollectedResults :active, exec3, 5, 6
+    ExecutionHistory     :active, exec4, 5, 6
+    CurrentRound         :active, exec5, 5, 6
+    
+    section 反馈阶段
+    CurrentFeedback      :active, feed1, 6, 7
+    
+    section 更新阶段
+    CurrentPlan(更新)    :active, update1, 7, 8
+    
+    section 完成阶段
+    IsCompleted          :active, final1, 8, 9
+    FinalAnswer          :active, final2, 8, 9
+```
+
+##### 关键状态转换点
+
+1. **思考阶段 (Host Think Node)**
+   - **读取**: `OriginalMessages` (如果存在)
+   - **更新**: 
+     - `OriginalMessages` ← 用户输入消息
+     - `CurrentThinking` ← 解析的思考结果
+     - `ThinkingHistory` ← 追加当前思考记录
+
+2. **复杂度判断 (Complexity Branch)**
+   - **读取**: `CurrentThinking.Complexity`
+   - **分支逻辑**: 根据复杂度决定后续流程
+
+3. **直接回答 (Direct Answer Node)**
+   - **更新**:
+     - `IsSimpleTask` ← true
+     - `IsCompleted` ← true
+     - `FinalAnswer` ← 生成的答案
+
+4. **规划创建 (Plan Creation Node)**
+   - **读取**: `CurrentThinking`
+   - **更新**:
+     - `CurrentPlan` ← 新创建的任务规划
+     - `CurrentPlan.Version` ← 1
+     - `IsSimpleTask` ← false
+
+5. **规划执行 (Plan Execution Node)**
+   - **读取**: `CurrentPlan`
+   - **更新**:
+     - `CurrentExecution` ← 当前执行上下文
+     - `CurrentPlan.CurrentStep` ← 当前步骤ID
+     - `PlanStep.Status` ← StepStatusExecuting
+
+6. **专家执行 (Specialist Nodes)**
+   - **读取**: `CurrentExecution`
+   - **更新**:
+     - `SpecialistResults[name]` ← 专家执行结果
+     - 执行时长、置信度等元数据
+
+7. **结果收集 (Result Collector)**
+   - **读取**: `SpecialistResults`
+   - **更新**:
+     - `CurrentCollectedResults` ← 汇总的执行结果
+     - `ExecutionHistory` ← 追加执行记录
+     - `CurrentRound` ← 当前执行轮次
+
+8. **反馈处理 (Feedback Processor)**
+   - **读取**: `CurrentCollectedResults`, `CurrentPlan`
+   - **更新**:
+     - `CurrentFeedback` ← 反馈分析结果
+     - `CurrentFeedback.ShouldContinue` ← 是否继续执行
+
+9. **规划更新 (Plan Update Node)**
+   - **读取**: `CurrentFeedback`, `CurrentPlan`
+   - **更新**:
+     - `CurrentPlan.Version` ← 版本号递增
+     - `CurrentPlan.UpdateHistory` ← 追加更新记录
+     - `CurrentRound` ← 轮次递增
+     - `CurrentPlan.Steps` ← 动态调整步骤
+
+10. **最终答案 (Final Answer Node)**
+    - **读取**: `CurrentFeedback`
+    - **更新**:
+      - `IsCompleted` ← true
+      - `FinalAnswer` ← 最终生成的答案
+
+##### 状态一致性保证
+
+为确保状态的一致性和可靠性，系统采用以下机制：
+
+1. **原子性更新**: 每个节点的状态更新都是原子性的
+2. **版本控制**: 关键状态（如TaskPlan）具有版本号机制
+3. **历史追踪**: 重要操作都会记录到历史列表中
+4. **状态验证**: 在关键节点进行状态完整性检查
+5. **错误恢复**: 支持从历史状态恢复执行
+
+##### 状态序列化支持
+
+```go
+// 状态序列化接口
+type StateSerializer interface {
+    Serialize(state *EnhancedState) ([]byte, error)
+    Deserialize(data []byte) (*EnhancedState, error)
+}
+
+// 支持状态持久化和恢复
+func (s *EnhancedState) Checkpoint() *StateCheckpoint {
+    return &StateCheckpoint{
+        Timestamp: time.Now(),
+        Round:     s.CurrentRound,
+        State:     s.Clone(),
+    }
+}
 ```
 
 ## 核心类型定义
@@ -678,6 +817,7 @@ func NewPlanCreationNode(config *EnhancedHost) *compose.GraphNode {
         compose.WithStatePostHandler(postHandler),
     )
 }
+```
 
 
 ### 5. Plan Execution Node
@@ -935,6 +1075,7 @@ func NewFeedbackProcessorNode(config *EnhancedHost) *compose.GraphNode {
         compose.WithStatePostHandler(postHandler),
     )
 }
+```
 
 
 ### 10. Plan Update Node
@@ -1020,6 +1161,7 @@ func reflectionBranchCondition(ctx context.Context, sr *schema.StreamReader[*sch
     
     return "continue", nil
 }
+```
 
 
 ### 12. Final Answer Node
