@@ -1,366 +1,42 @@
-package enhanced_multiagent
+/*
+ * Copyright 2024 CloudWeGo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Package enhanced implements the enhanced multi-agent system with ReAct thinking,
+// task planning, and continuous feedback capabilities.
+package enhanced
 
 import (
+	"context"
+	"encoding/json"
 	"time"
 
+	"github.com/cloudwego/eino/compose"
+	"github.com/cloudwego/eino/flow/agent"
 	"github.com/cloudwego/eino/schema"
 )
 
-// EnhancedState 增强版多智能体系统的全局状态
-type EnhancedState struct {
-	// 原始对话历史
-	OriginalMessages []*schema.Message
-
-	// 对话上下文分析结果
-	ConversationContext *ConversationContext
-
-	// 当前任务规划
-	CurrentPlan *TaskPlan
-
-	// 当前执行上下文
-	CurrentExecution *ExecutionContext
-
-	// 当前专家结果映射
-	CurrentSpecialistResults map[string]*SpecialistResult
-
-	// 当前收集的结果
-	CurrentCollectedResults *CollectedResults
-
-	// 当前反馈结果
-	CurrentFeedbackResult *FeedbackResult
-
-	// 当前思考结果
-	CurrentThinkingResult *ThinkingResult
-
-	// 执行历史（仅限当前调用）
-	ExecutionHistory []*ExecutionRecord
-
-	// 思考历史（仅限当前调用）
-	ThinkingHistory []*ThinkingResult
-
-	// 当前执行轮次
-	CurrentRound int
-
-	// 最大执行轮次
-	MaxRounds int
-
-	// 是否为简单任务
-	IsSimpleTask bool
-
-	// 任务完成状态
-	IsCompleted bool
-
-	// 最终答案
-	FinalAnswer *schema.Message
-
-	// 会话ID（用于日志追踪）
-	SessionID string
-
-	// 调用时间戳
-	CallTimestamp time.Time
-}
-
-// ConversationContext 对话上下文分析结果
-type ConversationContext struct {
-	// 对话轮次数
-	TurnCount int
-
-	// 是否为首次对话
-	IsFirstTurn bool
-
-	// 是否为延续性问题
-	IsContinuation bool
-
-	// 最新用户消息
-	LatestUserMessage *schema.Message
-
-	// 最新助手回复
-	LatestAssistantMessage *schema.Message
-
-	// 对话主题
-	ConversationTopic string
-
-	// 用户意图分析
-	UserIntent string
-
-	// 意图置信度
-	IntentConfidence float64
-
-	// 情感色调分析
-	EmotionalTone string
-
-	// 关键实体提取
-	KeyEntities []string
-
-	// 复杂度提示
-	ComplexityHint TaskComplexity
-
-	// 相关历史上下文
-	RelevantHistory []*schema.Message
-
-	// 上下文摘要
-	ContextSummary string
-
-	// 分析时间戳
-	AnalyzedAt time.Time
-
-	// 扩展元数据
-	Metadata map[string]interface{}
-}
-
-// ExecutionRecord 执行记录
-type ExecutionRecord struct {
-	Round       int
-	PlanVersion int
-	Results     *CollectedResults
-	Feedback    *FeedbackResult
-	Duration    time.Duration
-	Timestamp   time.Time
-	Status      ExecutionStatus
-	Metadata    map[string]interface{}
-}
-
-// TaskPlan 任务规划结构
-type TaskPlan struct {
-	// 规划内容（Markdown格式）
-	Content string
-
-	// 当前步骤
-	CurrentStep int
-
-	// 总步骤数（动态更新）
-	TotalSteps int
-
-	// 已完成的步骤
-	CompletedSteps []int
-
-	// 步骤详情（支持动态添加、修改、删除）
-	Steps []*PlanStep
-
-	// 规划版本号（每次更新递增）
-	Version int
-
-	// 是否允许动态调整
-	AllowDynamicUpdate bool
-
-	// 创建时间
-	CreatedAt time.Time
-
-	// 最后更新时间
-	UpdatedAt time.Time
-
-	// 更新历史
-	UpdateHistory []*PlanUpdate
-}
-
-// PlanUpdate 规划更新记录
-type PlanUpdate struct {
-	Version     int
-	UpdateType  PlanUpdateType
-	Description string
-	Timestamp   time.Time
-	Changes     map[string]interface{}
-}
-
-// PlanStep 规划步骤
-type PlanStep struct {
-	ID                int
-	Description       string
-	Status            StepStatus
-	AssignedTo        string // 分配给哪个specialist
-	Result            string // 执行结果
-	Feedback          string // 反馈信息
-	Priority          int    // 步骤优先级
-	Dependencies      []int  // 依赖的步骤ID
-	EstimatedDuration time.Duration
-	ActualDuration    time.Duration
-	RetryCount        int
-	MaxRetries        int
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
-
-// ThinkingResult 思考结果
-type ThinkingResult struct {
-	// 思考内容
-	Thought string
-
-	// 任务复杂度评估
-	Complexity TaskComplexity
-
-	// 推理过程
-	Reasoning string
-
-	// 下一步行动
-	NextAction ActionType
-
-	// 原始消息
-	OriginalMessages []*schema.Message
-
-	// 对话上下文分析
-	ConversationAnalysis *ConversationContext
-
-	// 是否需要参考历史对话
-	NeedsHistoryContext bool
-
-	// 回答策略
-	ResponseStrategy string
-
-	// 关键洞察
-	KeyInsights []string
-
-	// 风险评估
-	RiskAssessment string
-
-	// 置信度评估
-	Confidence float64
-
-	// 思考耗时
-	Duration time.Duration
-
-	// 时间戳
-	Timestamp time.Time
-
-	// 扩展元数据
-	Metadata map[string]interface{}
-}
-
-// ExecutionContext 执行上下文
-type ExecutionContext struct {
-	// 当前任务描述
-	TaskDescription string
-
-	// 相关的规划步骤
-	PlanStep *PlanStep
-
-	// 历史消息
-	Messages []*schema.Message
-
-	// 执行参数
-	Parameters map[string]interface{}
-
-	// 期望输出格式
-	ExpectedFormat string
-}
-
-// SpecialistResult 专家执行结果
-type SpecialistResult struct {
-	// 专家名称
-	SpecialistName string
-
-	// 执行结果
-	Result *schema.Message
-
-	// 执行状态
-	Status ExecutionStatus
-
-	// 错误信息
-	Error string
-
-	// 执行时长
-	Duration time.Duration
-
-	// 置信度
-	Confidence float64
-
-	// 开始时间
-	StartTime time.Time
-
-	// 结束时间
-	EndTime time.Time
-
-	// 重试次数
-	RetryCount int
-
-	// 质量评分
-	QualityScore float64
-
-	// 相关性评分
-	RelevanceScore float64
-
-	// 扩展元数据
-	Metadata map[string]interface{}
-}
-
-// CollectedResults 收集的结果
-type CollectedResults struct {
-	// 所有专家结果
-	Results map[string]*SpecialistResult
-
-	// 成功的结果
-	SuccessfulResults []*SpecialistResult
-
-	// 失败的结果
-	FailedResults []*SpecialistResult
-
-	// 部分成功的结果
-	PartialResults []*SpecialistResult
-
-	// 汇总信息
-	Summary string
-
-	// 整体质量评分
-	OverallQuality float64
-
-	// 结果一致性评分
-	ConsistencyScore float64
-
-	// 收集时间
-	CollectedAt time.Time
-
-	// 总执行时长
-	TotalDuration time.Duration
-
-	// 扩展元数据
-	Metadata map[string]interface{}
-}
-
-// FeedbackResult 反馈结果
-type FeedbackResult struct {
-	// 反馈内容
-	Feedback string
-
-	// 是否需要继续执行
-	ShouldContinue bool
-
-	// 建议的下一步行动
-	SuggestedAction ActionType
-
-	// 规划更新建议
-	PlanUpdateSuggestion string
-
-	// 最终答案（如果任务完成）
-	FinalAnswer *schema.Message
-
-	// 收集的结果
-	CollectedResults *CollectedResults
-
-	// 对话连贯性评估
-	ConversationCoherence float64
-
-	// 用户满意度预测
-	UserSatisfactionPrediction float64
-
-	// 改进建议
-	ImprovementSuggestions []string
-
-	// 风险警告
-	RiskWarnings []string
-
-	// 反馈生成时间
-	GeneratedAt time.Time
-
-	// 扩展元数据
-	Metadata map[string]interface{}
-}
-
-// 枚举类型定义
+// TaskComplexity represents the complexity level of a task
 type TaskComplexity int
 
 const (
-	TaskComplexitySimple TaskComplexity = iota
+	TaskComplexityUnknown TaskComplexity = iota
+	TaskComplexitySimple
 	TaskComplexityModerate
 	TaskComplexityComplex
+	TaskComplexityVeryComplex
 )
 
 func (tc TaskComplexity) String() string {
@@ -371,130 +47,356 @@ func (tc TaskComplexity) String() string {
 		return "moderate"
 	case TaskComplexityComplex:
 		return "complex"
+	case TaskComplexityVeryComplex:
+		return "very_complex"
 	default:
 		return "unknown"
 	}
 }
 
+// ActionType represents the type of action an agent can take
 type ActionType int
 
 const (
-	ActionTypeDirectAnswer ActionType = iota
-	ActionTypeCreatePlan
-	ActionTypeExecuteStep
+	ActionTypeUnknown ActionType = iota
+	ActionTypeThink
+	ActionTypePlan
+	ActionTypeExecute
 	ActionTypeReflect
-	ActionTypeUpdatePlan
+	ActionTypeAnswer
 )
 
 func (at ActionType) String() string {
 	switch at {
-	case ActionTypeDirectAnswer:
-		return "direct_answer"
-	case ActionTypeCreatePlan:
-		return "create_plan"
-	case ActionTypeExecuteStep:
-		return "execute_step"
+	case ActionTypeThink:
+		return "think"
+	case ActionTypePlan:
+		return "plan"
+	case ActionTypeExecute:
+		return "execute"
 	case ActionTypeReflect:
 		return "reflect"
-	case ActionTypeUpdatePlan:
-		return "update_plan"
+	case ActionTypeAnswer:
+		return "answer"
 	default:
 		return "unknown"
 	}
 }
 
+// StepStatus represents the status of a plan step
 type StepStatus int
 
 const (
-	StepStatusPending StepStatus = iota
-	StepStatusExecuting
+	StepStatusUnknown StepStatus = iota
+	StepStatusPending
+	StepStatusRunning
 	StepStatusCompleted
 	StepStatusFailed
 	StepStatusSkipped
-	StepStatusBlocked
 )
 
 func (ss StepStatus) String() string {
 	switch ss {
 	case StepStatusPending:
 		return "pending"
-	case StepStatusExecuting:
-		return "executing"
+	case StepStatusRunning:
+		return "running"
 	case StepStatusCompleted:
 		return "completed"
 	case StepStatusFailed:
 		return "failed"
 	case StepStatusSkipped:
 		return "skipped"
-	case StepStatusBlocked:
-		return "blocked"
 	default:
 		return "unknown"
 	}
 }
 
+// ExecutionStatus represents the overall execution status
 type ExecutionStatus int
 
 const (
-	ExecutionStatusRunning ExecutionStatus = iota
-	ExecutionStatusCompleted
+	ExecutionStatusUnknown ExecutionStatus = iota
+	ExecutionStatusStarted
+	ExecutionStatusRunning
+	ExecutionStatusSuccess
 	ExecutionStatusFailed
 	ExecutionStatusTimeout
 	ExecutionStatusCancelled
-	ExecutionStatusSuccess
-	ExecutionStatusPartial
 )
 
 func (es ExecutionStatus) String() string {
 	switch es {
+	case ExecutionStatusStarted:
+		return "started"
 	case ExecutionStatusRunning:
 		return "running"
-	case ExecutionStatusCompleted:
-		return "completed"
+	case ExecutionStatusSuccess:
+		return "success"
 	case ExecutionStatusFailed:
 		return "failed"
 	case ExecutionStatusTimeout:
 		return "timeout"
 	case ExecutionStatusCancelled:
 		return "cancelled"
-	case ExecutionStatusSuccess:
-		return "success"
-	case ExecutionStatusPartial:
-		return "partial"
 	default:
 		return "unknown"
 	}
 }
 
+// PlanUpdateType represents the type of plan update
 type PlanUpdateType int
 
 const (
-	PlanUpdateTypeAddStep PlanUpdateType = iota
-	PlanUpdateTypeModifyStep
-	PlanUpdateTypeDeleteStep
-	PlanUpdateTypeReorderSteps
-	PlanUpdateTypeChangeStrategy
-	PlanUpdateTypeRemoveStep
-	PlanUpdateTypeModifyPlan
+	PlanUpdateTypeUnknown PlanUpdateType = iota
+	PlanUpdateTypeStepAdd
+	PlanUpdateTypeStepModify
+	PlanUpdateTypeStepRemove
+	PlanUpdateTypeStepReorder
+	PlanUpdateTypePriorityChange
+	PlanUpdateTypeDependencyChange
+	PlanUpdateTypeResourceChange
+	PlanUpdateTypeStrategyChange
 )
 
 func (put PlanUpdateType) String() string {
 	switch put {
-	case PlanUpdateTypeAddStep:
-		return "add_step"
-	case PlanUpdateTypeModifyStep:
-		return "modify_step"
-	case PlanUpdateTypeDeleteStep:
-		return "delete_step"
-	case PlanUpdateTypeReorderSteps:
-		return "reorder_steps"
-	case PlanUpdateTypeChangeStrategy:
-		return "change_strategy"
-	case PlanUpdateTypeRemoveStep:
-		return "remove_step"
-	case PlanUpdateTypeModifyPlan:
-		return "modify_plan"
+	case PlanUpdateTypeStepAdd:
+		return "step_add"
+	case PlanUpdateTypeStepModify:
+		return "step_modify"
+	case PlanUpdateTypeStepRemove:
+		return "step_remove"
+	case PlanUpdateTypeStepReorder:
+		return "step_reorder"
+	case PlanUpdateTypePriorityChange:
+		return "priority_change"
+	case PlanUpdateTypeDependencyChange:
+		return "dependency_change"
+	case PlanUpdateTypeResourceChange:
+		return "resource_change"
+	case PlanUpdateTypeStrategyChange:
+		return "strategy_change"
 	default:
 		return "unknown"
 	}
+}
+
+// ConversationContext contains conversation analysis results
+type ConversationContext struct {
+	UserIntent      string            `json:"user_intent"`
+	RelevantHistory []*schema.Message `json:"relevant_history"`
+	KeyTopics       []string          `json:"key_topics"`
+	ContextSummary  string            `json:"context_summary"`
+	Complexity      TaskComplexity    `json:"complexity"`
+	Metadata        map[string]any    `json:"metadata,omitempty"`
+}
+
+// ExecutionRecord represents a single execution step record
+type ExecutionRecord struct {
+	StepID      string                 `json:"step_id"`
+	Action      ActionType             `json:"action"`
+	Input       []*schema.Message      `json:"input"`
+	Output      *schema.Message        `json:"output"`
+	StartTime   time.Time              `json:"start_time"`
+	EndTime     time.Time              `json:"end_time"`
+	Duration    time.Duration          `json:"duration"`
+	Status      ExecutionStatus        `json:"status"`
+	Error       string                 `json:"error,omitempty"`
+	Metadata    map[string]any         `json:"metadata,omitempty"`
+}
+
+// StepResult represents the result of executing a plan step
+type StepResult struct {
+	Success        bool               `json:"success"`
+	Output         *schema.Message    `json:"output"`
+	Error          string             `json:"error,omitempty"`
+	Confidence     float64            `json:"confidence"`
+	QualityScore   float64            `json:"quality_score"`
+	Metadata       map[string]any     `json:"metadata,omitempty"`
+}
+
+// PlanStep represents a single step in a task plan
+type PlanStep struct {
+	ID                string                 `json:"id"`
+	Name              string                 `json:"name"`
+	Description       string                 `json:"description"`
+	AssignedSpecialist string                `json:"assigned_specialist"`
+	Priority          int                    `json:"priority"`
+	EstimatedTime     time.Duration          `json:"estimated_time"`
+	ActualTime        time.Duration          `json:"actual_time"`
+	Status            StepStatus             `json:"status"`
+	StartTime         *time.Time             `json:"start_time,omitempty"`
+	EndTime           *time.Time             `json:"end_time,omitempty"`
+	Dependencies      []string               `json:"dependencies,omitempty"`
+	Parameters        map[string]any         `json:"parameters,omitempty"`
+	Result            *StepResult            `json:"result,omitempty"`
+	Metadata          map[string]any         `json:"metadata,omitempty"`
+}
+
+// ImpactAssessment represents the impact assessment of a plan update
+type ImpactAssessment struct {
+	AffectedSteps   []string           `json:"affected_steps"`
+	TimeImpact      time.Duration      `json:"time_impact"`
+	ResourceImpact  map[string]any     `json:"resource_impact,omitempty"`
+	RiskLevel       string             `json:"risk_level"`
+	Mitigation      string             `json:"mitigation,omitempty"`
+}
+
+// PlanChange represents a specific change in a plan update
+type PlanChange struct {
+	Type      PlanUpdateType     `json:"type"`
+	TargetID  string             `json:"target_id"`
+	Field     string             `json:"field"`
+	OldValue  any                `json:"old_value,omitempty"`
+	NewValue  any                `json:"new_value,omitempty"`
+	Metadata  map[string]any     `json:"metadata,omitempty"`
+}
+
+// PlanUpdate represents an update to a task plan
+type PlanUpdate struct {
+	ID               string             `json:"id"`
+	PlanVersion      int                `json:"plan_version"`
+	UpdateType       PlanUpdateType     `json:"update_type"`
+	Description      string             `json:"description"`
+	Reason           string             `json:"reason"`
+	Changes          []PlanChange       `json:"changes"`
+	Timestamp        time.Time          `json:"timestamp"`
+	ImpactAssessment *ImpactAssessment  `json:"impact_assessment,omitempty"`
+	Metadata         map[string]any     `json:"metadata,omitempty"`
+}
+
+// TaskPlan represents a complete task execution plan
+type TaskPlan struct {
+	ID                string                 `json:"id"`
+	Version           int                    `json:"version"`
+	Name              string                 `json:"name"`
+	Description       string                 `json:"description"`
+	Status            ExecutionStatus        `json:"status"`
+	CreatedAt         time.Time              `json:"created_at"`
+	UpdatedAt         time.Time              `json:"updated_at"`
+	Steps             []*PlanStep            `json:"steps"`
+	Dependencies      map[string][]string    `json:"dependencies,omitempty"`
+	ResourceAllocation map[string]any        `json:"resource_allocation,omitempty"`
+	UpdateHistory     []*PlanUpdate          `json:"update_history,omitempty"`
+	Metadata          map[string]any         `json:"metadata,omitempty"`
+}
+
+// EnhancedState represents the complete state of the enhanced multi-agent system
+type EnhancedState struct {
+	// Session Information
+	SessionID       string    `json:"session_id"`
+	ConversationID  string    `json:"conversation_id"`
+	RoundNumber     int       `json:"round_number"`
+	StartTime       time.Time `json:"start_time"`
+
+	// Conversation Context
+	ConversationContext *ConversationContext `json:"conversation_context,omitempty"`
+	OriginalMessages    []*schema.Message    `json:"original_messages"`
+
+	// Thinking History
+	ThinkingHistory []*ExecutionRecord `json:"thinking_history,omitempty"`
+
+	// Task Planning
+	CurrentPlan     *TaskPlan `json:"current_plan,omitempty"`
+	PlanHistory     []*TaskPlan `json:"plan_history,omitempty"`
+
+	// Execution Status
+	ExecutionStatus ExecutionStatus `json:"execution_status"`
+	CurrentStep     string          `json:"current_step,omitempty"`
+	ExecutionHistory []*ExecutionRecord `json:"execution_history,omitempty"`
+
+	// Specialist Results
+	SpecialistResults map[string]*StepResult `json:"specialist_results,omitempty"`
+
+	// Collected Results
+	CollectedResults []*schema.Message `json:"collected_results,omitempty"`
+	FinalResult      *schema.Message   `json:"final_result,omitempty"`
+
+	// Feedback and Reflection
+	FeedbackHistory []map[string]any `json:"feedback_history,omitempty"`
+	ReflectionCount int              `json:"reflection_count"`
+
+	// Execution Control
+	MaxRounds       int  `json:"max_rounds"`
+	ShouldContinue  bool `json:"should_continue"`
+	IsCompleted     bool `json:"is_completed"`
+
+	// Final Answer
+	FinalAnswer *schema.Message `json:"final_answer,omitempty"`
+
+	// Metadata
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// ToJSON serializes the state to JSON
+func (es *EnhancedState) ToJSON() ([]byte, error) {
+	return json.Marshal(es)
+}
+
+// FromJSON deserializes the state from JSON
+func (es *EnhancedState) FromJSON(data []byte) error {
+	return json.Unmarshal(data, es)
+}
+
+// Clone creates a deep copy of the state
+func (es *EnhancedState) Clone() (*EnhancedState, error) {
+	data, err := es.ToJSON()
+	if err != nil {
+		return nil, err
+	}
+	
+	var cloned EnhancedState
+	err = cloned.FromJSON(data)
+	if err != nil {
+		return nil, err
+	}
+	
+	return &cloned, nil
+}
+
+// EnhancedMultiAgent represents the enhanced multi-agent system
+type EnhancedMultiAgent struct {
+	runnable         compose.Runnable[[]*schema.Message, *schema.Message]
+	graph            *compose.Graph[[]*schema.Message, *schema.Message]
+	graphAddNodeOpts []compose.GraphAddNodeOpt
+	config           *EnhancedMultiAgentConfig
+}
+
+
+
+// Generate executes the enhanced multi-agent system
+func (ema *EnhancedMultiAgent) Generate(ctx context.Context, input []*schema.Message, opts ...agent.AgentOption) (*schema.Message, error) {
+	composeOptions := agent.GetComposeOptions(opts...)
+
+	// TODO: implement convertCallbacks function
+	// handler := convertCallbacks(opts...)
+	// if handler != nil {
+	//	composeOptions = append(composeOptions, compose.WithCallbacks(handler))
+	// }
+
+	return ema.runnable.Invoke(ctx, input, composeOptions...)
+}
+
+// Stream executes the enhanced multi-agent system in streaming mode
+func (ema *EnhancedMultiAgent) Stream(ctx context.Context, input []*schema.Message, opts ...agent.AgentOption) (*schema.StreamReader[*schema.Message], error) {
+	composeOptions := agent.GetComposeOptions(opts...)
+
+	// TODO: implement convertCallbacks function
+	// handler := convertCallbacks(opts...)
+	// if handler != nil {
+	//	composeOptions = append(composeOptions, compose.WithCallbacks(handler))
+	// }
+
+	return ema.runnable.Stream(ctx, input, composeOptions...)
+}
+
+// ExportGraph exports the underlying graph
+func (ema *EnhancedMultiAgent) ExportGraph() (compose.AnyGraph, []compose.GraphAddNodeOpt) {
+	return ema.graph, ema.graphAddNodeOpts
+}
+
+// GetConfig returns the configuration
+func (ema *EnhancedMultiAgent) GetConfig() *EnhancedMultiAgentConfig {
+	return ema.config
 }

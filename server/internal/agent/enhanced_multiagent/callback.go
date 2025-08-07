@@ -1,173 +1,278 @@
-package enhanced_multiagent
+/*
+ * Copyright 2024 CloudWeGo Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package enhanced
 
 import (
 	"context"
+	"log"
 	"time"
 
+	"github.com/cloudwego/eino/callbacks"
+	"github.com/cloudwego/eino/flow/agent"
 	"github.com/cloudwego/eino/schema"
 )
 
-// EnhancedMultiAgentCallback 增强版多智能体回调接口
+// EnhancedMultiAgentCallback defines the callback interface for the enhanced multi-agent system
 type EnhancedMultiAgentCallback interface {
-	// 思考开始
-	OnThinkingStart(ctx context.Context, info *ThinkingStartInfo) context.Context
+	// System lifecycle callbacks
+	OnSystemStart(ctx context.Context, config *EnhancedMultiAgentConfig) context.Context
+	OnSystemEnd(ctx context.Context, result *schema.Message, err error) context.Context
 
-	// 思考完成
-	OnThinkingComplete(ctx context.Context, info *ThinkingCompleteInfo) context.Context
+	// Conversation analysis callbacks
+	OnConversationAnalysisStart(ctx context.Context, messages []*schema.Message) context.Context
+	OnConversationAnalysisEnd(ctx context.Context, context *ConversationContext) context.Context
 
-	// 规划创建
-	OnPlanCreated(ctx context.Context, info *PlanCreatedInfo) context.Context
+	// Thinking callbacks
+	OnThinkingStart(ctx context.Context, state *EnhancedState) context.Context
+	OnThinkingStep(ctx context.Context, step int, thought string) context.Context
+	OnThinkingEnd(ctx context.Context, thoughts []*ExecutionRecord) context.Context
 
-	// 规划更新
-	OnPlanUpdated(ctx context.Context, info *PlanUpdatedInfo) context.Context
+	// Complexity decision callbacks
+	OnComplexityDecision(ctx context.Context, complexity TaskComplexity, reasoning string) context.Context
 
-	// 专家调用
-	OnSpecialistInvoke(ctx context.Context, info *SpecialistInvokeInfo) context.Context
+	// Plan creation callbacks
+	OnPlanCreationStart(ctx context.Context, state *EnhancedState) context.Context
+	OnPlanCreationEnd(ctx context.Context, plan *TaskPlan) context.Context
 
-	// 专家完成
-	OnSpecialistComplete(ctx context.Context, info *SpecialistCompleteInfo) context.Context
+	// Plan update callbacks
+	OnPlanUpdateStart(ctx context.Context, currentPlan *TaskPlan, feedback map[string]any) context.Context
+	OnPlanUpdateEnd(ctx context.Context, updatedPlan *TaskPlan, update *PlanUpdate) context.Context
 
-	// 反馈生成
-	OnFeedbackGenerated(ctx context.Context, info *FeedbackGeneratedInfo) context.Context
+	// Execution callbacks
+	OnExecutionStart(ctx context.Context, plan *TaskPlan) context.Context
+	OnExecutionEnd(ctx context.Context, results map[string]*StepResult) context.Context
 
-	// 任务完成
-	OnTaskComplete(ctx context.Context, info *TaskCompleteInfo) context.Context
+	// Specialist execution callbacks
+	OnSpecialistExecutionStart(ctx context.Context, specialistName string, step *PlanStep) context.Context
+	OnSpecialistExecutionEnd(ctx context.Context, specialistName string, result *StepResult) context.Context
+	OnSpecialistExecutionError(ctx context.Context, specialistName string, err error) context.Context
 
-	// 错误处理
-	OnError(ctx context.Context, info *ErrorInfo) context.Context
+	// Result collection callbacks
+	OnResultCollectionStart(ctx context.Context, results map[string]*StepResult) context.Context
+	OnResultCollectionEnd(ctx context.Context, collectedResults []*schema.Message) context.Context
+
+	// Feedback processing callbacks
+	OnFeedbackProcessingStart(ctx context.Context, results []*schema.Message) context.Context
+	OnFeedbackProcessingEnd(ctx context.Context, feedback map[string]any) context.Context
+
+	// Reflection decision callbacks
+	OnReflectionDecision(ctx context.Context, shouldContinue bool, reasoning string) context.Context
+
+	// Round control callbacks
+	OnRoundStart(ctx context.Context, roundNumber int, state *EnhancedState) context.Context
+	OnRoundEnd(ctx context.Context, roundNumber int, state *EnhancedState) context.Context
+
+	// Error handling callbacks
+	OnError(ctx context.Context, stage string, err error) context.Context
+	OnRecovery(ctx context.Context, stage string, recoveryAction string) context.Context
+
+	// Performance monitoring callbacks
+	OnPerformanceMetric(ctx context.Context, metric string, value any, timestamp time.Time) context.Context
 }
 
-// 回调信息结构体
-
-// ThinkingStartInfo 思考开始信息
-type ThinkingStartInfo struct {
-	SessionID       string
-	Messages        []*schema.Message
-	ConversationCtx *ConversationContext
-	Timestamp       time.Time
-	Metadata        map[string]interface{}
+// DefaultEnhancedCallback provides a default implementation of EnhancedMultiAgentCallback
+type DefaultEnhancedCallback struct {
+	logger *log.Logger
 }
 
-// ThinkingCompleteInfo 思考完成信息
-type ThinkingCompleteInfo struct {
-	SessionID      string
-	ThinkingResult *ThinkingResult
-	Duration       time.Duration
-	Timestamp      time.Time
-	Metadata       map[string]interface{}
+// NewDefaultEnhancedCallback creates a new default callback instance
+func NewDefaultEnhancedCallback() *DefaultEnhancedCallback {
+	return &DefaultEnhancedCallback{
+		logger: log.Default(),
+	}
 }
 
-// PlanCreatedInfo 规划创建信息
-type PlanCreatedInfo struct {
-	SessionID      string
-	Plan           *TaskPlan
-	ThinkingResult *ThinkingResult
-	Timestamp      time.Time
-	Metadata       map[string]interface{}
-}
-
-// PlanUpdatedInfo 规划更新信息
-type PlanUpdatedInfo struct {
-	SessionID  string
-	OldPlan    *TaskPlan
-	NewPlan    *TaskPlan
-	UpdateType PlanUpdateType
-	Reason     string
-	Timestamp  time.Time
-	Metadata   map[string]interface{}
-}
-
-// SpecialistInvokeInfo 专家调用信息
-type SpecialistInvokeInfo struct {
-	SessionID      string
-	SpecialistName string
-	PlanStep       *PlanStep
-	ExecutionCtx   *ExecutionContext
-	Timestamp      time.Time
-	Metadata       map[string]interface{}
-}
-
-// SpecialistCompleteInfo 专家完成信息
-type SpecialistCompleteInfo struct {
-	SessionID      string
-	SpecialistName string
-	Result         *SpecialistResult
-	Duration       time.Duration
-	Timestamp      time.Time
-	Metadata       map[string]interface{}
-}
-
-// FeedbackGeneratedInfo 反馈生成信息
-type FeedbackGeneratedInfo struct {
-	SessionID        string
-	FeedbackResult   *FeedbackResult
-	CollectedResults *CollectedResults
-	Round            int
-	Timestamp        time.Time
-	Metadata         map[string]interface{}
-}
-
-// TaskCompleteInfo 任务完成信息
-type TaskCompleteInfo struct {
-	SessionID        string
-	FinalAnswer      *schema.Message
-	ExecutionHistory []*ExecutionRecord
-	TotalDuration    time.Duration
-	TotalRounds      int
-	IsSimpleTask     bool
-	Timestamp        time.Time
-	Metadata         map[string]interface{}
-}
-
-// ErrorInfo 错误信息
-type ErrorInfo struct {
-	SessionID string
-	Error     error
-	ErrorType string
-	Component string
-	Context   map[string]interface{}
-	Timestamp time.Time
-	Metadata  map[string]interface{}
-}
-
-// BaseCallback 基础回调实现，提供默认的空实现
-type BaseCallback struct{}
-
-func (bc *BaseCallback) OnThinkingStart(ctx context.Context, info *ThinkingStartInfo) context.Context {
+// System lifecycle callbacks
+func (cb *DefaultEnhancedCallback) OnSystemStart(ctx context.Context, config *EnhancedMultiAgentConfig) context.Context {
+	cb.logger.Printf("[SYSTEM] Enhanced Multi-Agent System started: %s", config.Name)
 	return ctx
 }
 
-func (bc *BaseCallback) OnThinkingComplete(ctx context.Context, info *ThinkingCompleteInfo) context.Context {
+func (cb *DefaultEnhancedCallback) OnSystemEnd(ctx context.Context, result *schema.Message, err error) context.Context {
+	if err != nil {
+		cb.logger.Printf("[SYSTEM] Enhanced Multi-Agent System ended with error: %v", err)
+	} else {
+		cb.logger.Printf("[SYSTEM] Enhanced Multi-Agent System completed successfully")
+	}
 	return ctx
 }
 
-func (bc *BaseCallback) OnPlanCreated(ctx context.Context, info *PlanCreatedInfo) context.Context {
+// Conversation analysis callbacks
+func (cb *DefaultEnhancedCallback) OnConversationAnalysisStart(ctx context.Context, messages []*schema.Message) context.Context {
+	cb.logger.Printf("[CONVERSATION] Starting conversation analysis with %d messages", len(messages))
 	return ctx
 }
 
-func (bc *BaseCallback) OnPlanUpdated(ctx context.Context, info *PlanUpdatedInfo) context.Context {
+func (cb *DefaultEnhancedCallback) OnConversationAnalysisEnd(ctx context.Context, context *ConversationContext) context.Context {
+	cb.logger.Printf("[CONVERSATION] Conversation analysis completed. Intent: %s, Complexity: %s", 
+		context.UserIntent, context.Complexity.String())
 	return ctx
 }
 
-func (bc *BaseCallback) OnSpecialistInvoke(ctx context.Context, info *SpecialistInvokeInfo) context.Context {
+// Thinking callbacks
+func (cb *DefaultEnhancedCallback) OnThinkingStart(ctx context.Context, state *EnhancedState) context.Context {
+	cb.logger.Printf("[THINKING] Host agent started thinking for round %d", state.RoundNumber)
 	return ctx
 }
 
-func (bc *BaseCallback) OnSpecialistComplete(ctx context.Context, info *SpecialistCompleteInfo) context.Context {
+func (cb *DefaultEnhancedCallback) OnThinkingStep(ctx context.Context, step int, thought string) context.Context {
+	cb.logger.Printf("[THINKING] Step %d: %s", step, thought)
 	return ctx
 }
 
-func (bc *BaseCallback) OnFeedbackGenerated(ctx context.Context, info *FeedbackGeneratedInfo) context.Context {
+func (cb *DefaultEnhancedCallback) OnThinkingEnd(ctx context.Context, thoughts []*ExecutionRecord) context.Context {
+	cb.logger.Printf("[THINKING] Host agent completed thinking with %d thoughts", len(thoughts))
 	return ctx
 }
 
-func (bc *BaseCallback) OnTaskComplete(ctx context.Context, info *TaskCompleteInfo) context.Context {
+// Complexity decision callbacks
+func (cb *DefaultEnhancedCallback) OnComplexityDecision(ctx context.Context, complexity TaskComplexity, reasoning string) context.Context {
+	cb.logger.Printf("[COMPLEXITY] Task complexity determined as %s: %s", complexity.String(), reasoning)
 	return ctx
 }
 
-func (bc *BaseCallback) OnError(ctx context.Context, info *ErrorInfo) context.Context {
+// Plan creation callbacks
+func (cb *DefaultEnhancedCallback) OnPlanCreationStart(ctx context.Context, state *EnhancedState) context.Context {
+	cb.logger.Printf("[PLANNING] Starting plan creation for session %s", state.SessionID)
 	return ctx
 }
 
-// 确保BaseCallback实现了EnhancedMultiAgentCallback接口
-var _ EnhancedMultiAgentCallback = (*BaseCallback)(nil)
+func (cb *DefaultEnhancedCallback) OnPlanCreationEnd(ctx context.Context, plan *TaskPlan) context.Context {
+	cb.logger.Printf("[PLANNING] Plan created with %d steps: %s", len(plan.Steps), plan.Name)
+	return ctx
+}
+
+// Plan update callbacks
+func (cb *DefaultEnhancedCallback) OnPlanUpdateStart(ctx context.Context, currentPlan *TaskPlan, feedback map[string]any) context.Context {
+	cb.logger.Printf("[PLANNING] Starting plan update for plan %s (version %d)", currentPlan.ID, currentPlan.Version)
+	return ctx
+}
+
+func (cb *DefaultEnhancedCallback) OnPlanUpdateEnd(ctx context.Context, updatedPlan *TaskPlan, update *PlanUpdate) context.Context {
+	cb.logger.Printf("[PLANNING] Plan updated to version %d: %s", updatedPlan.Version, update.Description)
+	return ctx
+}
+
+// Execution callbacks
+func (cb *DefaultEnhancedCallback) OnExecutionStart(ctx context.Context, plan *TaskPlan) context.Context {
+	cb.logger.Printf("[EXECUTION] Starting execution of plan %s with %d steps", plan.Name, len(plan.Steps))
+	return ctx
+}
+
+func (cb *DefaultEnhancedCallback) OnExecutionEnd(ctx context.Context, results map[string]*StepResult) context.Context {
+	cb.logger.Printf("[EXECUTION] Execution completed with %d results", len(results))
+	return ctx
+}
+
+// Specialist execution callbacks
+func (cb *DefaultEnhancedCallback) OnSpecialistExecutionStart(ctx context.Context, specialistName string, step *PlanStep) context.Context {
+	cb.logger.Printf("[SPECIALIST] %s started executing step: %s", specialistName, step.Name)
+	return ctx
+}
+
+func (cb *DefaultEnhancedCallback) OnSpecialistExecutionEnd(ctx context.Context, specialistName string, result *StepResult) context.Context {
+	status := "failed"
+	if result.Success {
+		status = "succeeded"
+	}
+	cb.logger.Printf("[SPECIALIST] %s %s with confidence %.2f", specialistName, status, result.Confidence)
+	return ctx
+}
+
+func (cb *DefaultEnhancedCallback) OnSpecialistExecutionError(ctx context.Context, specialistName string, err error) context.Context {
+	cb.logger.Printf("[SPECIALIST] %s encountered error: %v", specialistName, err)
+	return ctx
+}
+
+// Result collection callbacks
+func (cb *DefaultEnhancedCallback) OnResultCollectionStart(ctx context.Context, results map[string]*StepResult) context.Context {
+	cb.logger.Printf("[COLLECTION] Starting result collection from %d specialists", len(results))
+	return ctx
+}
+
+func (cb *DefaultEnhancedCallback) OnResultCollectionEnd(ctx context.Context, collectedResults []*schema.Message) context.Context {
+	cb.logger.Printf("[COLLECTION] Result collection completed with %d messages", len(collectedResults))
+	return ctx
+}
+
+// Feedback processing callbacks
+func (cb *DefaultEnhancedCallback) OnFeedbackProcessingStart(ctx context.Context, results []*schema.Message) context.Context {
+	cb.logger.Printf("[FEEDBACK] Starting feedback processing for %d results", len(results))
+	return ctx
+}
+
+func (cb *DefaultEnhancedCallback) OnFeedbackProcessingEnd(ctx context.Context, feedback map[string]any) context.Context {
+	cb.logger.Printf("[FEEDBACK] Feedback processing completed")
+	return ctx
+}
+
+// Reflection decision callbacks
+func (cb *DefaultEnhancedCallback) OnReflectionDecision(ctx context.Context, shouldContinue bool, reasoning string) context.Context {
+	action := "continue"
+	if !shouldContinue {
+		action = "stop"
+	}
+	cb.logger.Printf("[REFLECTION] Decision to %s: %s", action, reasoning)
+	return ctx
+}
+
+// Round control callbacks
+func (cb *DefaultEnhancedCallback) OnRoundStart(ctx context.Context, roundNumber int, state *EnhancedState) context.Context {
+	cb.logger.Printf("[ROUND] Starting round %d for session %s", roundNumber, state.SessionID)
+	return ctx
+}
+
+func (cb *DefaultEnhancedCallback) OnRoundEnd(ctx context.Context, roundNumber int, state *EnhancedState) context.Context {
+	cb.logger.Printf("[ROUND] Completed round %d with status %s", roundNumber, state.ExecutionStatus.String())
+	return ctx
+}
+
+// Error handling callbacks
+func (cb *DefaultEnhancedCallback) OnError(ctx context.Context, stage string, err error) context.Context {
+	cb.logger.Printf("[ERROR] Error in %s: %v", stage, err)
+	return ctx
+}
+
+func (cb *DefaultEnhancedCallback) OnRecovery(ctx context.Context, stage string, recoveryAction string) context.Context {
+	cb.logger.Printf("[RECOVERY] Recovery in %s: %s", stage, recoveryAction)
+	return ctx
+}
+
+// Performance monitoring callbacks
+func (cb *DefaultEnhancedCallback) OnPerformanceMetric(ctx context.Context, metric string, value any, timestamp time.Time) context.Context {
+	cb.logger.Printf("[METRICS] %s: %v at %s", metric, value, timestamp.Format(time.RFC3339))
+	return ctx
+}
+
+// convertCallbacks converts agent options to callbacks handler
+func convertCallbacks(opts ...agent.AgentOption) callbacks.Handler {
+	// Extract enhanced multi-agent callbacks from options
+	// This will be implemented when we create the options system
+	return nil
+}
+
+// ConvertCallbackHandlers converts EnhancedMultiAgentCallback instances to callbacks.Handler
+func ConvertCallbackHandlers(handlers ...EnhancedMultiAgentCallback) callbacks.Handler {
+	if len(handlers) == 0 {
+		return nil
+	}
+
+	// TODO: Implement proper callback handler conversion
+	// This requires deeper integration with the eino callback system
+	// For now, return nil and implement later when we have the full context
+	return nil
+}
