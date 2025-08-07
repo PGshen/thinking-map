@@ -1,75 +1,20 @@
 package enhanced_multiagent
 
 import (
-	"context"
 	"time"
 
 	"github.com/cloudwego/eino/schema"
-	"github.com/cloudwego/eino/compose"
-	"github.com/cloudwego/eino/components/model"
 )
-
-// 枚举类型定义
-
-// TaskComplexity 任务复杂度
-type TaskComplexity int
-
-const (
-	TaskComplexitySimple   TaskComplexity = iota // 简单任务
-	TaskComplexityModerate                        // 中等复杂度
-	TaskComplexityComplex                         // 复杂任务
-)
-
-// ActionType 行动类型
-type ActionType int
-
-const (
-	ActionTypeDirectAnswer ActionType = iota // 直接回答
-	ActionTypeCreatePlan                     // 创建规划
-	ActionTypeExecuteStep                    // 执行步骤
-	ActionTypeReflect                        // 反思
-	ActionTypeUpdatePlan                     // 更新规划
-)
-
-// StepStatus 步骤状态
-type StepStatus int
-
-const (
-	StepStatusPending   StepStatus = iota // 待执行
-	StepStatusExecuting                   // 执行中
-	StepStatusCompleted                   // 已完成
-	StepStatusFailed                      // 失败
-	StepStatusSkipped                     // 跳过
-)
-
-// ExecutionStatus 执行状态
-type ExecutionStatus int
-
-const (
-	ExecutionStatusSuccess ExecutionStatus = iota // 成功
-	ExecutionStatusFailed                         // 失败
-	ExecutionStatusPartial                        // 部分成功
-)
-
-// PlanUpdateType 规划更新类型
-type PlanUpdateType int
-
-const (
-	PlanUpdateTypeAddStep     PlanUpdateType = iota // 添加步骤
-	PlanUpdateTypeModifyStep                        // 修改步骤
-	PlanUpdateTypeRemoveStep                        // 删除步骤
-	PlanUpdateTypeReorderSteps                      // 重排步骤
-	PlanUpdateTypeModifyPlan                        // 修改规划
-)
-
-// 核心状态类型定义
 
 // EnhancedState 增强版多智能体系统的全局状态
 type EnhancedState struct {
-	// 原始输入消息
+	// 原始对话历史
 	OriginalMessages []*schema.Message
 
-	// 当前任务规划（Markdown格式）
+	// 对话上下文分析结果
+	ConversationContext *ConversationContext
+
+	// 当前任务规划
 	CurrentPlan *TaskPlan
 
 	// 当前执行上下文
@@ -87,10 +32,10 @@ type EnhancedState struct {
 	// 当前思考结果
 	CurrentThinkingResult *ThinkingResult
 
-	// 执行历史
+	// 执行历史（仅限当前调用）
 	ExecutionHistory []*ExecutionRecord
 
-	// 思考历史
+	// 思考历史（仅限当前调用）
 	ThinkingHistory []*ThinkingResult
 
 	// 当前执行轮次
@@ -107,13 +52,72 @@ type EnhancedState struct {
 
 	// 最终答案
 	FinalAnswer *schema.Message
+
+	// 会话ID（用于日志追踪）
+	SessionID string
+
+	// 调用时间戳
+	CallTimestamp time.Time
+}
+
+// ConversationContext 对话上下文分析结果
+type ConversationContext struct {
+	// 对话轮次数
+	TurnCount int
+
+	// 是否为首次对话
+	IsFirstTurn bool
+
+	// 是否为延续性问题
+	IsContinuation bool
+
+	// 最新用户消息
+	LatestUserMessage *schema.Message
+
+	// 最新助手回复
+	LatestAssistantMessage *schema.Message
+
+	// 对话主题
+	ConversationTopic string
+
+	// 用户意图分析
+	UserIntent string
+
+	// 意图置信度
+	IntentConfidence float64
+
+	// 情感色调分析
+	EmotionalTone string
+
+	// 关键实体提取
+	KeyEntities []string
+
+	// 复杂度提示
+	ComplexityHint TaskComplexity
+
+	// 相关历史上下文
+	RelevantHistory []*schema.Message
+
+	// 上下文摘要
+	ContextSummary string
+
+	// 分析时间戳
+	AnalyzedAt time.Time
+
+	// 扩展元数据
+	Metadata map[string]interface{}
 }
 
 // ExecutionRecord 执行记录
 type ExecutionRecord struct {
-	Round     int
-	Results   *CollectedResults
-	Timestamp time.Time
+	Round       int
+	PlanVersion int
+	Results     *CollectedResults
+	Feedback    *FeedbackResult
+	Duration    time.Duration
+	Timestamp   time.Time
+	Status      ExecutionStatus
+	Metadata    map[string]interface{}
 }
 
 // TaskPlan 任务规划结构
@@ -152,7 +156,7 @@ type TaskPlan struct {
 // PlanUpdate 规划更新记录
 type PlanUpdate struct {
 	Version     int
-	UpdateType  PlanUpdateType // add_step, modify_step, remove_step, reorder_steps
+	UpdateType  PlanUpdateType
 	Description string
 	Timestamp   time.Time
 	Changes     map[string]interface{}
@@ -162,18 +166,18 @@ type PlanUpdate struct {
 type PlanStep struct {
 	ID                int
 	Description       string
-	Status            StepStatus        // pending, executing, completed, failed, skipped
-	AssignedTo        string            // 分配给哪个specialist
-	Result            string            // 执行结果
-	Feedback          string            // 反馈信息
-	Priority          int               // 步骤优先级
-	Dependencies      []int             // 依赖的步骤ID
-	EstimatedDuration time.Duration     // 预估执行时间
-	ActualDuration    time.Duration     // 实际执行时间
-	RetryCount        int               // 重试次数
-	MaxRetries        int               // 最大重试次数
-	CreatedAt         time.Time         // 步骤创建时间
-	UpdatedAt         time.Time         // 步骤更新时间
+	Status            StepStatus
+	AssignedTo        string // 分配给哪个specialist
+	Result            string // 执行结果
+	Feedback          string // 反馈信息
+	Priority          int    // 步骤优先级
+	Dependencies      []int  // 依赖的步骤ID
+	EstimatedDuration time.Duration
+	ActualDuration    time.Duration
+	RetryCount        int
+	MaxRetries        int
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // ThinkingResult 思考结果
@@ -182,19 +186,43 @@ type ThinkingResult struct {
 	Thought string
 
 	// 任务复杂度评估
-	Complexity TaskComplexity // simple, moderate, complex
+	Complexity TaskComplexity
 
 	// 推理过程
 	Reasoning string
 
 	// 下一步行动
-	NextAction ActionType // direct_answer, create_plan, execute_step, reflect
+	NextAction ActionType
 
 	// 原始消息
 	OriginalMessages []*schema.Message
 
+	// 对话上下文分析
+	ConversationAnalysis *ConversationContext
+
+	// 是否需要参考历史对话
+	NeedsHistoryContext bool
+
+	// 回答策略
+	ResponseStrategy string
+
+	// 关键洞察
+	KeyInsights []string
+
+	// 风险评估
+	RiskAssessment string
+
+	// 置信度评估
+	Confidence float64
+
+	// 思考耗时
+	Duration time.Duration
+
 	// 时间戳
 	Timestamp time.Time
+
+	// 扩展元数据
+	Metadata map[string]interface{}
 }
 
 // ExecutionContext 执行上下文
@@ -224,7 +252,7 @@ type SpecialistResult struct {
 	Result *schema.Message
 
 	// 执行状态
-	Status ExecutionStatus // success, failed, partial
+	Status ExecutionStatus
 
 	// 错误信息
 	Error string
@@ -234,6 +262,24 @@ type SpecialistResult struct {
 
 	// 置信度
 	Confidence float64
+
+	// 开始时间
+	StartTime time.Time
+
+	// 结束时间
+	EndTime time.Time
+
+	// 重试次数
+	RetryCount int
+
+	// 质量评分
+	QualityScore float64
+
+	// 相关性评分
+	RelevanceScore float64
+
+	// 扩展元数据
+	Metadata map[string]interface{}
 }
 
 // CollectedResults 收集的结果
@@ -247,8 +293,26 @@ type CollectedResults struct {
 	// 失败的结果
 	FailedResults []*SpecialistResult
 
+	// 部分成功的结果
+	PartialResults []*SpecialistResult
+
 	// 汇总信息
 	Summary string
+
+	// 整体质量评分
+	OverallQuality float64
+
+	// 结果一致性评分
+	ConsistencyScore float64
+
+	// 收集时间
+	CollectedAt time.Time
+
+	// 总执行时长
+	TotalDuration time.Duration
+
+	// 扩展元数据
+	Metadata map[string]interface{}
 }
 
 // FeedbackResult 反馈结果
@@ -270,127 +334,167 @@ type FeedbackResult struct {
 
 	// 收集的结果
 	CollectedResults *CollectedResults
+
+	// 对话连贯性评估
+	ConversationCoherence float64
+
+	// 用户满意度预测
+	UserSatisfactionPrediction float64
+
+	// 改进建议
+	ImprovementSuggestions []string
+
+	// 风险警告
+	RiskWarnings []string
+
+	// 反馈生成时间
+	GeneratedAt time.Time
+
+	// 扩展元数据
+	Metadata map[string]interface{}
 }
 
-// 配置类型定义
+// 枚举类型定义
+type TaskComplexity int
 
-// EnhancedMultiAgentConfig 增强版多智能体配置
-type EnhancedMultiAgentConfig struct {
-	// 主控Agent配置
-	Host EnhancedHost
+const (
+	TaskComplexitySimple TaskComplexity = iota
+	TaskComplexityModerate
+	TaskComplexityComplex
+)
 
-	// 专家Agent列表
-	Specialists []*EnhancedSpecialist
-
-	// 系统名称
-	Name string
-
-	// 最大执行轮次
-	MaxRounds int
-
-	// 复杂度判断阈值
-	ComplexityThreshold float64
-
-	// 规划模板
-	PlanTemplate string
-
-	// 思考提示模板
-	ThinkingPromptTemplate string
-
-	// 反思提示模板
-	ReflectionPromptTemplate string
-
-	// 流式工具调用检查器
-	StreamToolCallChecker func(ctx context.Context, modelOutput *schema.StreamReader[*schema.Message]) (bool, error)
-
-	// 回调处理器
-	Callbacks []EnhancedMultiAgentCallback
+func (tc TaskComplexity) String() string {
+	switch tc {
+	case TaskComplexitySimple:
+		return "simple"
+	case TaskComplexityModerate:
+		return "moderate"
+	case TaskComplexityComplex:
+		return "complex"
+	default:
+		return "unknown"
+	}
 }
 
-// EnhancedHost 增强版主控Agent
-type EnhancedHost struct {
-	// 工具调用模型
-	ToolCallingModel model.ToolCallingChatModel
+type ActionType int
 
-	// 思考模型（可以与工具调用模型相同）
-	ThinkingModel model.BaseChatModel
+const (
+	ActionTypeDirectAnswer ActionType = iota
+	ActionTypeCreatePlan
+	ActionTypeExecuteStep
+	ActionTypeReflect
+	ActionTypeUpdatePlan
+)
 
-	// 系统提示
-	SystemPrompt string
-
-	// 思考提示模板
-	ThinkingPrompt string
-
-	// 规划提示模板
-	PlanningPrompt string
-
-	// 反思提示模板
-	ReflectionPrompt string
+func (at ActionType) String() string {
+	switch at {
+	case ActionTypeDirectAnswer:
+		return "direct_answer"
+	case ActionTypeCreatePlan:
+		return "create_plan"
+	case ActionTypeExecuteStep:
+		return "execute_step"
+	case ActionTypeReflect:
+		return "reflect"
+	case ActionTypeUpdatePlan:
+		return "update_plan"
+	default:
+		return "unknown"
+	}
 }
 
-// AgentMeta Agent元信息
-type AgentMeta struct {
-	Name        string
-	Description string
-	Version     string
+type StepStatus int
+
+const (
+	StepStatusPending StepStatus = iota
+	StepStatusExecuting
+	StepStatusCompleted
+	StepStatusFailed
+	StepStatusSkipped
+	StepStatusBlocked
+)
+
+func (ss StepStatus) String() string {
+	switch ss {
+	case StepStatusPending:
+		return "pending"
+	case StepStatusExecuting:
+		return "executing"
+	case StepStatusCompleted:
+		return "completed"
+	case StepStatusFailed:
+		return "failed"
+	case StepStatusSkipped:
+		return "skipped"
+	case StepStatusBlocked:
+		return "blocked"
+	default:
+		return "unknown"
+	}
 }
 
-// EnhancedSpecialist 增强版专家Agent
-type EnhancedSpecialist struct {
-	// 基础元信息
-	AgentMeta
+type ExecutionStatus int
 
-	// 聊天模型
-	ChatModel model.BaseChatModel
+const (
+	ExecutionStatusRunning ExecutionStatus = iota
+	ExecutionStatusCompleted
+	ExecutionStatusFailed
+	ExecutionStatusTimeout
+	ExecutionStatusCancelled
+	ExecutionStatusSuccess
+	ExecutionStatusPartial
+)
 
-	// 系统提示
-	SystemPrompt string
-
-	// 可调用组件
-	Invokable compose.Invoke[[]*schema.Message, *schema.Message, any]
-
-	// 流式组件
-	Streamable compose.Stream[[]*schema.Message, *schema.Message, any]
-
-	// 专家能力描述
-	Capabilities []string
-
-	// 输入预处理器
-	InputProcessor func(ctx context.Context, input *ExecutionContext) ([]*schema.Message, error)
-
-	// 输出后处理器
-	OutputProcessor func(ctx context.Context, output *schema.Message) (*SpecialistResult, error)
+func (es ExecutionStatus) String() string {
+	switch es {
+	case ExecutionStatusRunning:
+		return "running"
+	case ExecutionStatusCompleted:
+		return "completed"
+	case ExecutionStatusFailed:
+		return "failed"
+	case ExecutionStatusTimeout:
+		return "timeout"
+	case ExecutionStatusCancelled:
+		return "cancelled"
+	case ExecutionStatusSuccess:
+		return "success"
+	case ExecutionStatusPartial:
+		return "partial"
+	default:
+		return "unknown"
+	}
 }
 
-// 回调接口定义
+type PlanUpdateType int
 
-// EnhancedMultiAgentCallback 增强版多智能体回调接口
-type EnhancedMultiAgentCallback interface {
-	// 思考阶段回调
-	OnThinking(ctx context.Context, state *EnhancedState, thinking *ThinkingResult) error
+const (
+	PlanUpdateTypeAddStep PlanUpdateType = iota
+	PlanUpdateTypeModifyStep
+	PlanUpdateTypeDeleteStep
+	PlanUpdateTypeReorderSteps
+	PlanUpdateTypeChangeStrategy
+	PlanUpdateTypeRemoveStep
+	PlanUpdateTypeModifyPlan
+)
 
-	// 规划阶段回调
-	OnPlanning(ctx context.Context, state *EnhancedState, plan *TaskPlan) error
-
-	// 专家调用回调
-	OnSpecialistCall(ctx context.Context, state *EnhancedState, specialist string, result *SpecialistResult) error
-
-	// 反馈阶段回调
-	OnFeedback(ctx context.Context, state *EnhancedState, feedback *FeedbackResult) error
-
-	// 任务完成回调
-	OnTaskComplete(ctx context.Context, state *EnhancedState, finalAnswer *schema.Message) error
-}
-
-// StateCheckpoint 状态检查点
-type StateCheckpoint struct {
-	Timestamp time.Time
-	Round     int
-	State     *EnhancedState
-}
-
-// StateSerializer 状态序列化接口
-type StateSerializer interface {
-	Serialize(state *EnhancedState) ([]byte, error)
-	Deserialize(data []byte) (*EnhancedState, error)
+func (put PlanUpdateType) String() string {
+	switch put {
+	case PlanUpdateTypeAddStep:
+		return "add_step"
+	case PlanUpdateTypeModifyStep:
+		return "modify_step"
+	case PlanUpdateTypeDeleteStep:
+		return "delete_step"
+	case PlanUpdateTypeReorderSteps:
+		return "reorder_steps"
+	case PlanUpdateTypeChangeStrategy:
+		return "change_strategy"
+	case PlanUpdateTypeRemoveStep:
+		return "remove_step"
+	case PlanUpdateTypeModifyPlan:
+		return "modify_plan"
+	default:
+		return "unknown"
+	}
 }

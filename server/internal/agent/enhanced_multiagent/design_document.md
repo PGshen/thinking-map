@@ -30,27 +30,39 @@
 flowchart TB
     subgraph "Enhanced MultiAgent System"
         HostAgent["Host Agent (ReAct)"]
-        PlanManager["Plan Manager"]
-        SpecialistPool["Specialist Pool"]
-        FeedbackProcessor["Feedback Processor"]
+        ConversationAnalyzer["对话上下文分析器"]
+        ComplexityJudge["复杂度判断器"]
+        PlanManager["动态规划管理器"]
+        SpecialistPool["专家池"]
+        FeedbackProcessor["反馈处理器"]
+        StateManager["状态管理器"]
         
         subgraph "Host Agent Components"
-            Thinker["Thinker"]
-            Planner["Planner"]
-            Executor["Executor"]
-            Reflector["Reflector"]
+            Thinker["思考器 (ReAct)"]
+            Planner["规划器"]
+            Executor["执行器"]
+            Reflector["反思器"]
         end
         
         subgraph "Specialists"
-            Spec1["Specialist 1"]
-            Spec2["Specialist 2"]
-            SpecN["Specialist N"]
+            Spec1["专家 1"]
+            Spec2["专家 2"]
+            SpecN["专家 N"]
+        end
+        
+        subgraph "Support Components"
+            ContextCompressor["上下文压缩器"]
+            HistoryFilter["历史过滤器"]
+            IntentAnalyzer["意图分析器"]
         end
     end
     
-    User["用户输入"] --> HostAgent
+    User["用户对话历史<br/>[]*schema.Message"] --> ConversationAnalyzer
+    ConversationAnalyzer --> HostAgent
     HostAgent --> Thinker
-    Thinker --> Planner
+    Thinker --> ComplexityJudge
+    ComplexityJudge -->|简单任务| DirectAnswer["直接回答"]
+    ComplexityJudge -->|复杂任务| Planner
     Planner --> PlanManager
     PlanManager --> Executor
     Executor --> SpecialistPool
@@ -61,48 +73,62 @@ flowchart TB
     Spec2 --> FeedbackProcessor
     SpecN --> FeedbackProcessor
     FeedbackProcessor --> Reflector
-    Reflector --> Thinker
-    Reflector --> User
+    Reflector -->|继续执行| PlanManager
+    Reflector -->|任务完成| FinalAnswer["最终答案"]
+    DirectAnswer --> User
+    FinalAnswer --> User
+    
+    StateManager -.-> HostAgent
+    StateManager -.-> PlanManager
+    StateManager -.-> SpecialistPool
+    StateManager -.-> FeedbackProcessor
+    
+    ContextCompressor -.-> ConversationAnalyzer
+    HistoryFilter -.-> ConversationAnalyzer
+    IntentAnalyzer -.-> ConversationAnalyzer
 ```
 
 ### 数据流架构
 
 ```mermaid
 flowchart TD
-    START(["开始"]) --> INPUT["对话历史输入<br>[]*schema.Message<br><br>包含完整对话历史<br>每次调用状态重新初始化"]
+    START(["开始"]) --> INPUT["对话历史输入<br/>[]*schema.Message<br/><br/>包含完整对话历史<br/>每次调用状态重新初始化"]
     
-    INPUT --> HOST_THINK["Host Think Node<br>输入: []*schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• OriginalMessages 保存<br>• CurrentThinking 设置<br>• ThinkingHistory 追加"]
+    INPUT --> CONTEXT_ANALYZE["对话上下文分析<br/>analyzeConversationContext<br/><br/>状态更新:<br/>• ConversationContext 设置<br/>• 对话轮次分析<br/>• 意图识别<br/>• 历史关联性判断"]
     
-    HOST_THINK --> COMPLEXITY_BRANCH{"复杂度判断分支<br>ComplexityBranch<br><br>状态读取:<br>• CurrentThinking.Complexity"}
+    CONTEXT_ANALYZE --> HOST_THINK["Host Think Node<br/>输入: []*schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• OriginalMessages 保存<br/>• CurrentThinkingResult 设置<br/>• ThinkingHistory 追加<br/>• 基于对话上下文的ReAct思考"]
     
-    COMPLEXITY_BRANCH -->|简单任务| DIRECT_ANSWER["Direct Answer Node<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• IsSimpleTask = true<br>• IsCompleted = true<br>• FinalAnswer 设置"]
+    HOST_THINK --> COMPLEXITY_BRANCH{"复杂度判断分支<br/>ComplexityBranch<br/><br/>状态读取:<br/>• CurrentThinkingResult.Complexity<br/>• ConversationContext.IsContinuation"}
     
-    COMPLEXITY_BRANCH -->|复杂任务| PLAN_CREATE["Plan Creation Node<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• CurrentPlan 创建<br>• Version = 1<br>• IsSimpleTask = false"]
+    COMPLEXITY_BRANCH -->|简单任务| DIRECT_ANSWER["Direct Answer Node<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• IsSimpleTask = true<br/>• IsCompleted = true<br/>• FinalAnswer 设置<br/>• 考虑对话历史的直接回答"]
     
-    PLAN_CREATE --> PLAN_EXECUTE["Plan Execution Node<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• CurrentExecution 设置<br>• PlanStep.Status = Executing<br>• CurrentPlan.CurrentStep 更新"]
+    COMPLEXITY_BRANCH -->|复杂任务| PLAN_CREATE["Plan Creation Node<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• CurrentPlan 创建<br/>• Version = 1<br/>• IsSimpleTask = false<br/>• 基于上下文的任务分解"]
     
-    PLAN_EXECUTE --> SPECIALIST_BRANCH{"Specialist Branch<br>MultiBranch<br><br>状态读取:<br>• CurrentExecution.PlanStep<br>• AssignedTo 专家选择"}
+    PLAN_CREATE --> PLAN_EXECUTE["Plan Execution Node<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• CurrentExecution 设置<br/>• PlanStep.Status = Executing<br/>• CurrentPlan.CurrentStep 更新<br/>• 传递对话上下文"]
     
-    SPECIALIST_BRANCH --> SPEC1["Specialist 1<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• SpecialistResults[name] 设置<br>• 执行时长记录<br>• 置信度评估"]
-    SPECIALIST_BRANCH --> SPEC2["Specialist 2<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• SpecialistResults[name] 设置<br>• 执行时长记录<br>• 置信度评估"]
-    SPECIALIST_BRANCH --> SPECN["Specialist N<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• SpecialistResults[name] 设置<br>• 执行时长记录<br>• 置信度评估"]
+    PLAN_EXECUTE --> SPECIALIST_BRANCH{"Specialist Branch<br/>MultiBranch<br/><br/>状态读取:<br/>• CurrentExecution.PlanStep<br/>• AssignedTo 专家选择<br/>• 对话上下文相关的专家匹配"}
     
-    SPEC1 --> RESULT_COLLECT["Result Collector<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• CurrentCollectedResults 设置<br>• ExecutionHistory 追加<br>• CurrentRound 记录"]
+    SPECIALIST_BRANCH --> SPEC1["Specialist 1<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• CurrentSpecialistResults[name] 设置<br/>• 执行时长记录<br/>• 置信度评估<br/>• 上下文感知的专家执行"]
+    SPECIALIST_BRANCH --> SPEC2["Specialist 2<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• CurrentSpecialistResults[name] 设置<br/>• 执行时长记录<br/>• 置信度评估<br/>• 上下文感知的专家执行"]
+    SPECIALIST_BRANCH --> SPECN["Specialist N<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• CurrentSpecialistResults[name] 设置<br/>• 执行时长记录<br/>• 置信度评估<br/>• 上下文感知的专家执行"]
+    
+    SPEC1 --> RESULT_COLLECT["Result Collector<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• CurrentCollectedResults 设置<br/>• ExecutionHistory 追加<br/>• CurrentRound 记录<br/>• 结果汇总和质量评估"]
     SPEC2 --> RESULT_COLLECT
     SPECN --> RESULT_COLLECT
     
-    RESULT_COLLECT --> FEEDBACK_PROCESS["Feedback Processor<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• CurrentFeedback 设置<br>• ShouldContinue 判断<br>• SuggestedAction 确定"]
+    RESULT_COLLECT --> FEEDBACK_PROCESS["Feedback Processor<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• CurrentFeedbackResult 设置<br/>• ShouldContinue 判断<br/>• SuggestedAction 确定<br/>• 对话连贯性评估"]
     
-    FEEDBACK_PROCESS --> REFLECT_BRANCH{"Reflection Branch<br>StreamBranch<br><br>状态读取:<br>• CurrentFeedback.ShouldContinue"}
+    FEEDBACK_PROCESS --> REFLECT_BRANCH{"Reflection Branch<br/>StreamBranch<br/><br/>状态读取:<br/>• CurrentFeedbackResult.ShouldContinue<br/>• 最大轮次检查<br/>• 对话完整性评估"}
     
-    REFLECT_BRANCH -->|需要继续| PLAN_UPDATE["Plan Update Node<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• CurrentPlan.Version++<br>• UpdateHistory 追加<br>• CurrentRound++<br>• Steps 动态调整"]
-    REFLECT_BRANCH -->|任务完成| FINAL_ANSWER["Final Answer Node<br>输入: *schema.Message<br>输出: *schema.Message<br><br>状态更新:<br>• IsCompleted = true<br>• FinalAnswer 设置"]
+    REFLECT_BRANCH -->|需要继续| PLAN_UPDATE["Plan Update Node<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• CurrentPlan.Version++<br/>• UpdateHistory 追加<br/>• CurrentRound++<br/>• Steps 动态调整<br/>• 基于反馈的规划优化"]
+    REFLECT_BRANCH -->|任务完成| FINAL_ANSWER["Final Answer Node<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• IsCompleted = true<br/>• FinalAnswer 设置<br/>• 对话历史整合的最终回答"]
     
     PLAN_UPDATE --> PLAN_EXECUTE
     
     DIRECT_ANSWER --> END(["结束"])
     FINAL_ANSWER --> END
     
+    style CONTEXT_ANALYZE fill:#e3f2fd
     style HOST_THINK fill:#e1f5fe
     style PLAN_CREATE fill:#f3e5f5
     style PLAN_EXECUTE fill:#e8f5e8
@@ -111,6 +137,8 @@ flowchart TD
     style SPECIALIST_BRANCH fill:#f1f8e9
     style REFLECT_BRANCH fill:#fce4ec
     style PLAN_UPDATE fill:#e8f5e8
+    style DIRECT_ANSWER fill:#f1f8e9
+    style FINAL_ANSWER fill:#e8f5e8
 ```
 
 ### 状态管理详解
@@ -123,114 +151,166 @@ flowchart TD
 
 ```mermaid
 gantt
-    title 状态字段更新时序图
+    title 增强版多智能体系统状态字段更新时序图
     dateFormat X
     axisFormat %s
     
     section 初始化阶段
-    OriginalMessages     :active, init1, 0, 1
+    OriginalMessages        :active, init1, 0, 1
+    SessionID              :active, init2, 0, 1
+    CallTimestamp          :active, init3, 0, 1
+    
+    section 对话分析阶段
+    ConversationContext    :active, conv1, 1, 2
     
     section 思考阶段
-    CurrentThinking      :active, think1, 1, 2
-    ThinkingHistory      :active, think2, 1, 2
+    CurrentThinkingResult  :active, think1, 2, 3
+    ThinkingHistory        :active, think2, 2, 3
+    
+    section 复杂度判断阶段
+    IsSimpleTask           :active, judge1, 3, 4
     
     section 规划阶段
-    CurrentPlan          :active, plan1, 2, 3
-    IsSimpleTask         :active, plan2, 2, 3
+    CurrentPlan            :active, plan1, 4, 5
     
-    section 执行阶段
-    CurrentExecution     :active, exec1, 3, 4
-    SpecialistResults    :active, exec2, 4, 5
-    CurrentCollectedResults :active, exec3, 5, 6
-    ExecutionHistory     :active, exec4, 5, 6
-    CurrentRound         :active, exec5, 5, 6
+    section 执行准备阶段
+    CurrentExecution       :active, exec1, 5, 6
+    CurrentRound           :active, exec2, 5, 6
     
-    section 反馈阶段
-    CurrentFeedback      :active, feed1, 6, 7
+    section 专家执行阶段
+    CurrentSpecialistResults :active, spec1, 6, 7
     
-    section 更新阶段
-    CurrentPlan(更新)    :active, update1, 7, 8
+    section 结果收集阶段
+    CurrentCollectedResults :active, collect1, 7, 8
+    ExecutionHistory       :active, collect2, 7, 8
+    
+    section 反馈处理阶段
+    CurrentFeedbackResult  :active, feed1, 8, 9
+    
+    section 决策分支阶段
+    ShouldContinue判断     :active, decision1, 9, 10
+    
+    section 规划更新阶段
+    CurrentPlan(版本更新)   :active, update1, 10, 11
+    CurrentRound(递增)     :active, update2, 10, 11
     
     section 完成阶段
-    IsCompleted          :active, final1, 8, 9
-    FinalAnswer          :active, final2, 8, 9
+    IsCompleted            :active, final1, 11, 12
+    FinalAnswer            :active, final2, 11, 12
+    
+    section 清理阶段
+    状态重置准备            :active, cleanup1, 12, 13
 ```
 
 ##### 关键状态转换点
 
-1. **思考阶段 (Host Think Node)**
-   - **读取**: `OriginalMessages` (如果存在)
+1. **初始化阶段 (System Initialization)**
    - **更新**: 
-     - `OriginalMessages` ← 用户输入消息
-     - `CurrentThinking` ← 解析的思考结果
+     - `OriginalMessages` ← 输入的对话历史
+     - `SessionID` ← 生成的会话ID
+     - `CallTimestamp` ← 当前时间戳
+     - `CurrentRound` ← 0
+     - `MaxRounds` ← 配置值
+
+2. **对话分析阶段 (Conversation Analysis)**
+   - **读取**: `OriginalMessages`
+   - **更新**:
+     - `ConversationContext` ← 对话上下文分析结果
+     - `ConversationContext.TurnCount` ← 对话轮次
+     - `ConversationContext.IsFirstTurn` ← 是否首次对话
+     - `ConversationContext.UserIntent` ← 用户意图
+     - `ConversationContext.IsContinuation` ← 是否延续性对话
+
+3. **思考阶段 (Host Think Node)**
+   - **读取**: `OriginalMessages`, `ConversationContext`
+   - **更新**: 
+     - `CurrentThinkingResult` ← 基于对话上下文的思考结果
      - `ThinkingHistory` ← 追加当前思考记录
+     - `CurrentThinkingResult.ConversationAnalysis` ← 对话分析结果
 
-2. **复杂度判断 (Complexity Branch)**
-   - **读取**: `CurrentThinking.Complexity`
-   - **分支逻辑**: 根据复杂度决定后续流程
+4. **复杂度判断 (Complexity Branch)**
+   - **读取**: `CurrentThinkingResult.Complexity`, `ConversationContext.IsContinuation`
+   - **分支逻辑**: 综合考虑任务复杂度和对话延续性
 
-3. **直接回答 (Direct Answer Node)**
+5. **直接回答 (Direct Answer Node)**
+   - **读取**: `CurrentThinkingResult`, `ConversationContext`
    - **更新**:
      - `IsSimpleTask` ← true
      - `IsCompleted` ← true
-     - `FinalAnswer` ← 生成的答案
+     - `FinalAnswer` ← 考虑对话历史的直接答案
 
-4. **规划创建 (Plan Creation Node)**
-   - **读取**: `CurrentThinking`
+6. **规划创建 (Plan Creation Node)**
+   - **读取**: `CurrentThinkingResult`, `ConversationContext`
    - **更新**:
-     - `CurrentPlan` ← 新创建的任务规划
+     - `CurrentPlan` ← 基于上下文的任务规划
      - `CurrentPlan.Version` ← 1
+     - `CurrentPlan.CreatedAt` ← 当前时间
      - `IsSimpleTask` ← false
 
-5. **规划执行 (Plan Execution Node)**
-   - **读取**: `CurrentPlan`
+7. **规划执行 (Plan Execution Node)**
+   - **读取**: `CurrentPlan`, `ConversationContext`
    - **更新**:
-     - `CurrentExecution` ← 当前执行上下文
+     - `CurrentExecution` ← 包含对话上下文的执行上下文
      - `CurrentPlan.CurrentStep` ← 当前步骤ID
      - `PlanStep.Status` ← StepStatusExecuting
+     - `PlanStep.UpdatedAt` ← 当前时间
 
-6. **专家执行 (Specialist Nodes)**
-   - **读取**: `CurrentExecution`
+8. **专家执行 (Specialist Nodes)**
+   - **读取**: `CurrentExecution`, `ConversationContext`
    - **更新**:
-     - `SpecialistResults[name]` ← 专家执行结果
-     - 执行时长、置信度等元数据
+     - `CurrentSpecialistResults[name]` ← 上下文感知的专家执行结果
+     - `SpecialistResult.Duration` ← 执行时长
+     - `SpecialistResult.Confidence` ← 置信度评估
+     - `SpecialistResult.Status` ← 执行状态
 
-7. **结果收集 (Result Collector)**
-   - **读取**: `SpecialistResults`
+9. **结果收集 (Result Collector)**
+   - **读取**: `CurrentSpecialistResults`
    - **更新**:
      - `CurrentCollectedResults` ← 汇总的执行结果
      - `ExecutionHistory` ← 追加执行记录
      - `CurrentRound` ← 当前执行轮次
+     - `CollectedResults.Summary` ← 结果摘要
 
-8. **反馈处理 (Feedback Processor)**
-   - **读取**: `CurrentCollectedResults`, `CurrentPlan`
-   - **更新**:
-     - `CurrentFeedback` ← 反馈分析结果
-     - `CurrentFeedback.ShouldContinue` ← 是否继续执行
+10. **反馈处理 (Feedback Processor)**
+    - **读取**: `CurrentCollectedResults`, `CurrentPlan`, `ConversationContext`
+    - **更新**:
+      - `CurrentFeedbackResult` ← 综合反馈分析结果
+      - `CurrentFeedbackResult.ShouldContinue` ← 是否继续执行
+      - `CurrentFeedbackResult.SuggestedAction` ← 建议的下一步行动
 
-9. **规划更新 (Plan Update Node)**
-   - **读取**: `CurrentFeedback`, `CurrentPlan`
-   - **更新**:
-     - `CurrentPlan.Version` ← 版本号递增
-     - `CurrentPlan.UpdateHistory` ← 追加更新记录
-     - `CurrentRound` ← 轮次递增
-     - `CurrentPlan.Steps` ← 动态调整步骤
+11. **规划更新 (Plan Update Node)**
+    - **读取**: `CurrentFeedbackResult`, `CurrentPlan`
+    - **更新**:
+      - `CurrentPlan.Version` ← 版本号递增
+      - `CurrentPlan.UpdateHistory` ← 追加更新记录
+      - `CurrentRound` ← 轮次递增
+      - `CurrentPlan.Steps` ← 动态调整步骤
+      - `CurrentPlan.UpdatedAt` ← 当前时间
 
-10. **最终答案 (Final Answer Node)**
-    - **读取**: `CurrentFeedback`
+12. **最终答案 (Final Answer Node)**
+    - **读取**: `CurrentFeedbackResult`, `ConversationContext`
     - **更新**:
       - `IsCompleted` ← true
-      - `FinalAnswer` ← 最终生成的答案
+      - `FinalAnswer` ← 整合对话历史的最终答案
+
+13. **状态清理 (State Cleanup)**
+    - **操作**: 为下次调用准备状态重置
+    - **保留**: 仅保留必要的日志和追踪信息
 
 ##### 状态一致性保证
 
 为确保状态的一致性和可靠性，系统采用以下机制：
 
-1. **原子性更新**: 每个节点的状态更新都是原子性的
-2. **版本控制**: 关键状态（如TaskPlan）具有版本号机制
-3. **历史追踪**: 重要操作都会记录到历史列表中
-4. **状态验证**: 在关键节点进行状态完整性检查
-5. **错误恢复**: 支持从历史状态恢复执行
+1. **原子性更新**: 每个节点的状态更新都是原子性的，使用事务性操作
+2. **版本控制**: 关键状态（如TaskPlan）具有版本号机制，支持回滚
+3. **历史追踪**: 重要操作都会记录到历史列表中，包括时间戳和变更详情
+4. **状态验证**: 在关键节点进行状态完整性检查和数据一致性验证
+5. **错误恢复**: 支持从历史状态恢复执行，具备故障转移能力
+6. **对话上下文保护**: 确保对话历史在整个执行过程中的完整性
+7. **内存管理**: 及时清理临时状态，防止内存泄漏
+8. **并发安全**: 支持多会话并发处理，状态隔离机制
+9. **状态快照**: 在关键节点创建状态快照，支持调试和审计
+10. **超时处理**: 设置合理的超时机制，防止状态长期占用
 
 ##### 状态序列化支持
 
@@ -319,6 +399,9 @@ type ConversationContext struct {
     // 是否为首次对话
     IsFirstTurn bool
     
+    // 是否为延续性问题
+    IsContinuation bool
+    
     // 最新用户消息
     LatestUserMessage *schema.Message
     
@@ -331,21 +414,41 @@ type ConversationContext struct {
     // 用户意图分析
     UserIntent string
     
-    // 是否为延续性问题
-    IsContinuation bool
+    // 意图置信度
+    IntentConfidence float64
+    
+    // 情感色调分析
+    EmotionalTone string
+    
+    // 关键实体提取
+    KeyEntities []string
+    
+    // 复杂度提示
+    ComplexityHint TaskComplexity
     
     // 相关历史上下文
     RelevantHistory []*schema.Message
     
     // 上下文摘要
     ContextSummary string
+    
+    // 分析时间戳
+    AnalyzedAt time.Time
+    
+    // 扩展元数据
+    Metadata map[string]interface{}
 }
 
 // ExecutionRecord 执行记录
 type ExecutionRecord struct {
-    Round     int
-    Results   *CollectedResults
-    Timestamp time.Time
+    Round       int
+    PlanVersion int
+    Results     *CollectedResults
+    Feedback    *FeedbackResult
+    Duration    time.Duration
+    Timestamp   time.Time
+    Status      ExecutionStatus
+    Metadata    map[string]interface{}
 }
 
 // 枚举类型定义
@@ -375,6 +478,27 @@ const (
     StepStatusCompleted
     StepStatusFailed
     StepStatusSkipped
+    StepStatusBlocked
+)
+
+type ExecutionStatus int
+
+const (
+    ExecutionStatusRunning ExecutionStatus = iota
+    ExecutionStatusCompleted
+    ExecutionStatusFailed
+    ExecutionStatusTimeout
+    ExecutionStatusCancelled
+)
+
+type PlanUpdateType int
+
+const (
+    PlanUpdateTypeAddStep PlanUpdateType = iota
+    PlanUpdateTypeModifyStep
+    PlanUpdateTypeDeleteStep
+    PlanUpdateTypeReorderSteps
+    PlanUpdateTypeChangeStrategy
 )
 
 type ExecutionStatus int
@@ -481,8 +605,23 @@ type ThinkingResult struct {
     // 回答策略
     ResponseStrategy string // direct, planned, clarification
     
+    // 关键洞察
+    KeyInsights []string
+    
+    // 风险评估
+    RiskAssessment string
+    
+    // 置信度评估
+    Confidence float64
+    
+    // 思考耗时
+    Duration time.Duration
+    
     // 时间戳
     Timestamp time.Time
+    
+    // 扩展元数据
+    Metadata map[string]interface{}
 }
 
 // ExecutionContext 执行上下文
@@ -522,6 +661,24 @@ type SpecialistResult struct {
     
     // 置信度
     Confidence float64
+    
+    // 开始时间
+    StartTime time.Time
+    
+    // 结束时间
+    EndTime time.Time
+    
+    // 重试次数
+    RetryCount int
+    
+    // 质量评分
+    QualityScore float64
+    
+    // 相关性评分
+    RelevanceScore float64
+    
+    // 扩展元数据
+    Metadata map[string]interface{}
 }
 
 // CollectedResults 收集的结果
@@ -535,8 +692,26 @@ type CollectedResults struct {
     // 失败的结果
     FailedResults []*SpecialistResult
     
+    // 部分成功的结果
+    PartialResults []*SpecialistResult
+    
     // 汇总信息
     Summary string
+    
+    // 整体质量评分
+    OverallQuality float64
+    
+    // 结果一致性评分
+    ConsistencyScore float64
+    
+    // 收集时间
+    CollectedAt time.Time
+    
+    // 总执行时长
+    TotalDuration time.Duration
+    
+    // 扩展元数据
+    Metadata map[string]interface{}
 }
 
 // FeedbackResult 反馈结果
@@ -558,6 +733,24 @@ type FeedbackResult struct {
     
     // 收集的结果
     CollectedResults *CollectedResults
+    
+    // 对话连贯性评估
+    ConversationCoherence float64
+    
+    // 用户满意度预测
+    UserSatisfactionPrediction float64
+    
+    // 改进建议
+    ImprovementSuggestions []string
+    
+    // 风险警告
+    RiskWarnings []string
+    
+    // 反馈生成时间
+    GeneratedAt time.Time
+    
+    // 扩展元数据
+    Metadata map[string]interface{}
 }
 ```
 
@@ -1411,42 +1604,87 @@ type EnhancedMultiAgentCallback interface {
 
 ## 实现计划
 
-### 阶段一：核心框架和对话适配
-1. 定义核心类型和接口（包括 `ConversationContext`、`SessionConfig`）
-2. 实现基础的状态管理（支持无状态重新初始化）
-3. 创建主要节点的骨架实现
-4. **对话场景新增**：
+### 阶段一：核心框架和类型定义
+1. **核心类型系统**
+   - 定义 `EnhancedState`、`ConversationContext`、`ThinkingResult` 等核心结构体
+   - 实现状态管理接口，支持无状态重新初始化
+   - 定义枚举类型（TaskComplexity、ActionType、ExecutionStatus等）
+   - 实现状态序列化和反序列化机制
+
+2. **对话上下文分析**
    - 实现 `analyzeConversationContext` 函数
+   - 实现对话历史预处理和相关性过滤
+   - 实现意图识别和情感分析
+   - 实现上下文压缩和关键信息提取
+
+3. **基础节点框架**
+   - 创建节点接口和基础实现
    - 调整接口签名支持 `[]*schema.Message` 输入
-   - 实现对话历史预处理机制
+   - 实现状态传递和更新机制
+   - 建立节点间的数据流管道
 
-### 阶段二：对话感知的思考和规划
-1. 实现增强的 Host Think Node（支持对话历史分析）
-2. 实现 Plan Creation Node（基于对话上下文的规划）
-3. 实现复杂度判断逻辑（考虑对话延续性）
-4. **对话场景新增**：
-   - 实现对话历史压缩和相关性过滤
-   - 实现上下文窗口管理
-   - 实现意图理解和关联检测
+### 阶段二：思考和规划系统
+1. **增强思考节点**
+   - 实现 Host Think Node，集成对话历史分析
+   - 实现基于ReAct的对话感知思考
+   - 实现复杂度判断逻辑，考虑对话延续性
+   - 实现思考结果的结构化输出
 
-### 阶段三：执行和反馈（对话场景优化）
-1. 实现专家调用机制（传递对话上下文）
-2. 实现结果收集和反馈处理（考虑对话连贯性）
-3. 实现规划更新逻辑（基于对话进展）
-4. **对话场景新增**：
-   - 实现澄清机制和意图确认
-   - 实现对话状态的无状态管理
-   - 实现上下文相关的专家选择
+2. **动态规划系统**
+   - 实现 Plan Creation Node，基于对话上下文的任务分解
+   - 实现动态规划更新机制（版本控制、步骤调整）
+   - 实现规划步骤的依赖管理和优先级排序
+   - 实现规划历史追踪和回滚机制
 
-### 阶段四：优化和测试（对话场景专项）
-1. 完善回调机制（增加对话相关回调）
-2. 添加错误处理和容错机制（对话场景特殊错误）
-3. 性能优化和测试（大对话历史处理）
-4. **对话场景新增**：
-   - 实现对话场景的集成测试
-   - 实现内存管理和性能监控
-   - 实现对话质量评估机制
-   - 实现并发对话处理优化
+3. **分支决策逻辑**
+   - 实现复杂度分支，支持简单任务直接回答
+   - 实现反思分支，基于反馈决定继续或完成
+   - 实现专家选择分支，智能匹配任务和专家
+   - 实现错误处理和重试机制
+
+### 阶段三：执行和反馈系统
+1. **专家执行机制**
+   - 实现专家节点，支持上下文感知的任务执行
+   - 实现专家结果收集和质量评估
+   - 实现并行执行和结果聚合
+   - 实现专家选择的智能匹配算法
+
+2. **反馈处理系统**
+   - 实现反馈处理器，评估执行结果和对话连贯性
+   - 实现用户满意度预测和改进建议
+   - 实现风险评估和警告机制
+   - 实现反馈驱动的规划调整
+
+3. **结果整合**
+   - 实现结果收集器，统一管理专家执行结果
+   - 实现最终答案生成，整合对话历史
+   - 实现执行历史记录和追踪
+   - 实现状态清理和资源管理
+
+### 阶段四：优化和完善
+1. **性能优化**
+   - 实现上下文窗口管理和内存优化
+   - 实现并发处理和资源池管理
+   - 实现缓存机制和增量处理
+   - 实现大对话历史的高效处理
+
+2. **回调和监控**
+   - 完善回调机制，支持各阶段的事件监听
+   - 实现性能监控和指标收集
+   - 实现日志记录和调试支持
+   - 实现健康检查和故障恢复
+
+3. **测试和验证**
+   - 实现单元测试覆盖所有核心组件
+   - 实现集成测试验证端到端流程
+   - 实现对话场景的专项测试
+   - 实现压力测试和性能基准测试
+
+4. **容错和稳定性**
+   - 实现错误处理和异常恢复
+   - 实现超时机制和资源保护
+   - 实现状态一致性保证
+   - 实现多会话并发处理的隔离机制
 
 ## 技术特性
 

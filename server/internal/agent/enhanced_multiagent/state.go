@@ -6,363 +6,367 @@ import (
 	"time"
 
 	"github.com/cloudwego/eino/schema"
+	"github.com/google/uuid"
 )
 
 // NewEnhancedState 创建新的增强状态
-func NewEnhancedState(maxRounds int) *EnhancedState {
+func NewEnhancedState(sessionID string) *EnhancedState {
+	if sessionID == "" {
+		sessionID = uuid.New().String()
+	}
+
 	return &EnhancedState{
-		OriginalMessages:         make([]*schema.Message, 0),
+		OriginalMessages:         []*schema.Message{},
+		ConversationContext:      nil,
+		CurrentPlan:              nil,
+		CurrentExecution:         nil,
 		CurrentSpecialistResults: make(map[string]*SpecialistResult),
-		ExecutionHistory:         make([]*ExecutionRecord, 0),
-		ThinkingHistory:          make([]*ThinkingResult, 0),
+		CurrentCollectedResults:  nil,
+		CurrentFeedbackResult:    nil,
+		CurrentThinkingResult:    nil,
+		ExecutionHistory:         []*ExecutionRecord{},
+		ThinkingHistory:          []*ThinkingResult{},
 		CurrentRound:             0,
-		MaxRounds:                maxRounds,
+		MaxRounds:                5, // 默认最大轮次
 		IsSimpleTask:             false,
 		IsCompleted:              false,
+		FinalAnswer:              nil,
+		SessionID:                sessionID,
+		CallTimestamp:            time.Now(),
 	}
 }
 
-// Clone 克隆状态（深拷贝）
-func (s *EnhancedState) Clone() *EnhancedState {
-	data, err := json.Marshal(s)
-	if err != nil {
-		return nil
-	}
-	
-	var cloned EnhancedState
-	err = json.Unmarshal(data, &cloned)
-	if err != nil {
-		return nil
-	}
-	
-	return &cloned
+// InitializeFromMessages 从消息历史初始化状态
+func (s *EnhancedState) InitializeFromMessages(messages []*schema.Message) {
+	s.OriginalMessages = messages
+	s.CallTimestamp = time.Now()
+
+	// 分析对话上下文
+	s.ConversationContext = analyzeConversationContext(messages)
 }
 
-// Checkpoint 创建状态检查点
-func (s *EnhancedState) Checkpoint() *StateCheckpoint {
-	return &StateCheckpoint{
-		Timestamp: time.Now(),
-		Round:     s.CurrentRound,
-		State:     s.Clone(),
+// AddThinkingResult 添加思考结果
+func (s *EnhancedState) AddThinkingResult(result *ThinkingResult) {
+	s.CurrentThinkingResult = result
+	s.ThinkingHistory = append(s.ThinkingHistory, result)
+}
+
+// SetPlan 设置当前计划
+func (s *EnhancedState) SetPlan(plan *TaskPlan) {
+	s.CurrentPlan = plan
+}
+
+// UpdatePlan 更新计划
+func (s *EnhancedState) UpdatePlan(newPlan *TaskPlan, updateType PlanUpdateType, reason string) {
+	if s.CurrentPlan != nil {
+		// 记录更新历史
+		changesList := extractPlanChanges(s.CurrentPlan, newPlan)
+		changesMap := make(map[string]interface{})
+		for i, change := range changesList {
+			changesMap[fmt.Sprintf("change_%d", i)] = change
+		}
+		update := &PlanUpdate{
+			Version:     newPlan.Version,
+			UpdateType:  updateType,
+			Description: reason,
+			Timestamp:   time.Now(),
+			Changes:     changesMap,
+		}
+		newPlan.UpdateHistory = append(newPlan.UpdateHistory, update)
+	}
+	s.CurrentPlan = newPlan
+}
+
+// AddSpecialistResult 添加专家执行结果
+func (s *EnhancedState) AddSpecialistResult(specialistName string, result *SpecialistResult) {
+	s.CurrentSpecialistResults[specialistName] = result
+}
+
+// SetCollectedResults 设置收集的结果
+func (s *EnhancedState) SetCollectedResults(results *CollectedResults) {
+	s.CurrentCollectedResults = results
+}
+
+// SetFeedbackResult 设置反馈结果
+func (s *EnhancedState) SetFeedbackResult(feedback *FeedbackResult) {
+	s.CurrentFeedbackResult = feedback
+}
+
+// NextRound 进入下一轮执行
+func (s *EnhancedState) NextRound() {
+	// 记录当前轮次的执行历史
+	if s.CurrentCollectedResults != nil && s.CurrentFeedbackResult != nil {
+		record := &ExecutionRecord{
+			Round:     s.CurrentRound,
+			Results:   s.CurrentCollectedResults,
+			Feedback:  s.CurrentFeedbackResult,
+			Duration:  time.Since(s.CallTimestamp),
+			Timestamp: time.Now(),
+			Status:    ExecutionStatusCompleted,
+			Metadata:  make(map[string]interface{}),
+		}
+		s.ExecutionHistory = append(s.ExecutionHistory, record)
+	}
+
+	// 进入下一轮
+	s.CurrentRound++
+
+	// 清理当前轮次的临时状态
+	s.CurrentSpecialistResults = make(map[string]*SpecialistResult)
+	s.CurrentCollectedResults = nil
+	s.CurrentFeedbackResult = nil
+}
+
+// Complete 标记任务完成
+func (s *EnhancedState) Complete(finalAnswer *schema.Message) {
+	s.IsCompleted = true
+	s.FinalAnswer = finalAnswer
+
+	// 记录最后一轮的执行历史
+	if s.CurrentCollectedResults != nil {
+		record := &ExecutionRecord{
+			Round:     s.CurrentRound,
+			Results:   s.CurrentCollectedResults,
+			Feedback:  s.CurrentFeedbackResult,
+			Duration:  time.Since(s.CallTimestamp),
+			Timestamp: time.Now(),
+			Status:    ExecutionStatusCompleted,
+			Metadata:  make(map[string]interface{}),
+		}
+		s.ExecutionHistory = append(s.ExecutionHistory, record)
 	}
 }
 
-// IsMaxRoundsReached 检查是否达到最大轮次
-func (s *EnhancedState) IsMaxRoundsReached() bool {
-	return s.CurrentRound >= s.MaxRounds
-}
-
-// AddThinkingResult 添加思考结果到历史
-func (s *EnhancedState) AddThinkingResult(thinking *ThinkingResult) {
-	s.CurrentThinkingResult = thinking
-	s.ThinkingHistory = append(s.ThinkingHistory, thinking)
-}
-
-// AddExecutionRecord 添加执行记录到历史
-func (s *EnhancedState) AddExecutionRecord(results *CollectedResults) {
-	record := &ExecutionRecord{
-		Round:     s.CurrentRound,
-		Results:   results,
-		Timestamp: time.Now(),
+// ShouldContinue 判断是否应该继续执行
+func (s *EnhancedState) ShouldContinue() bool {
+	if s.IsCompleted {
+		return false
 	}
-	s.ExecutionHistory = append(s.ExecutionHistory, record)
+	if s.CurrentRound >= s.MaxRounds {
+		return false
+	}
+	if s.CurrentFeedbackResult != nil {
+		return s.CurrentFeedbackResult.ShouldContinue
+	}
+	return true
 }
 
 // GetCurrentStep 获取当前执行步骤
 func (s *EnhancedState) GetCurrentStep() *PlanStep {
-	if s.CurrentPlan == nil || len(s.CurrentPlan.Steps) == 0 {
-		return nil
-	}
-	
-	for _, step := range s.CurrentPlan.Steps {
-		if step.ID == s.CurrentPlan.CurrentStep {
-			return step
-		}
-	}
-	
-	return nil
-}
-
-// GetNextPendingStep 获取下一个待执行的步骤
-func (s *EnhancedState) GetNextPendingStep() *PlanStep {
 	if s.CurrentPlan == nil {
 		return nil
 	}
-	
-	for _, step := range s.CurrentPlan.Steps {
-		if step.Status == StepStatusPending {
-			// 检查依赖是否满足
-			if s.areDependenciesSatisfied(step) {
-				return step
+	return getCurrentExecutionStep(s.CurrentPlan, s)
+}
+
+// GetNextExecutableStep 获取下一个可执行步骤
+func (s *EnhancedState) GetNextExecutableStep() *PlanStep {
+	if s.CurrentPlan == nil {
+		return nil
+	}
+	return findNextExecutableStep(s.CurrentPlan)
+}
+
+// ToJSON 将状态序列化为JSON
+func (s *EnhancedState) ToJSON() ([]byte, error) {
+	return json.Marshal(s)
+}
+
+// FromJSON 从JSON反序列化状态
+func (s *EnhancedState) FromJSON(data []byte) error {
+	return json.Unmarshal(data, s)
+}
+
+// Clone 克隆状态
+func (s *EnhancedState) Clone() *EnhancedState {
+	data, err := s.ToJSON()
+	if err != nil {
+		return nil
+	}
+
+	newState := &EnhancedState{}
+	if err := newState.FromJSON(data); err != nil {
+		return nil
+	}
+
+	return newState
+}
+
+// 辅助函数
+
+// analyzeConversationContext 分析对话上下文
+func analyzeConversationContext(messages []*schema.Message) *ConversationContext {
+	if len(messages) == 0 {
+		return &ConversationContext{
+			TurnCount:      0,
+			IsFirstTurn:    true,
+			IsContinuation: false,
+			AnalyzedAt:     time.Now(),
+			Metadata:       make(map[string]interface{}),
+		}
+	}
+
+	// 计算对话轮次
+	turnCount := 0
+	for _, msg := range messages {
+		if msg.Role == schema.User {
+			turnCount++
+		}
+	}
+
+	// 获取最新的用户和助手消息
+	var latestUserMsg, latestAssistantMsg *schema.Message
+	for i := len(messages) - 1; i >= 0; i-- {
+		msg := messages[i]
+		if msg.Role == schema.User && latestUserMsg == nil {
+			latestUserMsg = msg
+		}
+		if msg.Role == schema.Assistant && latestAssistantMsg == nil {
+			latestAssistantMsg = msg
+		}
+		if latestUserMsg != nil && latestAssistantMsg != nil {
+			break
+		}
+	}
+
+	// 简单的意图分析（实际实现中可能需要更复杂的NLP处理）
+	userIntent := "unknown"
+	intentConfidence := 0.5
+	if latestUserMsg != nil {
+		content := latestUserMsg.Content
+		if len(content) > 0 {
+			text := content
+			// 简单的关键词匹配
+			if containsAny(text, []string{"帮我", "请", "能否", "可以"}) {
+				userIntent = "request"
+				intentConfidence = 0.8
+			} else if containsAny(text, []string{"什么", "如何", "为什么", "怎么"}) {
+				userIntent = "question"
+				intentConfidence = 0.8
 			}
 		}
 	}
-	
+
+	return &ConversationContext{
+		TurnCount:              turnCount,
+		IsFirstTurn:            turnCount <= 1,
+		IsContinuation:         turnCount > 1,
+		LatestUserMessage:      latestUserMsg,
+		LatestAssistantMessage: latestAssistantMsg,
+		ConversationTopic:      extractTopic(messages),
+		UserIntent:             userIntent,
+		IntentConfidence:       intentConfidence,
+		EmotionalTone:          "neutral",
+		KeyEntities:            extractEntities(messages),
+		ComplexityHint:         TaskComplexityModerate,
+		RelevantHistory:        messages,
+		ContextSummary:         generateContextSummary(messages),
+		AnalyzedAt:             time.Now(),
+		Metadata:               make(map[string]interface{}),
+	}
+}
+
+// containsAny 检查文本是否包含任何关键词
+func containsAny(text string, keywords []string) bool {
+	for _, keyword := range keywords {
+		if len(text) > 0 && len(keyword) > 0 {
+			// 简单的包含检查
+			for i := 0; i <= len(text)-len(keyword); i++ {
+				if text[i:i+len(keyword)] == keyword {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// extractTopic 提取对话主题
+func extractTopic(messages []*schema.Message) string {
+	if len(messages) == 0 {
+		return "general"
+	}
+	// 简单实现：返回第一个用户消息的前几个词
+	for _, msg := range messages {
+		if msg.Role == schema.User && len(msg.Content) > 0 {
+			content := msg.Content
+			if len(content) > 20 {
+				return content[:20] + "..."
+			}
+			return content
+		}
+	}
+	return "general"
+}
+
+// extractEntities 提取关键实体
+func extractEntities(messages []*schema.Message) []string {
+	// 简单实现：返回空列表
+	// 实际实现中可能需要NER处理
+	return []string{}
+}
+
+// generateContextSummary 生成上下文摘要
+func generateContextSummary(messages []*schema.Message) string {
+	if len(messages) == 0 {
+		return "Empty conversation"
+	}
+	return fmt.Sprintf("Conversation with %d messages", len(messages))
+}
+
+// getCurrentExecutionStep 获取当前执行步骤
+func getCurrentExecutionStep(plan *TaskPlan, state *EnhancedState) *PlanStep {
+	if plan == nil || len(plan.Steps) == 0 {
+		return nil
+	}
+
+	// 返回当前步骤
+	if plan.CurrentStep >= 0 && plan.CurrentStep < len(plan.Steps) {
+		return plan.Steps[plan.CurrentStep]
+	}
+
 	return nil
 }
 
-// areDependenciesSatisfied 检查步骤依赖是否满足
-func (s *EnhancedState) areDependenciesSatisfied(step *PlanStep) bool {
-	if len(step.Dependencies) == 0 {
-		return true
-	}
-	
-	for _, depID := range step.Dependencies {
-		depStep := s.getStepByID(depID)
-		if depStep == nil || depStep.Status != StepStatusCompleted {
-			return false
-		}
-	}
-	
-	return true
-}
-
-// getStepByID 根据ID获取步骤
-func (s *EnhancedState) getStepByID(id int) *PlanStep {
-	if s.CurrentPlan == nil {
+// findNextExecutableStep 查找下一个可执行步骤
+func findNextExecutableStep(plan *TaskPlan) *PlanStep {
+	if plan == nil || len(plan.Steps) == 0 {
 		return nil
 	}
-	
-	for _, step := range s.CurrentPlan.Steps {
-		if step.ID == id {
+
+	// 查找第一个未完成的步骤
+	for _, step := range plan.Steps {
+		if step.Status == StepStatusPending || step.Status == StepStatusExecuting {
 			return step
 		}
 	}
-	
+
 	return nil
 }
 
-// UpdateStepStatus 更新步骤状态
-func (s *EnhancedState) UpdateStepStatus(stepID int, status StepStatus) error {
-	step := s.getStepByID(stepID)
-	if step == nil {
-		return fmt.Errorf("step with ID %d not found", stepID)
+// extractPlanChanges 提取计划变更
+func extractPlanChanges(oldPlan, newPlan *TaskPlan) []string {
+	changes := []string{}
+
+	if oldPlan == nil {
+		changes = append(changes, "Initial plan created")
+		return changes
 	}
-	
-	step.Status = status
-	step.UpdatedAt = time.Now()
-	
-	// 如果步骤完成，添加到已完成列表
-	if status == StepStatusCompleted {
-		s.CurrentPlan.CompletedSteps = append(s.CurrentPlan.CompletedSteps, stepID)
+
+	if newPlan == nil {
+		changes = append(changes, "Plan removed")
+		return changes
 	}
-	
-	return nil
-}
 
-// IsAllStepsCompleted 检查所有步骤是否完成
-func (s *EnhancedState) IsAllStepsCompleted() bool {
-	if s.CurrentPlan == nil || len(s.CurrentPlan.Steps) == 0 {
-		return false
+	// 比较步骤数量
+	if len(oldPlan.Steps) != len(newPlan.Steps) {
+		changes = append(changes, fmt.Sprintf("Step count changed from %d to %d", len(oldPlan.Steps), len(newPlan.Steps)))
 	}
-	
-	for _, step := range s.CurrentPlan.Steps {
-		if step.Status != StepStatusCompleted && step.Status != StepStatusSkipped {
-			return false
-		}
+
+	// 比较内容
+	if oldPlan.Content != newPlan.Content {
+		changes = append(changes, "Plan content updated")
 	}
-	
-	return true
-}
 
-// TaskPlan 相关方法
-
-// NewTaskPlan 创建新的任务规划
-func NewTaskPlan(content string) *TaskPlan {
-	return &TaskPlan{
-		Content:            content,
-		CurrentStep:        0,
-		TotalSteps:         0,
-		CompletedSteps:     make([]int, 0),
-		Steps:              make([]*PlanStep, 0),
-		Version:            1,
-		AllowDynamicUpdate: true,
-		CreatedAt:          time.Now(),
-		UpdatedAt:          time.Now(),
-		UpdateHistory:      make([]*PlanUpdate, 0),
-	}
-}
-
-// AddStep 添加步骤到规划
-func (p *TaskPlan) AddStep(description, assignedTo string, priority int, dependencies []int) *PlanStep {
-	step := &PlanStep{
-		ID:           len(p.Steps) + 1,
-		Description:  description,
-		Status:       StepStatusPending,
-		AssignedTo:   assignedTo,
-		Priority:     priority,
-		Dependencies: dependencies,
-		RetryCount:   0,
-		MaxRetries:   3,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
-	}
-	
-	p.Steps = append(p.Steps, step)
-	p.TotalSteps = len(p.Steps)
-	p.UpdatedAt = time.Now()
-	
-	return step
-}
-
-// UpdateVersion 更新规划版本
-func (p *TaskPlan) UpdateVersion(updateType PlanUpdateType, description string, changes map[string]interface{}) {
-	p.Version++
-	p.UpdatedAt = time.Now()
-	
-	update := &PlanUpdate{
-		Version:     p.Version,
-		UpdateType:  updateType,
-		Description: description,
-		Timestamp:   time.Now(),
-		Changes:     changes,
-	}
-	
-	p.UpdateHistory = append(p.UpdateHistory, update)
-}
-
-// Clone 克隆任务规划（深拷贝）
-func (p *TaskPlan) Clone() *TaskPlan {
-	data, err := json.Marshal(p)
-	if err != nil {
-		return nil
-	}
-	
-	var cloned TaskPlan
-	err = json.Unmarshal(data, &cloned)
-	if err != nil {
-		return nil
-	}
-	
-	return &cloned
-}
-
-// CollectedResults 相关方法
-
-// NewCollectedResults 创建新的收集结果
-func NewCollectedResults() *CollectedResults {
-	return &CollectedResults{
-		Results:           make(map[string]*SpecialistResult),
-		SuccessfulResults: make([]*SpecialistResult, 0),
-		FailedResults:     make([]*SpecialistResult, 0),
-	}
-}
-
-// AddResult 添加专家结果
-func (c *CollectedResults) AddResult(result *SpecialistResult) {
-	c.Results[result.SpecialistName] = result
-	
-	switch result.Status {
-	case ExecutionStatusSuccess:
-		c.SuccessfulResults = append(c.SuccessfulResults, result)
-	case ExecutionStatusFailed, ExecutionStatusPartial:
-		c.FailedResults = append(c.FailedResults, result)
-	}
-}
-
-// HasSuccessfulResults 检查是否有成功的结果
-func (c *CollectedResults) HasSuccessfulResults() bool {
-	return len(c.SuccessfulResults) > 0
-}
-
-// HasFailedResults 检查是否有失败的结果
-func (c *CollectedResults) HasFailedResults() bool {
-	return len(c.FailedResults) > 0
-}
-
-// GetSuccessRate 获取成功率
-func (c *CollectedResults) GetSuccessRate() float64 {
-	total := len(c.Results)
-	if total == 0 {
-		return 0.0
-	}
-	
-	success := len(c.SuccessfulResults)
-	return float64(success) / float64(total)
-}
-
-// 状态序列化实现
-
-// JSONStateSerializer JSON状态序列化器
-type JSONStateSerializer struct{}
-
-// Serialize 序列化状态
-func (j *JSONStateSerializer) Serialize(state *EnhancedState) ([]byte, error) {
-	return json.Marshal(state)
-}
-
-// Deserialize 反序列化状态
-func (j *JSONStateSerializer) Deserialize(data []byte) (*EnhancedState, error) {
-	var state EnhancedState
-	err := json.Unmarshal(data, &state)
-	if err != nil {
-		return nil, err
-	}
-	return &state, nil
-}
-
-// 枚举类型的字符串表示
-
-// String 返回任务复杂度的字符串表示
-func (t TaskComplexity) String() string {
-	switch t {
-	case TaskComplexitySimple:
-		return "simple"
-	case TaskComplexityModerate:
-		return "moderate"
-	case TaskComplexityComplex:
-		return "complex"
-	default:
-		return "unknown"
-	}
-}
-
-// String 返回行动类型的字符串表示
-func (a ActionType) String() string {
-	switch a {
-	case ActionTypeDirectAnswer:
-		return "direct_answer"
-	case ActionTypeCreatePlan:
-		return "create_plan"
-	case ActionTypeExecuteStep:
-		return "execute_step"
-	case ActionTypeReflect:
-		return "reflect"
-	case ActionTypeUpdatePlan:
-		return "update_plan"
-	default:
-		return "unknown"
-	}
-}
-
-// String 返回步骤状态的字符串表示
-func (s StepStatus) String() string {
-	switch s {
-	case StepStatusPending:
-		return "pending"
-	case StepStatusExecuting:
-		return "executing"
-	case StepStatusCompleted:
-		return "completed"
-	case StepStatusFailed:
-		return "failed"
-	case StepStatusSkipped:
-		return "skipped"
-	default:
-		return "unknown"
-	}
-}
-
-// String 返回执行状态的字符串表示
-func (e ExecutionStatus) String() string {
-	switch e {
-	case ExecutionStatusSuccess:
-		return "success"
-	case ExecutionStatusFailed:
-		return "failed"
-	case ExecutionStatusPartial:
-		return "partial"
-	default:
-		return "unknown"
-	}
+	return changes
 }
