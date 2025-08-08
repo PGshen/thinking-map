@@ -102,11 +102,11 @@ Please analyze and provide the following information in JSON format:
 
 func (h *ConversationAnalyzerHandler) parseConversationContext(content string) (*ConversationContext, error) {
 	var result struct {
-		UserIntent     string            `json:"user_intent"`
-		KeyTopics      []string          `json:"key_topics"`
-		ContextSummary string            `json:"context_summary"`
-		Complexity     string            `json:"complexity"`
-		Metadata       map[string]any    `json:"metadata"`
+		UserIntent     string         `json:"user_intent"`
+		KeyTopics      []string       `json:"key_topics"`
+		ContextSummary string         `json:"context_summary"`
+		Complexity     string         `json:"complexity"`
+		Metadata       map[string]any `json:"metadata"`
 	}
 
 	err := json.Unmarshal([]byte(content), &result)
@@ -373,14 +373,12 @@ func (h *PlanCreationHandler) parseTaskPlan(content string) (*TaskPlan, error) {
 // SpecialistHandler handles specialist execution
 type SpecialistHandler struct {
 	specialistName string
-	config         *EnhancedMultiAgentConfig
 }
 
 // NewSpecialistHandler creates a new specialist handler
-func NewSpecialistHandler(specialistName string, config *EnhancedMultiAgentConfig) *SpecialistHandler {
+func NewSpecialistHandler(specialistName string) *SpecialistHandler {
 	return &SpecialistHandler{
 		specialistName: specialistName,
-		config:         config,
 	}
 }
 
@@ -488,7 +486,7 @@ func ResultCollectorLambda(ctx context.Context, input any, state *EnhancedState)
 	for specialistName, result := range state.SpecialistResults {
 		if result.Success && result.Output != nil {
 			// Add specialist name as context
-		msg := &schema.Message{
+			msg := &schema.Message{
 				Role:    result.Output.Role,
 				Content: fmt.Sprintf("[%s]: %s", specialistName, result.Output.Content),
 			}
