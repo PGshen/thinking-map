@@ -147,7 +147,7 @@ func (cb *DefaultEnhancedCallback) OnComplexityDecision(ctx context.Context, com
 
 // Plan creation callbacks
 func (cb *DefaultEnhancedCallback) OnPlanCreationStart(ctx context.Context, state *EnhancedState) context.Context {
-	cb.logger.Printf("[PLANNING] Starting plan creation for session %s", state.SessionID)
+	cb.logger.Printf("[PLANNING] Starting plan creation for round %d", state.RoundNumber)
 	return ctx
 }
 
@@ -232,7 +232,7 @@ func (cb *DefaultEnhancedCallback) OnReflectionDecision(ctx context.Context, sho
 
 // Round control callbacks
 func (cb *DefaultEnhancedCallback) OnRoundStart(ctx context.Context, roundNumber int, state *EnhancedState) context.Context {
-	cb.logger.Printf("[ROUND] Starting round %d for session %s", roundNumber, state.SessionID)
+	cb.logger.Printf("[ROUND] Starting round %d", roundNumber)
 	return ctx
 }
 

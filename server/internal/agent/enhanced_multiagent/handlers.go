@@ -26,10 +26,10 @@ import (
 )
 
 // StatePreHandler handles state preparation before node execution
-type StatePreHandler func(ctx context.Context, input any, state *EnhancedState) (any, error)
+type StatePreHandler[I any] func(ctx context.Context, input I, state *EnhancedState) (I, error)
 
 // StatePostHandler handles state updates after node execution
-type StatePostHandler func(ctx context.Context, output any, state *EnhancedState) error
+type StatePostHandler[O any] func(ctx context.Context, output O, state *EnhancedState) (O, error)
 
 // ConversationAnalyzerHandler analyzes conversation context
 type ConversationAnalyzerHandler struct {
@@ -44,35 +44,25 @@ func NewConversationAnalyzerHandler(config *EnhancedMultiAgentConfig) *Conversat
 }
 
 // PreHandler prepares input for conversation analysis
-func (h *ConversationAnalyzerHandler) PreHandler(ctx context.Context, input any, state *EnhancedState) (any, error) {
-	messages, ok := input.([]*schema.Message)
-	if !ok {
-		return nil, fmt.Errorf("expected []*schema.Message, got %T", input)
-	}
-
+func (h *ConversationAnalyzerHandler) PreHandler(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
 	// Store original messages in state
-	state.OriginalMessages = messages
+	state.OriginalMessages = input
 
 	// Build conversation analysis prompt
-	prompt := h.buildConversationAnalysisPrompt(messages)
+	prompt := h.buildConversationAnalysisPrompt(input)
 	return []*schema.Message{prompt}, nil
 }
 
 // PostHandler processes conversation analysis results
-func (h *ConversationAnalyzerHandler) PostHandler(ctx context.Context, output any, state *EnhancedState) error {
-	msg, ok := output.(*schema.Message)
-	if !ok {
-		return fmt.Errorf("expected *schema.Message, got %T", output)
-	}
-
+func (h *ConversationAnalyzerHandler) PostHandler(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
 	// Parse conversation context from LLM response
-	context, err := h.parseConversationContext(msg.Content)
+	context, err := h.parseConversationContext(output.Content)
 	if err != nil {
-		return fmt.Errorf("failed to parse conversation context: %w", err)
+		return nil, fmt.Errorf("failed to parse conversation context: %w", err)
 	}
 
 	state.ConversationContext = context
-	return nil
+	return output, nil
 }
 
 func (h *ConversationAnalyzerHandler) buildConversationAnalysisPrompt(messages []*schema.Message) *schema.Message {
@@ -143,69 +133,6 @@ type HostThinkHandler struct {
 	config *EnhancedMultiAgentConfig
 }
 
-// NewHostThinkHandler creates a new host think handler
-func NewHostThinkHandler(config *EnhancedMultiAgentConfig) *HostThinkHandler {
-	return &HostThinkHandler{
-		config: config,
-	}
-}
-
-// PreHandler prepares input for host thinking
-func (h *HostThinkHandler) PreHandler(ctx context.Context, input any, state *EnhancedState) (any, error) {
-	// Build thinking prompt based on conversation context
-	prompt := h.buildThinkingPrompt(state)
-	return []*schema.Message{prompt}, nil
-}
-
-// PostHandler processes thinking results
-func (h *HostThinkHandler) PostHandler(ctx context.Context, output any, state *EnhancedState) error {
-	msg, ok := output.(*schema.Message)
-	if !ok {
-		return fmt.Errorf("expected *schema.Message, got %T", output)
-	}
-
-	// Create execution record for thinking
-	record := &ExecutionRecord{
-		StepID:    fmt.Sprintf("think_%d", len(state.ThinkingHistory)+1),
-		Action:    ActionTypeThink,
-		Output:    msg,
-		StartTime: time.Now(),
-		EndTime:   time.Now(),
-		Status:    ExecutionStatusSuccess,
-	}
-
-	state.ThinkingHistory = append(state.ThinkingHistory, record)
-	return nil
-}
-
-func (h *HostThinkHandler) buildThinkingPrompt(state *EnhancedState) *schema.Message {
-	prompt := fmt.Sprintf(`You are an intelligent host agent. Think step by step about how to handle this request.
-
-Conversation Context:
-- User Intent: %s
-- Key Topics: %v
-- Complexity: %s
-- Summary: %s
-
-Think about:
-1. What is the user really asking for?
-2. What information or capabilities do I need?
-3. How complex is this task?
-4. What approach should I take?
-
-Provide your reasoning in a clear, structured way.`,
-		state.ConversationContext.UserIntent,
-		state.ConversationContext.KeyTopics,
-		state.ConversationContext.Complexity.String(),
-		state.ConversationContext.ContextSummary,
-	)
-
-	return &schema.Message{
-		Role:    schema.User,
-		Content: prompt,
-	}
-}
-
 // ComplexityBranchHandler handles complexity-based branching
 type ComplexityBranchHandler struct {
 	config *EnhancedMultiAgentConfig
@@ -247,27 +174,22 @@ func NewPlanCreationHandler(config *EnhancedMultiAgentConfig) *PlanCreationHandl
 }
 
 // PreHandler prepares input for plan creation
-func (h *PlanCreationHandler) PreHandler(ctx context.Context, input any, state *EnhancedState) (any, error) {
+func (h *PlanCreationHandler) PreHandler(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
 	prompt := h.buildPlanCreationPrompt(state)
 	return []*schema.Message{prompt}, nil
 }
 
 // PostHandler processes plan creation results
-func (h *PlanCreationHandler) PostHandler(ctx context.Context, output any, state *EnhancedState) error {
-	msg, ok := output.(*schema.Message)
-	if !ok {
-		return fmt.Errorf("expected *schema.Message, got %T", output)
-	}
-
+func (h *PlanCreationHandler) PostHandler(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
 	// Parse task plan from LLM response
-	plan, err := h.parseTaskPlan(msg.Content)
+	plan, err := h.parseTaskPlan(output.Content)
 	if err != nil {
-		return fmt.Errorf("failed to parse task plan: %w", err)
+		return nil, fmt.Errorf("failed to parse task plan: %w", err)
 	}
 
 	state.CurrentPlan = plan
 	state.PlanHistory = append(state.PlanHistory, plan)
-	return nil
+	return output, nil
 }
 
 func (h *PlanCreationHandler) buildPlanCreationPrompt(state *EnhancedState) *schema.Message {
@@ -352,15 +274,12 @@ func (h *PlanCreationHandler) parseTaskPlan(content string) (*TaskPlan, error) {
 
 	for i, stepData := range planData.Steps {
 		// Parse estimated time
-		estimatedTime, _ := time.ParseDuration(stepData.EstimatedTime)
-
 		plan.Steps[i] = &PlanStep{
 			ID:                 stepData.ID,
 			Name:               stepData.Name,
 			Description:        stepData.Description,
 			AssignedSpecialist: stepData.AssignedSpecialist,
 			Priority:           stepData.Priority,
-			EstimatedTime:      estimatedTime,
 			Status:             StepStatusPending,
 			Dependencies:       stepData.Dependencies,
 			Parameters:         stepData.Parameters,
@@ -383,7 +302,7 @@ func NewSpecialistHandler(specialistName string) *SpecialistHandler {
 }
 
 // PreHandler prepares input for specialist execution
-func (h *SpecialistHandler) PreHandler(ctx context.Context, input any, state *EnhancedState) (any, error) {
+func (h *SpecialistHandler) PreHandler(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
 	// Find the current step for this specialist
 	currentStep := h.findCurrentStep(state)
 	if currentStep == nil {
@@ -396,16 +315,11 @@ func (h *SpecialistHandler) PreHandler(ctx context.Context, input any, state *En
 }
 
 // PostHandler processes specialist execution results
-func (h *SpecialistHandler) PostHandler(ctx context.Context, output any, state *EnhancedState) error {
-	msg, ok := output.(*schema.Message)
-	if !ok {
-		return fmt.Errorf("expected *schema.Message, got %T", output)
-	}
-
+func (h *SpecialistHandler) PostHandler(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
 	// Create step result
 	result := &StepResult{
 		Success:      true,
-		Output:       msg,
+		Output:       output,
 		Confidence:   0.8, // TODO: implement confidence calculation
 		QualityScore: 0.8, // TODO: implement quality scoring
 	}
@@ -421,14 +335,9 @@ func (h *SpecialistHandler) PostHandler(ctx context.Context, output any, state *
 	if currentStep != nil {
 		currentStep.Status = StepStatusCompleted
 		currentStep.Result = result
-		now := time.Now()
-		currentStep.EndTime = &now
-		if currentStep.StartTime != nil {
-			currentStep.ActualTime = now.Sub(*currentStep.StartTime)
-		}
 	}
 
-	return nil
+	return output, nil
 }
 
 func (h *SpecialistHandler) findCurrentStep(state *EnhancedState) *PlanStep {
@@ -473,7 +382,7 @@ Please complete this step and provide your result.`,
 }
 
 // ResultCollectorLambda collects and summarizes specialist results
-func ResultCollectorLambda(ctx context.Context, input any, state *EnhancedState) (*schema.Message, error) {
+func ResultCollectorLambda(ctx context.Context, input []*schema.Message, state *EnhancedState) (*schema.Message, error) {
 	if state.SpecialistResults == nil || len(state.SpecialistResults) == 0 {
 		return &schema.Message{
 			Role:    schema.Assistant,
@@ -506,4 +415,150 @@ func ResultCollectorLambda(ctx context.Context, input any, state *EnhancedState)
 		Role:    schema.Assistant,
 		Content: summary,
 	}, nil
+}
+
+// PlanExecutionHandler handles plan execution coordination
+type PlanExecutionHandler struct {
+	config *EnhancedMultiAgentConfig
+}
+
+// NewPlanExecutionHandler creates a new plan execution handler
+func NewPlanExecutionHandler(config *EnhancedMultiAgentConfig) *PlanExecutionHandler {
+	return &PlanExecutionHandler{
+		config: config,
+	}
+}
+
+// Execute coordinates the execution of the current plan
+func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Message, state *EnhancedState) (*schema.Message, error) {
+	if state.CurrentPlan == nil {
+		return nil, fmt.Errorf("no current plan to execute")
+	}
+
+	// Find the next step to execute
+	nextStep := h.findNextStep(state)
+	if nextStep == nil {
+		// All steps completed, proceed to result collection
+		return &schema.Message{
+			Role:    schema.Assistant,
+			Content: "Plan execution completed. All steps have been executed.",
+		}, nil
+	}
+
+	// Mark step as executing
+	nextStep.Status = StepStatusRunning
+	now := time.Now()
+
+	// Update state
+	state.CurrentStep = nextStep.ID
+
+	// Create execution record
+	record := &ExecutionRecord{
+		StepID:    nextStep.ID,
+		Action:    ActionTypeExecute,
+		Output:    input,
+		StartTime: now,
+		Status:    ExecutionStatusStarted,
+	}
+	state.ExecutionHistory = append(state.ExecutionHistory, record)
+
+	return &schema.Message{
+		Role:    schema.Assistant,
+		Content: fmt.Sprintf("Executing step: %s - %s", nextStep.Name, nextStep.Description),
+	}, nil
+}
+
+// findNextStep finds the next step to execute based on dependencies and status
+func (h *PlanExecutionHandler) findNextStep(state *EnhancedState) *PlanStep {
+	for _, step := range state.CurrentPlan.Steps {
+		if step.Status == StepStatusPending {
+			// Check if all dependencies are completed
+			if h.areDependenciesCompleted(step, state) {
+				return step
+			}
+		}
+	}
+	return nil
+}
+
+// areDependenciesCompleted checks if all dependencies for a step are completed
+func (h *PlanExecutionHandler) areDependenciesCompleted(step *PlanStep, state *EnhancedState) bool {
+	for _, depID := range step.Dependencies {
+		for _, planStep := range state.CurrentPlan.Steps {
+			if planStep.ID == depID && planStep.Status != StepStatusCompleted {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// SpecialistBranchHandler handles specialist selection and branching
+type SpecialistBranchHandler struct {
+	config *EnhancedMultiAgentConfig
+}
+
+// NewSpecialistBranchHandler creates a new specialist branch handler
+func NewSpecialistBranchHandler(config *EnhancedMultiAgentConfig) *SpecialistBranchHandler {
+	return &SpecialistBranchHandler{
+		config: config,
+	}
+}
+
+// Evaluate determines which specialist should handle the current step
+func (h *SpecialistBranchHandler) Evaluate(ctx context.Context, state *EnhancedState) (string, error) {
+	if state.CurrentStep == "" {
+		return "result_collector", nil // No current step, go to result collection
+	}
+
+	// Find the current step by ID
+	currentStep := h.findStepByID(state.CurrentStep, state)
+	if currentStep == nil {
+		return "result_collector", nil // Step not found, go to result collection
+	}
+
+	// Return the assigned specialist for the current step
+	assignedSpecialist := currentStep.AssignedSpecialist
+	if assignedSpecialist == "" {
+		return "result_collector", nil // No specialist assigned, go to result collection
+	}
+
+	// Verify the specialist exists in config
+	for _, specialist := range h.config.Specialists {
+		if specialist.Name == assignedSpecialist {
+			return assignedSpecialist, nil
+		}
+	}
+
+	// Specialist not found, go to result collection
+	return "result_collector", nil
+}
+
+// findStepByID finds a step by its ID in the current plan
+func (h *SpecialistBranchHandler) findStepByID(stepID string, state *EnhancedState) *PlanStep {
+	if state.CurrentPlan == nil {
+		return nil
+	}
+
+	for _, step := range state.CurrentPlan.Steps {
+		if step.ID == stepID {
+			return step
+		}
+	}
+	return nil
+}
+
+// buildSpecialistBranchMap creates a map of specialist names to branch conditions
+func buildSpecialistBranchMap(specialists []*EnhancedSpecialist) map[string]bool {
+	branchMap := make(map[string]bool)
+
+	// Add all specialist names as valid branches
+	for _, specialist := range specialists {
+		branchMap[specialist.Name] = true
+	}
+
+	// Add result collector as a fallback branch
+	branchMap["result_collector"] = true
+
+	return branchMap
 }

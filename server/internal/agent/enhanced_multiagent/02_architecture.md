@@ -7,7 +7,6 @@
 ```mermaid
 flowchart TB
     subgraph "Enhanced MultiAgent System"
-        HostAgent["Host Agent (ReAct)"]
         ConversationAnalyzer["对话上下文分析器"]
         ComplexityJudge["复杂度判断器"]
         PlanManager["动态规划管理器"]
@@ -15,17 +14,17 @@ flowchart TB
         FeedbackProcessor["反馈处理器"]
         StateManager["状态管理器"]
         
-        subgraph "Host Agent Components"
-            Thinker["思考器 (ReAct)"]
+        subgraph "Core Components"
             Planner["规划器"]
             Executor["执行器"]
             Reflector["反思器"]
         end
         
         subgraph "Specialists"
-            Spec1["专家 1"]
-            Spec2["专家 2"]
-            SpecN["专家 N"]
+            Spec1["编程专家"]
+            Spec2["分析专家"]
+            Spec3["写作专家"]
+            Spec4["研究专家"]
         end
         
         subgraph "Support Components"
@@ -36,9 +35,7 @@ flowchart TB
     end
     
     User["用户对话历史<br/>[]*schema.Message"] --> ConversationAnalyzer
-    ConversationAnalyzer --> HostAgent
-    HostAgent --> Thinker
-    Thinker --> ComplexityJudge
+    ConversationAnalyzer --> ComplexityJudge
     ComplexityJudge -->|简单任务| DirectAnswer["直接回答"]
     ComplexityJudge -->|复杂任务| Planner
     Planner --> PlanManager
@@ -46,17 +43,19 @@ flowchart TB
     Executor --> SpecialistPool
     SpecialistPool --> Spec1
     SpecialistPool --> Spec2
-    SpecialistPool --> SpecN
+    SpecialistPool --> Spec3
+    SpecialistPool --> Spec4
     Spec1 --> FeedbackProcessor
     Spec2 --> FeedbackProcessor
-    SpecN --> FeedbackProcessor
+    Spec3 --> FeedbackProcessor
+    Spec4 --> FeedbackProcessor
     FeedbackProcessor --> Reflector
     Reflector -->|继续执行| PlanManager
     Reflector -->|任务完成| FinalAnswer["最终答案"]
     DirectAnswer --> User
     FinalAnswer --> User
     
-    StateManager -.-> HostAgent
+    StateManager -.-> ConversationAnalyzer
     StateManager -.-> PlanManager
     StateManager -.-> SpecialistPool
     StateManager -.-> FeedbackProcessor
@@ -74,9 +73,7 @@ flowchart TD
     
     INPUT --> CONTEXT_ANALYZE["对话上下文分析<br/>analyzeConversationContext<br/><br/>状态更新:<br/>• ConversationContext 设置<br/>• 对话轮次分析<br/>• 意图识别<br/>• 历史关联性判断"]
     
-    CONTEXT_ANALYZE --> HOST_THINK["Host Think Node<br/>输入: []*schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• OriginalMessages 保存<br/>• CurrentThinkingResult 设置<br/>• ThinkingHistory 追加<br/>• 基于对话上下文的ReAct思考"]
-    
-    HOST_THINK --> COMPLEXITY_BRANCH{"复杂度判断分支<br/>ComplexityBranch<br/><br/>状态读取:<br/>• CurrentThinkingResult.Complexity<br/>• ConversationContext.IsContinuation"}
+    CONTEXT_ANALYZE --> COMPLEXITY_BRANCH{"复杂度判断分支<br/>ComplexityBranch<br/><br/>状态读取:<br/>• ConversationContext.TaskComplexity<br/>• ConversationContext.IsContinuation"}
     
     COMPLEXITY_BRANCH -->|简单任务| DIRECT_ANSWER["Direct Answer Node<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• IsSimpleTask = true<br/>• IsCompleted = true<br/>• FinalAnswer 设置<br/>• 考虑对话历史的直接回答"]
     
@@ -144,9 +141,7 @@ flowchart TD
     
     ANALYZE --> CTX_RESULT["ConversationContext<br>• 对话轮次<br>• 用户意图<br>• 是否延续<br>• 相关历史"]
     
-    CTX_RESULT --> THINK["增强思考<br>基于上下文的ReAct思考"]
-    
-    THINK --> DECISION{"复杂度判断"}
+    CTX_RESULT --> DECISION{"复杂度判断"}
     
     DECISION -->|简单| DIRECT["直接回答<br>考虑对话历史"]
     DECISION -->|复杂| PLAN["规划执行<br>基于上下文的任务分解"]

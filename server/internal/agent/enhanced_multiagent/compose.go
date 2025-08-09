@@ -21,18 +21,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
 )
 
 const (
-	// Node names
+	// Node keys
 	conversationAnalyzerNodeKey = "conversation_analyzer"
-	hostThinkNodeKey            = "host_think"
 	complexityBranchNodeKey     = "complexity_branch"
 	directAnswerNodeKey         = "direct_answer"
 	planCreationNodeKey         = "plan_creation"
+	planExecutionNodeKey        = "plan_execution"
+	specialistBranchNodeKey     = "specialist_branch"
 	resultCollectorNodeKey      = "result_collector"
 	feedbackProcessorNodeKey    = "feedback_processor"
 	reflectionBranchNodeKey     = "reflection_branch"
@@ -56,8 +56,6 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	graph := compose.NewGraph[[]*schema.Message, *schema.Message](
 		compose.WithGenLocalState(func(ctx context.Context) *EnhancedState {
 			return &EnhancedState{
-				SessionID:       generateSessionID(),
-				ConversationID:  generateConversationID(),
 				RoundNumber:     1,
 				StartTime:       time.Now(),
 				ExecutionStatus: ExecutionStatusStarted,
@@ -72,62 +70,28 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	conversationAnalyzer := NewConversationAnalyzerHandler(config)
 	err := graph.AddChatModelNode(conversationAnalyzerNodeKey, config.Host.Model,
 		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
-			result, err := conversationAnalyzer.PreHandler(ctx, input, state)
-			if err != nil {
-				return nil, err
-			}
-			if msgs, ok := result.([]*schema.Message); ok {
-				return msgs, nil
-			}
-			return input, nil
+			return conversationAnalyzer.PreHandler(ctx, input, state)
 		}),
 		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
-			err := conversationAnalyzer.PostHandler(ctx, output, state)
-			return output, err
+			return conversationAnalyzer.PostHandler(ctx, output, state)
 		}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add conversation analyzer node: %w", err)
 	}
 
-	// Add host think node
-	hostThinkHandler := NewHostThinkHandler(config)
-	err = graph.AddChatModelNode(hostThinkNodeKey, config.Host.Model,
-		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
-			result, err := hostThinkHandler.PreHandler(ctx, input, state)
-			if err != nil {
-				return nil, err
-			}
-			if msgs, ok := result.([]*schema.Message); ok {
-				return msgs, nil
-			}
-			return input, nil
-		}),
-		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
-			err := hostThinkHandler.PostHandler(ctx, output, state)
-			return output, err
-		}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add host think node: %w", err)
-	}
+
 
 	// Add complexity branch node
 	complexityBranchHandler := NewComplexityBranchHandler(config)
 	complexityBranch := compose.NewGraphBranch(func(ctx context.Context, input *schema.Message) (string, error) {
 		var result string
-		err := compose.ProcessState[*EnhancedState](ctx, func(ctx context.Context, state *EnhancedState) error {
-			var err error
+		err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
 			result, err = complexityBranchHandler.Evaluate(ctx, state)
 			return err
 		})
 		return result, err
 	}, map[string]bool{directAnswerBranch: true, planAndExecuteBranch: true})
-
-	err = graph.AddBranch(hostThinkNodeKey, complexityBranch)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add complexity branch: %w", err)
-	}
 
 	// Add direct answer node for simple tasks
 	err = graph.AddChatModelNode(directAnswerNodeKey, config.Host.Model,
@@ -150,27 +114,46 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	planCreationHandler := NewPlanCreationHandler(config)
 	err = graph.AddChatModelNode(planCreationNodeKey, config.Host.Model,
 		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
-			result, err := planCreationHandler.PreHandler(ctx, input, state)
-			if err != nil {
-				return nil, err
-			}
-			if msgs, ok := result.([]*schema.Message); ok {
-				return msgs, nil
-			}
-			return input, nil
+			return planCreationHandler.PreHandler(ctx, input, state)
 		}),
 		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
-			err := planCreationHandler.PostHandler(ctx, output, state)
-			return output, err
+			return planCreationHandler.PostHandler(ctx, output, state)
 		}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add plan creation node: %w", err)
 	}
 
+	// Add plan execution node
+	planExecutionHandler := NewPlanExecutionHandler(config)
+	err = graph.AddLambdaNode(planExecutionNodeKey,
+		compose.InvokableLambda(func(ctx context.Context, input *schema.Message) (*schema.Message, error) {
+			var result *schema.Message
+			err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
+				result, err = planExecutionHandler.Execute(ctx, input, state)
+				return err
+			})
+			return result, err
+		}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add plan execution node: %w", err)
+	}
+
+	// Add specialist branch
+	specialistBranchHandler := NewSpecialistBranchHandler(config)
+	specialistBranch := compose.NewGraphBranch(func(ctx context.Context, input *schema.Message) (string, error) {
+		var result string
+		err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
+			result, err = specialistBranchHandler.Evaluate(ctx, state)
+			return err
+		})
+		return result, err
+	}, buildSpecialistBranchMap(config.Specialists))
+
 	// Add specialist nodes
 	for _, specialist := range config.Specialists {
-		if err := addSpecialist(graph, specialist); err != nil {
+		if err = addSpecialist(graph, specialist); err != nil {
 			return nil, fmt.Errorf("failed to add specialist node %s: %w", specialist.Name, err)
 		}
 	}
@@ -179,9 +162,10 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	err = graph.AddLambdaNode(resultCollectorNodeKey,
 		compose.InvokableLambda(func(ctx context.Context, input *schema.Message) (*schema.Message, error) {
 			var result *schema.Message
-			err := compose.ProcessState[*EnhancedState](ctx, func(ctx context.Context, state *EnhancedState) error {
-				var err error
-				result, err = ResultCollectorLambda(ctx, input, state)
+			err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
+				// Convert single message to slice for ResultCollectorLambda
+				messages := []*schema.Message{input}
+				result, err = ResultCollectorLambda(ctx, messages, state)
 				return err
 			})
 			return result, err
@@ -197,7 +181,7 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 			return buildFeedbackPrompt(state), nil
 		}),
 		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
-			err := processFeedbackResult(output, state)
+			err = processFeedbackResult(output, state)
 			return output, err
 		}),
 	)
@@ -208,8 +192,7 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	// Add reflection branch node
 	reflectionBranch := compose.NewGraphBranch(func(ctx context.Context, input *schema.Message) (string, error) {
 		var result string
-		err := compose.ProcessState[*EnhancedState](ctx, func(ctx context.Context, state *EnhancedState) error {
-			var err error
+		err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
 			result, err = evaluateReflectionDecision(state)
 			return err
 		})
@@ -227,7 +210,7 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 			return buildPlanUpdatePrompt(state), nil
 		}),
 		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
-			err := processPlanUpdate(output, state)
+			err = processPlanUpdate(output, state)
 			return output, err
 		}),
 	)
@@ -239,7 +222,7 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	err = graph.AddLambdaNode(finalAnswerNodeKey,
 		compose.InvokableLambda(func(ctx context.Context, input *schema.Message) (*schema.Message, error) {
 			var result *schema.Message
-			err := compose.ProcessState[*EnhancedState](ctx, func(ctx context.Context, state *EnhancedState) error {
+			err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
 				result = generateFinalAnswer(state)
 				return nil
 			})
@@ -252,13 +235,25 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 
 	// Define edges
 	graph.AddEdge(compose.START, conversationAnalyzerNodeKey)
-	graph.AddEdge(conversationAnalyzerNodeKey, hostThinkNodeKey)
+
+	// Complexity branch - directly from conversation analyzer
+	graph.AddBranch(conversationAnalyzerNodeKey, complexityBranch)
 
 	// Direct answer path
 	graph.AddEdge(directAnswerNodeKey, compose.END)
 
 	// Plan and execute path
-	graph.AddEdge(planCreationNodeKey, resultCollectorNodeKey)
+	graph.AddEdge(planCreationNodeKey, planExecutionNodeKey)
+
+	// Plan execution branch
+	graph.AddBranch(planExecutionNodeKey, specialistBranch)
+
+	// All specialists go to result collector
+	for _, specialist := range config.Specialists {
+		graph.AddEdge(specialist.Name, resultCollectorNodeKey)
+	}
+
+	// Result collector goes to feedback processor
 	graph.AddEdge(resultCollectorNodeKey, feedbackProcessorNodeKey)
 
 	// Plan update loop
@@ -289,18 +284,10 @@ func addSpecialist(graph *compose.Graph[[]*schema.Message, *schema.Message], spe
 			return err
 		}
 		if err := graph.AddLambdaNode(specialist.Name, lambda, compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
-			result, err := specialistHandler.PreHandler(ctx, input, state)
-			if err != nil {
-				return nil, err
-			}
-			if msgs, ok := result.([]*schema.Message); ok {
-				return msgs, nil
-			}
-			return input, nil
+			return specialistHandler.PreHandler(ctx, input, state)
 		}),
 			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
-				err := specialistHandler.PostHandler(ctx, output, state)
-				return output, err
+				return specialistHandler.PostHandler(ctx, output, state)
 			}),
 			compose.WithNodeName(specialist.Name), compose.WithOutputKey(specialist.Name)); err != nil {
 			return err
@@ -308,36 +295,20 @@ func addSpecialist(graph *compose.Graph[[]*schema.Message, *schema.Message], spe
 	} else if specialist.ChatModel != nil {
 		if err := graph.AddChatModelNode(specialist.Name, specialist.ChatModel,
 			compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
-				result, err := specialistHandler.PreHandler(ctx, input, state)
-				if err != nil {
-					return nil, err
-				}
-				if msgs, ok := result.([]*schema.Message); ok {
-					return msgs, nil
-				}
-				return input, nil
+				return specialistHandler.PreHandler(ctx, input, state)
 			}),
 			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
-				err := specialistHandler.PostHandler(ctx, output, state)
-				return output, err
+				return specialistHandler.PostHandler(ctx, output, state)
 			}),
 			compose.WithNodeName(specialist.Name), compose.WithOutputKey(specialist.Name),
 		); err != nil {
 			return err
 		}
 	}
-	graph.AddEdge(specialist.Name, resultCollectorNodeKey)
 	return nil
 }
 
 // Helper functions
-
-func createChatModel(modelConfig ModelConfig) model.ChatModel {
-	// This is a placeholder - in practice, you would create the actual model
-	// based on the provider and configuration
-	// For now, return nil and implement when integrating with actual models
-	return nil
-}
 
 func generateSessionID() string {
 	return fmt.Sprintf("session_%d", time.Now().UnixNano())

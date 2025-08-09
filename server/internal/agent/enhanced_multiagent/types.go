@@ -194,116 +194,83 @@ type ConversationContext struct {
 
 // ExecutionRecord represents a single execution step record
 type ExecutionRecord struct {
-	StepID      string                 `json:"step_id"`
-	Action      ActionType             `json:"action"`
-	Input       []*schema.Message      `json:"input"`
-	Output      *schema.Message        `json:"output"`
-	StartTime   time.Time              `json:"start_time"`
-	EndTime     time.Time              `json:"end_time"`
-	Duration    time.Duration          `json:"duration"`
-	Status      ExecutionStatus        `json:"status"`
-	Error       string                 `json:"error,omitempty"`
-	Metadata    map[string]any         `json:"metadata,omitempty"`
+	StepID    string            `json:"step_id"`
+	Action    ActionType        `json:"action"`
+	Input     []*schema.Message `json:"input"`
+	Output    *schema.Message   `json:"output"`
+	StartTime time.Time         `json:"start_time"`
+	EndTime   time.Time         `json:"end_time"`
+	Duration  time.Duration     `json:"duration"`
+	Status    ExecutionStatus   `json:"status"`
+	Error     string            `json:"error,omitempty"`
+	Metadata  map[string]any    `json:"metadata,omitempty"`
 }
 
 // StepResult represents the result of executing a plan step
 type StepResult struct {
-	Success        bool               `json:"success"`
-	Output         *schema.Message    `json:"output"`
-	Error          string             `json:"error,omitempty"`
-	Confidence     float64            `json:"confidence"`
-	QualityScore   float64            `json:"quality_score"`
-	Metadata       map[string]any     `json:"metadata,omitempty"`
+	Success      bool            `json:"success"`
+	Output       *schema.Message `json:"output"`
+	Error        string          `json:"error,omitempty"`
+	Confidence   float64         `json:"confidence"`
+	QualityScore float64         `json:"quality_score"`
+	Metadata     map[string]any  `json:"metadata,omitempty"`
 }
 
 // PlanStep represents a single step in a task plan
 type PlanStep struct {
-	ID                string                 `json:"id"`
-	Name              string                 `json:"name"`
-	Description       string                 `json:"description"`
-	AssignedSpecialist string                `json:"assigned_specialist"`
-	Priority          int                    `json:"priority"`
-	EstimatedTime     time.Duration          `json:"estimated_time"`
-	ActualTime        time.Duration          `json:"actual_time"`
-	Status            StepStatus             `json:"status"`
-	StartTime         *time.Time             `json:"start_time,omitempty"`
-	EndTime           *time.Time             `json:"end_time,omitempty"`
-	Dependencies      []string               `json:"dependencies,omitempty"`
-	Parameters        map[string]any         `json:"parameters,omitempty"`
-	Result            *StepResult            `json:"result,omitempty"`
-	Metadata          map[string]any         `json:"metadata,omitempty"`
-}
-
-// ImpactAssessment represents the impact assessment of a plan update
-type ImpactAssessment struct {
-	AffectedSteps   []string           `json:"affected_steps"`
-	TimeImpact      time.Duration      `json:"time_impact"`
-	ResourceImpact  map[string]any     `json:"resource_impact,omitempty"`
-	RiskLevel       string             `json:"risk_level"`
-	Mitigation      string             `json:"mitigation,omitempty"`
-}
-
-// PlanChange represents a specific change in a plan update
-type PlanChange struct {
-	Type      PlanUpdateType     `json:"type"`
-	TargetID  string             `json:"target_id"`
-	Field     string             `json:"field"`
-	OldValue  any                `json:"old_value,omitempty"`
-	NewValue  any                `json:"new_value,omitempty"`
-	Metadata  map[string]any     `json:"metadata,omitempty"`
+	ID                 string         `json:"id"`
+	Name               string         `json:"name"`
+	Description        string         `json:"description"`
+	AssignedSpecialist string         `json:"assigned_specialist"`
+	Priority           int            `json:"priority"`
+	Status             StepStatus     `json:"status"`
+	Dependencies       []string       `json:"dependencies,omitempty"`
+	Parameters         map[string]any `json:"parameters,omitempty"`
+	Result             *StepResult    `json:"result,omitempty"`
+	Metadata           map[string]any `json:"metadata,omitempty"`
 }
 
 // PlanUpdate represents an update to a task plan
 type PlanUpdate struct {
-	ID               string             `json:"id"`
-	PlanVersion      int                `json:"plan_version"`
-	UpdateType       PlanUpdateType     `json:"update_type"`
-	Description      string             `json:"description"`
-	Reason           string             `json:"reason"`
-	Changes          []PlanChange       `json:"changes"`
-	Timestamp        time.Time          `json:"timestamp"`
-	ImpactAssessment *ImpactAssessment  `json:"impact_assessment,omitempty"`
-	Metadata         map[string]any     `json:"metadata,omitempty"`
+	ID          string         `json:"id"`
+	PlanVersion int            `json:"plan_version"`
+	UpdateType  PlanUpdateType `json:"update_type"`
+	Description string         `json:"description"`
+	Reason      string         `json:"reason"`
+	Timestamp   time.Time      `json:"timestamp"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 // TaskPlan represents a complete task execution plan
 type TaskPlan struct {
-	ID                string                 `json:"id"`
-	Version           int                    `json:"version"`
-	Name              string                 `json:"name"`
-	Description       string                 `json:"description"`
-	Status            ExecutionStatus        `json:"status"`
-	CreatedAt         time.Time              `json:"created_at"`
-	UpdatedAt         time.Time              `json:"updated_at"`
-	Steps             []*PlanStep            `json:"steps"`
-	Dependencies      map[string][]string    `json:"dependencies,omitempty"`
-	ResourceAllocation map[string]any        `json:"resource_allocation,omitempty"`
-	UpdateHistory     []*PlanUpdate          `json:"update_history,omitempty"`
-	Metadata          map[string]any         `json:"metadata,omitempty"`
+	ID            string          `json:"id"`
+	Version       int             `json:"version"`
+	Name          string          `json:"name"`
+	Description   string          `json:"description"`
+	Status        ExecutionStatus `json:"status"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+	Steps         []*PlanStep     `json:"steps"`
+	UpdateHistory []*PlanUpdate   `json:"update_history,omitempty"`
+	Metadata      map[string]any  `json:"metadata,omitempty"`
 }
 
 // EnhancedState represents the complete state of the enhanced multi-agent system
 type EnhancedState struct {
-	// Session Information
-	SessionID       string    `json:"session_id"`
-	ConversationID  string    `json:"conversation_id"`
-	RoundNumber     int       `json:"round_number"`
-	StartTime       time.Time `json:"start_time"`
+	RoundNumber int       `json:"round_number"`
+	StartTime   time.Time `json:"start_time"`
 
 	// Conversation Context
 	ConversationContext *ConversationContext `json:"conversation_context,omitempty"`
 	OriginalMessages    []*schema.Message    `json:"original_messages"`
 
-	// Thinking History
-	ThinkingHistory []*ExecutionRecord `json:"thinking_history,omitempty"`
-
 	// Task Planning
-	CurrentPlan     *TaskPlan `json:"current_plan,omitempty"`
-	PlanHistory     []*TaskPlan `json:"plan_history,omitempty"`
+	CurrentPlan *TaskPlan   `json:"current_plan,omitempty"`
+	PlanHistory []*TaskPlan `json:"plan_history,omitempty"`
 
 	// Execution Status
-	ExecutionStatus ExecutionStatus `json:"execution_status"`
-	CurrentStep     string          `json:"current_step,omitempty"`
+	ExecutionStatus  ExecutionStatus    `json:"execution_status"`
+	CurrentStep      string             `json:"current_step,omitempty"`
 	ExecutionHistory []*ExecutionRecord `json:"execution_history,omitempty"`
 
 	// Specialist Results
@@ -318,9 +285,9 @@ type EnhancedState struct {
 	ReflectionCount int              `json:"reflection_count"`
 
 	// Execution Control
-	MaxRounds       int  `json:"max_rounds"`
-	ShouldContinue  bool `json:"should_continue"`
-	IsCompleted     bool `json:"is_completed"`
+	MaxRounds      int  `json:"max_rounds"`
+	ShouldContinue bool `json:"should_continue"`
+	IsCompleted    bool `json:"is_completed"`
 
 	// Final Answer
 	FinalAnswer *schema.Message `json:"final_answer,omitempty"`
@@ -345,13 +312,13 @@ func (es *EnhancedState) Clone() (*EnhancedState, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var cloned EnhancedState
 	err = cloned.FromJSON(data)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &cloned, nil
 }
 
@@ -362,8 +329,6 @@ type EnhancedMultiAgent struct {
 	graphAddNodeOpts []compose.GraphAddNodeOpt
 	config           *EnhancedMultiAgentConfig
 }
-
-
 
 // Generate executes the enhanced multi-agent system
 func (ema *EnhancedMultiAgent) Generate(ctx context.Context, input []*schema.Message, opts ...agent.AgentOption) (*schema.Message, error) {

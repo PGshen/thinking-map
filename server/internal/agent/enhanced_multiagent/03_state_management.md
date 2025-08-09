@@ -7,48 +7,43 @@
 ```go
 type EnhancedState struct {
     // 基础信息
-    SessionID           string                 `json:"session_id"`
-    StartTime          time.Time              `json:"start_time"`
-    LastUpdateTime     time.Time              `json:"last_update_time"`
-    
-    // 对话上下文 (新增)
-    ConversationContext *ConversationContext   `json:"conversation_context"`
-    
-    // 原始输入
-    OriginalMessages   []*schema.Message      `json:"original_messages"`
-    
-    // 思考阶段
-    CurrentThinkingResult *ThinkingResult     `json:"current_thinking_result"`
-    ThinkingHistory      []*ThinkingResult    `json:"thinking_history"`
-    
+    RoundNumber int       `json:"round_number"`
+    StartTime   time.Time `json:"start_time"`
+
+    // 对话上下文
+    ConversationContext *ConversationContext `json:"conversation_context,omitempty"`
+    OriginalMessages    []*schema.Message    `json:"original_messages"`
+
     // 任务规划
-    CurrentPlan         *TaskPlan             `json:"current_plan"`
-    PlanHistory         []*TaskPlan           `json:"plan_history"`
-    
+    CurrentPlan *TaskPlan   `json:"current_plan,omitempty"`
+    PlanHistory []*TaskPlan `json:"plan_history,omitempty"`
+
     // 执行状态
-    CurrentExecution    *ExecutionContext     `json:"current_execution"`
-    ExecutionHistory    []*ExecutionRecord    `json:"execution_history"`
-    
+    ExecutionStatus  ExecutionStatus    `json:"execution_status"`
+    CurrentStep      string             `json:"current_step,omitempty"`
+    ExecutionHistory []*ExecutionRecord `json:"execution_history,omitempty"`
+
     // 专家结果
-    CurrentSpecialistResults map[string]*SpecialistResult `json:"current_specialist_results"`
-    
-    // 结果收集
-    CurrentCollectedResults *CollectedResults  `json:"current_collected_results"`
-    
-    // 反馈处理
-    CurrentFeedbackResult *FeedbackResult     `json:"current_feedback_result"`
-    
+    SpecialistResults map[string]*StepResult `json:"specialist_results,omitempty"`
+
+    // 收集结果
+    CollectedResults []*schema.Message `json:"collected_results,omitempty"`
+    FinalResult      *schema.Message   `json:"final_result,omitempty"`
+
+    // 反馈和反思
+    FeedbackHistory []map[string]any `json:"feedback_history,omitempty"`
+    ReflectionCount int              `json:"reflection_count"`
+
     // 执行控制
-    CurrentRound        int                   `json:"current_round"`
-    MaxRounds          int                   `json:"max_rounds"`
-    IsCompleted        bool                  `json:"is_completed"`
-    IsSimpleTask       bool                  `json:"is_simple_task"`
-    
-    // 最终结果
-    FinalAnswer        *schema.Message       `json:"final_answer"`
-    
+    MaxRounds      int  `json:"max_rounds"`
+    ShouldContinue bool `json:"should_continue"`
+    IsCompleted    bool `json:"is_completed"`
+
+    // 最终答案
+    FinalAnswer *schema.Message `json:"final_answer,omitempty"`
+
     // 元数据
-    Metadata           map[string]interface{} `json:"metadata"`
+    Metadata map[string]any `json:"metadata,omitempty"`
 }
 ```
 
@@ -64,14 +59,7 @@ stateDiagram-v2
         设置: 对话轮次、意图、历史关联
     end note
     
-    ConversationAnalysis --> HostThinking: Host思考阶段
-    note right of HostThinking
-        更新: CurrentThinkingResult
-        追加: ThinkingHistory
-        保存: OriginalMessages
-    end note
-    
-    HostThinking --> ComplexityJudge: 复杂度判断
+    ConversationAnalysis --> ComplexityJudge: 复杂度判断
     
     ComplexityJudge --> SimpleTask: 简单任务
     ComplexityJudge --> ComplexTask: 复杂任务
@@ -140,270 +128,330 @@ stateDiagram-v2
     FinalAnswer --> [*]
 ```
 
+## ExecutionStatus 枚举定义
+
+```go
+type ExecutionStatus string
+
+const (
+    ExecutionStatusPending    ExecutionStatus = "pending"
+    ExecutionStatusAnalyzing  ExecutionStatus = "analyzing"
+    ExecutionStatusPlanning   ExecutionStatus = "planning"
+    ExecutionStatusExecuting  ExecutionStatus = "executing"
+    ExecutionStatusCollecting ExecutionStatus = "collecting"
+    ExecutionStatusCompleted  ExecutionStatus = "completed"
+    ExecutionStatusFailed     ExecutionStatus = "failed"
+)
+```
+
+## 状态转换详细描述
+
+### 1. INPUT → CONTEXT_ANALYZE
+- **触发条件**: 接收到用户输入
+- **状态更新**: 
+  - 保存 `OriginalMessages`
+  - 设置 `ExecutionStatus = ExecutionStatusAnalyzing`
+  - 设置 `CurrentStep = "context_analysis"`
+- **数据流**: 用户消息 → 上下文分析器
+
+### 2. CONTEXT_ANALYZE → COMPLEXITY_BRANCH
+- **触发条件**: 上下文分析完成
+- **状态更新**:
+  - 更新 `ConversationContext`
+  - 设置 `ExecutionStatus = ExecutionStatusPlanning`
+- **数据流**: 分析结果 → 复杂度判断
+
+### 3. COMPLEXITY_BRANCH → DIRECT_ANSWER/PLAN_CREATE
+- **触发条件**: 复杂度判断完成
+- **分支逻辑**:
+  - 简单任务: → DIRECT_ANSWER
+  - 复杂任务: → PLAN_CREATE
+- **状态更新**: 设置执行路径
+
+### 4. PLAN_CREATE → PLAN_EXECUTE
+- **触发条件**: 初始计划创建完成
+- **状态更新**:
+  - 设置 `CurrentPlan`
+  - 更新 `PlanHistory`
+  - 设置 `ExecutionStatus = ExecutionStatusExecuting`
+- **数据流**: 计划 → 计划执行器
+
+### 5. PLAN_EXECUTE → SPECIALIST_WORK
+- **触发条件**: 计划执行开始
+- **状态更新**:
+  - 设置 `ExecutionStatus = ExecutionStatusExecuting`
+  - 设置 `CurrentStep = "execution"`
+- **数据流**: 执行步骤 → 专家系统
+
+### 6. SPECIALIST_WORK → COLLECT_RESULTS
+- **触发条件**: 专家工作完成
+- **状态更新**:
+  - 更新 `SpecialistResults`
+  - 添加 `ExecutionHistory`
+- **数据流**: 专家结果 → 结果收集器
+
+### 7. COLLECT_RESULTS → FEEDBACK_PROCESS
+- **触发条件**: 结果收集完成
+- **状态更新**:
+  - 更新 `CollectedResults`
+  - 设置 `ExecutionStatus = ExecutionStatusCollecting`
+- **数据流**: 收集结果 → 反馈处理器
+
+### 8. FEEDBACK_PROCESS → PLAN_EXECUTE/PLAN_UPDATE/FINAL_ANSWER
+- **触发条件**: 反馈处理完成
+- **分支逻辑**:
+  - 执行完成: → FINAL_ANSWER
+  - 未完成且不需要更新计划: → PLAN_EXECUTE
+  - 未完成但需要更新计划: → PLAN_UPDATE
+- **状态更新**:
+  - 更新 `FeedbackHistory`
+  - 增加 `ReflectionCount`
+  - 根据分支设置相应的 `ExecutionStatus`
+
+### 9. DIRECT_ANSWER/FINAL_ANSWER → END
+- **触发条件**: 答案生成完成
+- **状态更新**:
+  - 设置 `FinalAnswer`
+  - 标记 `IsCompleted = true`
+  - 设置 `ExecutionStatus = ExecutionStatusCompleted`
+- **数据流**: 最终答案 → 用户
+
 ## 关键状态转换点
 
-### 1. 对话上下文分析阶段
+### 1. 复杂度判断点 (CONTEXT_ANALYZE → COMPLEXITY_BRANCH)
+这是系统的第一个重要决策点：
+- **判断依据**: `ConversationContext.Complexity`
+- **分支条件**: 
+  - `simple` → 直接回答
+  - `complex` → 进入规划阶段
+- **状态影响**: 决定后续执行路径
 
+### 2. 反馈决策点 (FEEDBACK_PROCESS → PLAN_UPDATE/FINAL_ANSWER)
+这是系统的循环控制点：
+- **判断依据**: 
+  - 任务完成度
+  - 结果质量
+  - 轮次限制
+- **分支条件**:
+  - 需要改进 → 返回规划更新
+  - 满足要求 → 生成最终答案
+- **状态影响**: 控制迭代次数和质量
+
+### 3. 轮次控制点
+每个主要阶段都会检查：
+- `RoundNumber` vs `MaxRounds`
+- `ShouldContinue` 标志
+- 强制退出条件
+- 资源消耗控制
+
+## 统一状态更新方法
+
+### 1. 基础字段更新
 ```go
-// StatePreHandler: 对话上下文分析
-func (h *ConversationAnalysisHandler) PreHandle(ctx context.Context, state *EnhancedState, input []*schema.Message) error {
-    // 分析对话上下文
-    conversationCtx := analyzeConversationContext(input)
-    
-    // 更新状态
-    state.ConversationContext = conversationCtx
-    state.OriginalMessages = input
-    state.LastUpdateTime = time.Now()
-    
-    return nil
+// 更新轮次
+func (s *EnhancedState) NextRound() {
+    s.RoundNumber++
+}
+
+// 设置执行状态
+func (s *EnhancedState) SetExecutionStatus(status ExecutionStatus) {
+    s.ExecutionStatus = status
+}
+
+// 设置当前步骤
+func (s *EnhancedState) SetCurrentStep(step string) {
+    s.CurrentStep = step
+}
+
+// 设置是否继续
+func (s *EnhancedState) SetShouldContinue(should bool) {
+    s.ShouldContinue = should
+}
+
+// 设置完成状态
+func (s *EnhancedState) SetCompleted(completed bool) {
+    s.IsCompleted = completed
 }
 ```
 
-### 2. Host思考阶段
-
+### 2. 对话上下文更新
 ```go
-// StatePreHandler: 准备思考输入
-func (h *HostThinkHandler) PreHandle(ctx context.Context, state *EnhancedState, input []*schema.Message) error {
-    // 构建思考提示，包含对话上下文
-    thinkingPrompt := buildConversationalThinkingPrompt(state.OriginalMessages, state.ConversationContext, state)
-    
-    // 更新输入消息
-    return updateInputMessage(input, thinkingPrompt)
-}
-
-// StatePostHandler: 处理思考结果
-func (h *HostThinkHandler) PostHandle(ctx context.Context, state *EnhancedState, output *schema.Message) error {
-    // 解析思考结果
-    thinkingResult, err := parseThinkingResult(output)
-    if err != nil {
-        return err
-    }
-    
-    // 更新状态
-    state.CurrentThinkingResult = thinkingResult
-    state.ThinkingHistory = append(state.ThinkingHistory, thinkingResult)
-    state.LastUpdateTime = time.Now()
-    
-    return nil
+// 更新对话上下文
+func (s *EnhancedState) UpdateConversationContext(ctx *ConversationContext) {
+    s.ConversationContext = ctx
 }
 ```
 
-### 3. 复杂度判断分支
-
+### 3. 计划管理
 ```go
-// 复杂度判断逻辑
-func (b *ComplexityBranch) Decide(ctx context.Context, state *EnhancedState) (string, error) {
-    if state.CurrentThinkingResult == nil {
-        return "", errors.New("thinking result not available")
+// 设置当前计划
+func (s *EnhancedState) SetCurrentPlan(plan *TaskPlan) {
+    if s.CurrentPlan != nil {
+        s.PlanHistory = append(s.PlanHistory, s.CurrentPlan)
     }
-    
-    // 基于思考结果和对话上下文判断复杂度
-    complexity := state.CurrentThinkingResult.Complexity
-    isContinuation := state.ConversationContext.IsContinuation
-    
-    // 延续对话可能需要更复杂的处理
-    if isContinuation && complexity >= TaskComplexityMedium {
-        return "complex", nil
-    }
-    
-    if complexity >= TaskComplexityHigh {
-        return "complex", nil
-    }
-    
-    return "simple", nil
+    s.CurrentPlan = plan
+}
+
+// 更新计划历史
+func (s *EnhancedState) AddPlanToHistory(plan *TaskPlan) {
+    s.PlanHistory = append(s.PlanHistory, plan)
 }
 ```
 
-### 4. 规划创建阶段
-
+### 4. 执行记录管理
 ```go
-// StatePostHandler: 处理规划创建结果
-func (h *PlanCreationHandler) PostHandle(ctx context.Context, state *EnhancedState, output *schema.Message) error {
-    // 解析规划结果
-    plan, err := parsePlanFromMessage(output)
-    if err != nil {
-        return err
-    }
-    
-    // 设置规划版本和状态
-    plan.Version = 1
-    plan.CreatedAt = time.Now()
-    plan.Status = PlanStatusActive
-    
-    // 基于对话上下文调整规划
-    if state.ConversationContext.IsContinuation {
-        adjustPlanForContinuation(plan, state.ConversationContext)
-    }
-    
-    // 更新状态
-    state.CurrentPlan = plan
-    state.IsSimpleTask = false
-    state.LastUpdateTime = time.Now()
-    
-    return nil
+// 添加执行记录
+func (s *EnhancedState) AddExecutionRecord(record *ExecutionRecord) {
+    s.ExecutionHistory = append(s.ExecutionHistory, record)
+}
+
+// 添加思考记录
+func (s *EnhancedState) AddThinkingRecord(record *ExecutionRecord) {
+    s.ThinkingHistory = append(s.ThinkingHistory, record)
 }
 ```
 
-### 5. 专家执行阶段
-
+### 5. 专家结果管理
 ```go
-// StatePreHandler: 准备专家执行
-func (h *SpecialistHandler) PreHandle(ctx context.Context, state *EnhancedState, input []*schema.Message) error {
-    if state.CurrentExecution == nil {
-        return errors.New("execution context not available")
+// 更新专家结果
+func (s *EnhancedState) UpdateSpecialistResult(specialist string, result *StepResult) {
+    if s.SpecialistResults == nil {
+        s.SpecialistResults = make(map[string]*StepResult)
     }
-    
-    // 构建专家执行提示，包含对话上下文
-    specialistPrompt := buildSpecialistPrompt(
-        state.CurrentExecution.PlanStep,
-        state.ConversationContext,
-        state.OriginalMessages,
-    )
-    
-    return updateInputMessage(input, specialistPrompt)
+    s.SpecialistResults[specialist] = result
 }
 
-// StatePostHandler: 处理专家结果
-func (h *SpecialistHandler) PostHandle(ctx context.Context, state *EnhancedState, output *schema.Message) error {
-    specialistName := h.GetSpecialistName()
-    
-    // 解析专家结果
-    result, err := parseSpecialistResult(output, specialistName)
-    if err != nil {
-        return err
-    }
-    
-    // 更新状态
-    if state.CurrentSpecialistResults == nil {
-        state.CurrentSpecialistResults = make(map[string]*SpecialistResult)
-    }
-    state.CurrentSpecialistResults[specialistName] = result
-    state.LastUpdateTime = time.Now()
-    
-    return nil
+// 清空专家结果
+func (s *EnhancedState) ClearSpecialistResults() {
+    s.SpecialistResults = make(map[string]*StepResult)
 }
 ```
+
+### 6. 结果收集管理
+```go
+// 添加收集结果
+func (s *EnhancedState) AddCollectedResult(result *schema.Message) {
+    s.CollectedResults = append(s.CollectedResults, result)
+}
+
+// 设置最终结果
+func (s *EnhancedState) SetFinalResult(result *schema.Message) {
+    s.FinalResult = result
+}
+
+// 设置最终答案
+func (s *EnhancedState) SetFinalAnswer(answer *schema.Message) {
+    s.FinalAnswer = answer
+}
+```
+
+### 7. 反馈管理
+```go
+// 添加反馈记录
+func (s *EnhancedState) AddFeedbackRecord(feedback map[string]any) {
+    s.FeedbackHistory = append(s.FeedbackHistory, feedback)
+}
+
+// 增加反思次数
+func (s *EnhancedState) IncrementReflectionCount() {
+    s.ReflectionCount++
+}
+```
+
+### 8. 元数据管理
+```go
+// 设置元数据
+func (s *EnhancedState) SetMetadata(key string, value any) {
+    if s.Metadata == nil {
+        s.Metadata = make(map[string]any)
+    }
+    s.Metadata[key] = value
+}
+
+// 获取元数据
+func (s *EnhancedState) GetMetadata(key string) (any, bool) {
+    if s.Metadata == nil {
+        return nil, false
+    }
+    value, exists := s.Metadata[key]
+    return value, exists
+}
+```
+
+## 各阶段状态更新
+
+### 1. 上下文分析阶段
+**进入阶段时更新：**
+- `SetExecutionStatus(ExecutionStatusAnalyzing)`
+- `SetCurrentStep("context_analysis")`
+
+**完成阶段时更新：**
+- `UpdateConversationContext(ctx)`
+- `SetExecutionStatus(ExecutionStatusPlanning)`
+
+### 2. 复杂度判断阶段
+**完成判断时更新：**
+- 根据判断结果设置后续流程路径
+- 简单任务：`SetExecutionStatus(ExecutionStatusExecuting)`
+- 复杂任务：保持 `ExecutionStatusPlanning`
+
+### 3. 计划创建阶段
+**进入阶段时更新：**
+- `SetCurrentStep("planning")`
+
+**完成阶段时更新：**
+- `SetCurrentPlan(plan)`
+- `SetExecutionStatus(ExecutionStatusExecuting)`
+- `SetCurrentStep("execution")`
+
+### 4. 计划执行阶段
+**进入阶段时更新：**
+- `SetCurrentStep("execution")`
+- `ClearSpecialistResults()` (清空上轮结果)
+
+**执行过程中更新：**
+- `UpdateSpecialistResult(specialist, result)` (每个专家完成时)
+- `AddExecutionRecord(record)` (记录执行过程)
+
+### 5. 结果收集阶段
+**进入阶段时更新：**
+- `SetExecutionStatus(ExecutionStatusCollecting)`
+- `SetCurrentStep("collecting")`
+
+**收集过程中更新：**
+- `AddCollectedResult(result)` (收集各专家结果)
+- `SetFinalResult(result)` (设置本轮最终结果)
 
 ### 6. 反馈处理阶段
+**完成反馈时更新：**
+- `AddFeedbackRecord(feedback)`
+- `IncrementReflectionCount()`
+- 根据反馈结果设置下一步：
+  - 完成：`SetExecutionStatus(ExecutionStatusCompleted)`, `SetCompleted(true)`, `SetFinalAnswer(answer)`
+  - 继续执行：`SetExecutionStatus(ExecutionStatusExecuting)`
+  - 更新计划：`SetExecutionStatus(ExecutionStatusPlanning)`
 
-```go
-// StatePostHandler: 处理反馈结果
-func (h *FeedbackHandler) PostHandle(ctx context.Context, state *EnhancedState, output *schema.Message) error {
-    // 解析反馈结果
-    feedback, err := parseFeedbackResult(output)
-    if err != nil {
-        return err
-    }
-    
-    // 基于对话上下文调整反馈判断
-    if state.ConversationContext.IsContinuation {
-        adjustFeedbackForContinuation(feedback, state.ConversationContext)
-    }
-    
-    // 更新状态
-    state.CurrentFeedbackResult = feedback
-    state.LastUpdateTime = time.Now()
-    
-    return nil
-}
-```
+### 7. 计划更新阶段
+**更新计划时：**
+- `AddPlanToHistory(s.CurrentPlan)` (保存当前计划到历史)
+- `SetCurrentPlan(updatedPlan)` (设置新计划)
+- `NextRound()` (增加轮次)
+- `SetExecutionStatus(ExecutionStatusExecuting)` (准备执行新计划)
 
-### 7. 规划更新阶段
+### 8. 直接回答阶段
+**生成答案时更新：**
+- `SetFinalAnswer(answer)`
+- `SetExecutionStatus(ExecutionStatusCompleted)`
+- `SetCompleted(true)`
+- `SetShouldContinue(false)`
 
-```go
-// StatePostHandler: 处理规划更新
-func (h *PlanUpdateHandler) PostHandle(ctx context.Context, state *EnhancedState, output *schema.Message) error {
-    if state.CurrentPlan == nil || state.CurrentFeedbackResult == nil {
-        return errors.New("plan or feedback not available")
-    }
-    
-    // 动态更新规划
-    updatedPlan := updatePlanDynamically(state.CurrentPlan, state.CurrentFeedbackResult)
-    
-    // 保存历史版本
-    state.PlanHistory = append(state.PlanHistory, state.CurrentPlan)
-    
-    // 更新当前规划
-    state.CurrentPlan = updatedPlan
-    state.CurrentRound++
-    state.LastUpdateTime = time.Now()
-    
-    return nil
-}
-```
-
-## 状态一致性保证
-
-### 1. 原子性更新
-
-```go
-// 原子性状态更新
-func (s *EnhancedState) AtomicUpdate(updateFunc func(*EnhancedState) error) error {
-    s.mu.Lock()
-    defer s.mu.Unlock()
-    
-    // 创建状态快照
-    snapshot := s.Clone()
-    
-    // 执行更新
-    if err := updateFunc(s); err != nil {
-        // 回滚到快照
-        *s = *snapshot
-        return err
-    }
-    
-    // 更新时间戳
-    s.LastUpdateTime = time.Now()
-    return nil
-}
-```
-
-### 2. 版本控制
-
-```go
-// 状态版本控制
-type StateVersion struct {
-    Version   int       `json:"version"`
-    Timestamp time.Time `json:"timestamp"`
-    Checksum  string    `json:"checksum"`
-}
-
-func (s *EnhancedState) GetVersion() *StateVersion {
-    return &StateVersion{
-        Version:   s.calculateVersion(),
-        Timestamp: s.LastUpdateTime,
-        Checksum:  s.calculateChecksum(),
-    }
-}
-```
-
-### 3. 历史追踪
-
-```go
-// 状态变更历史
-type StateChange struct {
-    Field     string      `json:"field"`
-    OldValue  interface{} `json:"old_value"`
-    NewValue  interface{} `json:"new_value"`
-    Timestamp time.Time   `json:"timestamp"`
-}
-
-func (s *EnhancedState) TrackChange(field string, oldValue, newValue interface{}) {
-    change := &StateChange{
-        Field:     field,
-        OldValue:  oldValue,
-        NewValue:  newValue,
-        Timestamp: time.Now(),
-    }
-    
-    if s.Metadata["changes"] == nil {
-        s.Metadata["changes"] = []*StateChange{}
-    }
-    
-    changes := s.Metadata["changes"].([]*StateChange)
-    s.Metadata["changes"] = append(changes, change)
-}
-```
+### 9. 最终完成阶段
+**任务完成时更新：**
+- `SetFinalAnswer(answer)`
+- `SetExecutionStatus(ExecutionStatusCompleted)`
+- `SetCompleted(true)`
+- `SetShouldContinue(false)`
+- `SetMetadata("completion_time", time.Now())`
 
 ## 状态序列化支持
 
