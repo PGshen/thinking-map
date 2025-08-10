@@ -28,6 +28,8 @@ require (
 	gorm.io/gorm v1.25.11
 )
 
+require github.com/cloudwego/eino-ext/devops v0.1.7
+
 require (
 	cloud.google.com/go/auth v0.10.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.5 // indirect
@@ -50,7 +52,6 @@ require (
 	github.com/aws/smithy-go v1.22.1 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
-	github.com/cloudwego/eino-ext/devops v0.1.7 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/evanphx/json-patch v0.5.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
