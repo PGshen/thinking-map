@@ -1,23 +1,8 @@
-/*
- * Copyright 2024 CloudWeGo Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package enhanced
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -28,22 +13,21 @@ import (
 const (
 	// Node keys
 	conversationAnalyzerNodeKey = "conversation_analyzer"
+	toComplexityBranchNodeKey   = "to_complexity_branch"
 	complexityBranchNodeKey     = "complexity_branch"
 	directAnswerNodeKey         = "direct_answer"
 	planCreationNodeKey         = "plan_creation"
 	planExecutionNodeKey        = "plan_execution"
+	toSpecialistBranchNodeKey   = "to_specialist_branch"
 	specialistBranchNodeKey     = "specialist_branch"
 	resultCollectorNodeKey      = "result_collector"
+	toFeedbackProcessorNodeKey  = "to_feedback_processor"
 	feedbackProcessorNodeKey    = "feedback_processor"
 	reflectionBranchNodeKey     = "reflection_branch"
+	toPlanUpdateNodeKey         = "to_plan_update"
 	planUpdateNodeKey           = "plan_update"
+	toFinalAnswerNodeKey        = "to_final_answer"
 	finalAnswerNodeKey          = "final_answer"
-
-	// Branch conditions
-	directAnswerBranch      = "direct_answer"
-	planAndExecuteBranch    = "plan_and_execute"
-	continueExecutionBranch = "continue"
-	finishExecutionBranch   = "finish"
 )
 
 // NewEnhancedMultiAgent creates a new enhanced multi-agent system
@@ -75,23 +59,25 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
 			return conversationAnalyzer.PostHandler(ctx, output, state)
 		}),
+		compose.WithNodeName("conversation_analyzer"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add conversation analyzer node: %w", err)
 	}
 
-
+	toComplexityBranch := compose.ToList[*schema.Message]()
+	graph.AddLambdaNode(toComplexityBranchNodeKey, toComplexityBranch, compose.WithNodeName("to_complexity_branch"))
 
 	// Add complexity branch node
 	complexityBranchHandler := NewComplexityBranchHandler(config)
-	complexityBranch := compose.NewGraphBranch(func(ctx context.Context, input *schema.Message) (string, error) {
+	complexityBranch := compose.NewGraphBranch(func(ctx context.Context, input []*schema.Message) (string, error) {
 		var result string
 		err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
 			result, err = complexityBranchHandler.Evaluate(ctx, state)
 			return err
 		})
 		return result, err
-	}, map[string]bool{directAnswerBranch: true, planAndExecuteBranch: true})
+	}, map[string]bool{directAnswerNodeKey: true, planCreationNodeKey: true})
 
 	// Add direct answer node for simple tasks
 	err = graph.AddChatModelNode(directAnswerNodeKey, config.Host.Model,
@@ -105,6 +91,7 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 			state.IsCompleted = true
 			return output, nil
 		}),
+		compose.WithNodeName("direct_answer"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add direct answer node: %w", err)
@@ -119,6 +106,7 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
 			return planCreationHandler.PostHandler(ctx, output, state)
 		}),
+		compose.WithNodeName("plan_creation"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add plan creation node: %w", err)
@@ -135,14 +123,18 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 			})
 			return result, err
 		}),
+		compose.WithNodeName("plan_execution"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add plan execution node: %w", err)
 	}
 
+	toSpecialistBranch := compose.ToList[*schema.Message]()
+	graph.AddLambdaNode(toSpecialistBranchNodeKey, toSpecialistBranch, compose.WithNodeName("to_specialist_branch"))
+
 	// Add specialist branch
 	specialistBranchHandler := NewSpecialistBranchHandler(config)
-	specialistBranch := compose.NewGraphBranch(func(ctx context.Context, input *schema.Message) (string, error) {
+	specialistBranch := compose.NewGraphBranch(func(ctx context.Context, input []*schema.Message) (string, error) {
 		var result string
 		err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
 			result, err = specialistBranchHandler.Evaluate(ctx, state)
@@ -170,20 +162,32 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 			})
 			return result, err
 		}),
+		compose.WithNodeName("result_collector"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add result collector node: %w", err)
 	}
 
+	toFeedbackProcessor := compose.ToList[*schema.Message]()
+	graph.AddLambdaNode(toFeedbackProcessorNodeKey, toFeedbackProcessor, compose.WithNodeName("to_feedback_processor"))
+
 	// Add feedback processor node
 	err = graph.AddChatModelNode(feedbackProcessorNodeKey, config.Host.Model,
 		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+			// Set feedback processing state
+			state.SetExecutionStatus(ExecutionStatusRunning)
 			return buildFeedbackPrompt(state), nil
 		}),
 		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
 			err = processFeedbackResult(output, state)
-			return output, err
+			if err != nil {
+				return output, err
+			}
+			// Update feedback history and reflection count
+			state.IncrementReflection()
+			return output, nil
 		}),
+		compose.WithNodeName("feedback_processor"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add feedback processor node: %w", err)
@@ -197,37 +201,53 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 			return err
 		})
 		return result, err
-	}, map[string]bool{continueExecutionBranch: true, finishExecutionBranch: true})
+	}, map[string]bool{
+		planExecutionNodeKey: true,
+		toPlanUpdateNodeKey:  true,
+		toFinalAnswerNodeKey: true,
+	})
 
-	err = graph.AddBranch(feedbackProcessorNodeKey, reflectionBranch)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add reflection branch: %w", err)
-	}
+	toPlanUpdate := compose.ToList[*schema.Message]()
+	graph.AddLambdaNode(toPlanUpdateNodeKey, toPlanUpdate, compose.WithNodeName("to_plan_update"))
 
 	// Add plan update node
 	err = graph.AddChatModelNode(planUpdateNodeKey, config.Host.Model,
 		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+			// Set plan update state
+			state.SetExecutionStatus(ExecutionStatusPlanning)
 			return buildPlanUpdatePrompt(state), nil
 		}),
 		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
 			err = processPlanUpdate(output, state)
-			return output, err
+			if err != nil {
+				return output, err
+			}
+			// After plan update, set status to execute the updated plan
+			state.SetExecutionStatus(ExecutionStatusExecuting)
+			return output, nil
 		}),
+		compose.WithNodeName("plan_update"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add plan update node: %w", err)
 	}
 
+	toFinalAnswer := compose.ToList[*schema.Message]()
+	graph.AddLambdaNode(toFinalAnswerNodeKey, toFinalAnswer, compose.WithNodeName("to_final_answer"))
+
 	// Add final answer node
-	err = graph.AddLambdaNode(finalAnswerNodeKey,
-		compose.InvokableLambda(func(ctx context.Context, input *schema.Message) (*schema.Message, error) {
-			var result *schema.Message
-			err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
-				result = generateFinalAnswer(state)
-				return nil
-			})
-			return result, err
+	err = graph.AddChatModelNode(finalAnswerNodeKey, config.Host.Model,
+		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+			// Build final answer prompt
+			prompt := buildFinalAnswerPrompt(state)
+			return []*schema.Message{prompt}, nil
 		}),
+		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
+			state.FinalAnswer = output
+			state.IsCompleted = true
+			return output, nil
+		}),
+		compose.WithNodeName("final_answer"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add final answer node: %w", err)
@@ -235,9 +255,10 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 
 	// Define edges
 	graph.AddEdge(compose.START, conversationAnalyzerNodeKey)
+	graph.AddEdge(conversationAnalyzerNodeKey, toComplexityBranchNodeKey)
 
 	// Complexity branch - directly from conversation analyzer
-	graph.AddBranch(conversationAnalyzerNodeKey, complexityBranch)
+	graph.AddBranch(toComplexityBranchNodeKey, complexityBranch)
 
 	// Direct answer path
 	graph.AddEdge(directAnswerNodeKey, compose.END)
@@ -246,7 +267,8 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	graph.AddEdge(planCreationNodeKey, planExecutionNodeKey)
 
 	// Plan execution branch
-	graph.AddBranch(planExecutionNodeKey, specialistBranch)
+	graph.AddEdge(planExecutionNodeKey, toSpecialistBranchNodeKey)
+	graph.AddBranch(toSpecialistBranchNodeKey, specialistBranch)
 
 	// All specialists go to result collector
 	for _, specialist := range config.Specialists {
@@ -254,12 +276,18 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	}
 
 	// Result collector goes to feedback processor
-	graph.AddEdge(resultCollectorNodeKey, feedbackProcessorNodeKey)
+	graph.AddEdge(resultCollectorNodeKey, toFeedbackProcessorNodeKey)
+	graph.AddEdge(toFeedbackProcessorNodeKey, feedbackProcessorNodeKey)
+
+	// Three-way reflection branch from feedback processor
+	graph.AddBranch(feedbackProcessorNodeKey, reflectionBranch)
 
 	// Plan update loop
-	graph.AddEdge(planUpdateNodeKey, resultCollectorNodeKey)
+	graph.AddEdge(toPlanUpdateNodeKey, planUpdateNodeKey)
+	graph.AddEdge(planUpdateNodeKey, planExecutionNodeKey)
 
 	// Final answer
+	graph.AddEdge(toFinalAnswerNodeKey, finalAnswerNodeKey)
 	graph.AddEdge(finalAnswerNodeKey, compose.END)
 
 	// Compile the graph
@@ -289,7 +317,7 @@ func addSpecialist(graph *compose.Graph[[]*schema.Message, *schema.Message], spe
 			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
 				return specialistHandler.PostHandler(ctx, output, state)
 			}),
-			compose.WithNodeName(specialist.Name), compose.WithOutputKey(specialist.Name)); err != nil {
+			compose.WithNodeName(specialist.Name)); err != nil {
 			return err
 		}
 	} else if specialist.ChatModel != nil {
@@ -300,7 +328,7 @@ func addSpecialist(graph *compose.Graph[[]*schema.Message, *schema.Message], spe
 			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
 				return specialistHandler.PostHandler(ctx, output, state)
 			}),
-			compose.WithNodeName(specialist.Name), compose.WithOutputKey(specialist.Name),
+			compose.WithNodeName(specialist.Name),
 		); err != nil {
 			return err
 		}
@@ -309,14 +337,6 @@ func addSpecialist(graph *compose.Graph[[]*schema.Message, *schema.Message], spe
 }
 
 // Helper functions
-
-func generateSessionID() string {
-	return fmt.Sprintf("session_%d", time.Now().UnixNano())
-}
-
-func generateConversationID() string {
-	return fmt.Sprintf("conv_%d", time.Now().UnixNano())
-}
 
 func buildDirectAnswerPrompt(state *EnhancedState) *schema.Message {
 	prompt := fmt.Sprintf(`Provide a direct answer to the user's request.
@@ -336,24 +356,46 @@ Please provide a clear, helpful response.`,
 }
 
 func buildFeedbackPrompt(state *EnhancedState) []*schema.Message {
-	prompt := `Analyze the execution results and provide feedback.
+	prompt := `Analyze the execution results and provide comprehensive feedback.
 
-Results:
+Original User Intent: ` + state.ConversationContext.UserIntent + `
+
+Current Plan:
 `
+	if state.CurrentPlan != nil {
+		prompt += fmt.Sprintf("Plan: %s\nDescription: %s\n", state.CurrentPlan.Name, state.CurrentPlan.Description)
+		for _, step := range state.CurrentPlan.Steps {
+			prompt += fmt.Sprintf("- Step %s: %s (Status: %s)\n", step.ID, step.Name, step.Status.String())
+		}
+	}
+
+	prompt += `\nExecution Results:\n`
 	for _, result := range state.CollectedResults {
 		prompt += result.Content + "\n\n"
 	}
 
-	prompt += `
+	prompt += fmt.Sprintf(`\nExecution History: %d records
+Round: %d/%d
+
+IMPORTANT: You MUST respond with ONLY a valid JSON object. Do not include any explanations, comments, or additional text before or after the JSON. Your response should start with { and end with }.
+
 Provide feedback in JSON format:
 {
+  "execution_completed": false,
   "overall_quality": 0.8,
-  "should_continue": true,
+  "plan_needs_update": false,
   "issues": ["issue1", "issue2"],
   "suggestions": ["suggestion1", "suggestion2"],
   "confidence": 0.9,
-  "next_actions": ["action1", "action2"]
-}`
+  "next_action_reason": "Explanation for the recommended next action"
+}
+
+Decision criteria:
+- execution_completed: true if the task is fully completed and satisfactory
+- plan_needs_update: true if the current plan needs modification to better achieve the goal
+- If execution_completed=false and plan_needs_update=false, continue with current plan
+
+Remember: Output ONLY the JSON object, no other text.`, len(state.ExecutionHistory), state.RoundNumber, state.MaxRounds)
 
 	return []*schema.Message{{
 		Role:    schema.User,
@@ -362,50 +404,162 @@ Provide feedback in JSON format:
 }
 
 func processFeedbackResult(output *schema.Message, state *EnhancedState) error {
-	// Parse feedback and update state
-	// This is a simplified implementation
-	feedback := map[string]any{
-		"content":   output.Content,
-		"timestamp": time.Now(),
+	// Parse feedback result
+	var feedback struct {
+		ExecutionCompleted bool     `json:"execution_completed"`
+		OverallQuality     float64  `json:"overall_quality"`
+		PlanNeedsUpdate    bool     `json:"plan_needs_update"`
+		Issues             []string `json:"issues"`
+		Suggestions        []string `json:"suggestions"`
+		Confidence         float64  `json:"confidence"`
+		NextActionReason   string   `json:"next_action_reason"`
 	}
-	state.FeedbackHistory = append(state.FeedbackHistory, feedback)
+
+	err := json.Unmarshal([]byte(output.Content), &feedback)
+	if err != nil {
+		return fmt.Errorf("failed to parse feedback result: %w", err)
+	}
+
+	// Update state with feedback
+	feedbackData := map[string]any{
+		"content":             output.Content,
+		"timestamp":           time.Now(),
+		"execution_completed": feedback.ExecutionCompleted,
+		"plan_needs_update":   feedback.PlanNeedsUpdate,
+		"overall_quality":     feedback.OverallQuality,
+		"confidence":          feedback.Confidence,
+	}
+	state.AddFeedback(feedbackData)
+
+	// Store feedback decision for branch evaluation
+	state.SetMetadata("feedback_execution_completed", feedback.ExecutionCompleted)
+	state.SetMetadata("feedback_plan_needs_update", feedback.PlanNeedsUpdate)
+	state.SetMetadata("feedback_overall_quality", feedback.OverallQuality)
+	state.SetMetadata("feedback_confidence", feedback.Confidence)
+	state.SetMetadata("feedback_next_action_reason", feedback.NextActionReason)
+
 	return nil
 }
 
 func evaluateReflectionDecision(state *EnhancedState) (string, error) {
-	// Simple decision logic - in practice, this would be more sophisticated
+	// Get feedback decision from metadata
+	executionCompleted, hasCompleted := state.GetMetadata("feedback_execution_completed")
+	planNeedsUpdate, hasUpdate := state.GetMetadata("feedback_plan_needs_update")
+	overallQuality, hasQuality := state.GetMetadata("feedback_overall_quality")
+	confidence, hasConfidence := state.GetMetadata("feedback_confidence")
+
+	// If feedback metadata is missing, default to continue execution
+	if !hasCompleted || !hasUpdate {
+		return planExecutionNodeKey, nil
+	}
+
+	// Convert metadata to appropriate types
+	isCompleted, ok := executionCompleted.(bool)
+	if !ok {
+		return planExecutionNodeKey, fmt.Errorf("invalid execution_completed type")
+	}
+
+	needsUpdate, ok := planNeedsUpdate.(bool)
+	if !ok {
+		return planExecutionNodeKey, fmt.Errorf("invalid plan_needs_update type")
+	}
+
+	// Decision logic based on feedback
+	if isCompleted {
+		// Task is completed, proceed to final answer
+		state.SetExecutionStatus(ExecutionStatusCompleted)
+		return toFinalAnswerNodeKey, nil
+	}
+
+	if needsUpdate {
+		// Plan needs update, go to plan update
+		state.SetExecutionStatus(ExecutionStatusPlanning)
+		return toPlanUpdateNodeKey, nil
+	}
+
+	// Check quality and confidence thresholds
+	if hasQuality && hasConfidence {
+		quality, qOk := overallQuality.(float64)
+		conf, cOk := confidence.(float64)
+		if qOk && cOk && (quality < 0.6 || conf < 0.7) {
+			// Low quality or confidence, consider plan update
+			state.SetExecutionStatus(ExecutionStatusPlanning)
+			return toPlanUpdateNodeKey, nil
+		}
+	}
+
+	// Check if we've reached max rounds
 	if state.RoundNumber >= state.MaxRounds {
-		return finishExecutionBranch, nil
+		// Force completion if max rounds reached
+		state.SetExecutionStatus(ExecutionStatusCompleted)
+		return toFinalAnswerNodeKey, nil
 	}
 
-	// Check if we have good results
-	if len(state.CollectedResults) > 0 {
-		return finishExecutionBranch, nil
-	}
-
-	return continueExecutionBranch, nil
+	// Default: continue execution with current plan
+	state.SetExecutionStatus(ExecutionStatusExecuting)
+	return toFinalAnswerNodeKey, nil
 }
 
 func buildPlanUpdatePrompt(state *EnhancedState) []*schema.Message {
-	prompt := `Update the current plan based on feedback.
+	prompt := `Update the current plan based on feedback and execution results.
+
+Original User Intent: ` + state.ConversationContext.UserIntent + `
 
 Current Plan:
 `
 	if state.CurrentPlan != nil {
-		prompt += fmt.Sprintf("Name: %s\nDescription: %s\n", state.CurrentPlan.Name, state.CurrentPlan.Description)
-	}
-
-	prompt += `
-Feedback:
-`
-	for _, feedback := range state.FeedbackHistory {
-		if content, ok := feedback["content"].(string); ok {
-			prompt += content + "\n"
+		prompt += fmt.Sprintf("Plan: %s\nDescription: %s\n", state.CurrentPlan.Name, state.CurrentPlan.Description)
+		for _, step := range state.CurrentPlan.Steps {
+			prompt += fmt.Sprintf("- Step %s: %s (Status: %s, Priority: %d)\n", step.ID, step.Name, step.Status.String(), step.Priority)
 		}
 	}
 
-	prompt += `
-Provide an updated plan in the same JSON format as before.`
+	prompt += `\nExecution Results:\n`
+	for _, result := range state.CollectedResults {
+		prompt += result.Content + "\n\n"
+	}
+
+	// Add feedback information
+	if len(state.FeedbackHistory) > 0 {
+		latestFeedback := state.FeedbackHistory[len(state.FeedbackHistory)-1]
+		if content, ok := latestFeedback["content"].(string); ok {
+			prompt += "\nLatest Feedback:\n" + content + "\n\n"
+		}
+	}
+
+	// Add feedback decision context
+	if reason, exists := state.GetMetadata("feedback_next_action_reason"); exists {
+		if reasonStr, ok := reason.(string); ok {
+			prompt += "Reason for Plan Update: " + reasonStr + "\n\n"
+		}
+	}
+
+	prompt += fmt.Sprintf(`Round: %d/%d
+
+Provide updated plan in JSON format:
+{
+  "name": "Updated Plan Name",
+  "description": "Detailed plan description",
+  "update_reason": "Why this update is needed",
+  "steps": [
+    {
+      "id": "step1",
+      "name": "Step name",
+      "description": "Detailed step description",
+      "assigned_specialist": "specialist_name",
+      "priority": 1,
+      "dependencies": ["prerequisite_step_ids"],
+      "parameters": {"key": "value"}
+    }
+  ]
+}
+
+Guidelines:
+- Address the issues identified in the feedback
+- Maintain continuity with completed steps
+- Optimize step order and dependencies
+- Assign appropriate specialists to each step
+- Set realistic priorities based on importance and dependencies`, state.RoundNumber, state.MaxRounds)
 
 	return []*schema.Message{{
 		Role:    schema.User,
@@ -414,25 +568,119 @@ Provide an updated plan in the same JSON format as before.`
 }
 
 func processPlanUpdate(output *schema.Message, state *EnhancedState) error {
-	// Parse and update the plan
-	// This is a simplified implementation
+	// Parse updated plan
+	var planData struct {
+		Name         string `json:"name"`
+		Description  string `json:"description"`
+		UpdateReason string `json:"update_reason"`
+		Steps        []struct {
+			ID                 string         `json:"id"`
+			Name               string         `json:"name"`
+			Description        string         `json:"description"`
+			AssignedSpecialist string         `json:"assigned_specialist"`
+			Priority           int            `json:"priority"`
+			Dependencies       []string       `json:"dependencies,omitempty"`
+			Parameters         map[string]any `json:"parameters,omitempty"`
+		} `json:"steps"`
+	}
+
+	err := json.Unmarshal([]byte(output.Content), &planData)
+	if err != nil {
+		return fmt.Errorf("failed to parse updated plan: %w", err)
+	}
+
+	// Create new plan with updated information
+	updatedPlan := &TaskPlan{
+		ID:          fmt.Sprintf("plan_%d", time.Now().Unix()),
+		Version:     1,
+		Name:        planData.Name,
+		Description: planData.Description,
+		Status:      ExecutionStatusPlanning,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		Steps:       make([]*PlanStep, len(planData.Steps)),
+		Metadata:    map[string]any{"update_reason": planData.UpdateReason},
+	}
+
+	// If there's a current plan, increment version and add to history
+	if state.CurrentPlan != nil {
+		updatedPlan.Version = state.CurrentPlan.Version + 1
+		state.AddPlanToHistory(state.CurrentPlan)
+	}
+
+	// Convert steps
+	for i, stepData := range planData.Steps {
+		updatedPlan.Steps[i] = &PlanStep{
+			ID:                 stepData.ID,
+			Name:               stepData.Name,
+			Description:        stepData.Description,
+			AssignedSpecialist: stepData.AssignedSpecialist,
+			Priority:           stepData.Priority,
+			Status:             StepStatusPending,
+			Dependencies:       stepData.Dependencies,
+			Parameters:         stepData.Parameters,
+			Metadata:           map[string]any{"created_at": time.Now()},
+		}
+	}
+
+	// Update state with new plan
+	state.SetCurrentPlan(updatedPlan)
+
+	// Record the plan update
+	planUpdate := &PlanUpdate{
+		ID:          fmt.Sprintf("update_%d", time.Now().Unix()),
+		PlanVersion: updatedPlan.Version,
+		UpdateType:  PlanUpdateTypeStrategyChange,
+		Description: planData.UpdateReason,
+		Reason:      "Plan updated based on execution feedback",
+		Timestamp:   time.Now(),
+		Metadata:    map[string]any{"round": state.RoundNumber},
+	}
+
+	// Add update to plan history
+	if updatedPlan.UpdateHistory == nil {
+		updatedPlan.UpdateHistory = make([]*PlanUpdate, 0)
+	}
+	updatedPlan.UpdateHistory = append(updatedPlan.UpdateHistory, planUpdate)
+
+	// Clear previous specialist results since plan has changed
+	state.ClearSpecialistResults()
+
 	state.RoundNumber++
 	return nil
 }
 
-func generateFinalAnswer(state *EnhancedState) *schema.Message {
-	if state.FinalAnswer != nil {
-		return state.FinalAnswer
+func buildFinalAnswerPrompt(state *EnhancedState) *schema.Message {
+	// Build prompt for final answer generation
+	content := "Please provide a comprehensive final answer based on the following analysis and execution results:\n\n"
+
+	// Add original question
+	if len(state.OriginalMessages) > 0 {
+		content += "Original Question: " + state.OriginalMessages[0].Content + "\n\n"
 	}
 
-	// Generate final answer from collected results
-	content := "Based on the analysis and execution:"
-	for _, result := range state.CollectedResults {
-		content += "\n" + result.Content
+	// Add execution plan if available
+	if state.CurrentPlan != nil {
+		content += "Execution Plan:\n"
+		for i, step := range state.CurrentPlan.Steps {
+			content += fmt.Sprintf("%d. %s\n", i+1, step.Description)
+		}
+		content += "\n"
 	}
+
+	// Add collected results
+	if len(state.CollectedResults) > 0 {
+		content += "Analysis Results:\n"
+		for i, result := range state.CollectedResults {
+			content += fmt.Sprintf("Result %d: %s\n", i+1, result.Content)
+		}
+		content += "\n"
+	}
+
+	content += "Please synthesize all the above information into a clear, comprehensive, and well-structured final answer."
 
 	return &schema.Message{
-		Role:    schema.Assistant,
+		Role:    schema.User,
 		Content: content,
 	}
 }

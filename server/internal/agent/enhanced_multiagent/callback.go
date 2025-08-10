@@ -36,11 +36,6 @@ type EnhancedMultiAgentCallback interface {
 	OnConversationAnalysisStart(ctx context.Context, messages []*schema.Message) context.Context
 	OnConversationAnalysisEnd(ctx context.Context, context *ConversationContext) context.Context
 
-	// Thinking callbacks
-	OnThinkingStart(ctx context.Context, state *EnhancedState) context.Context
-	OnThinkingStep(ctx context.Context, step int, thought string) context.Context
-	OnThinkingEnd(ctx context.Context, thoughts []*ExecutionRecord) context.Context
-
 	// Complexity decision callbacks
 	OnComplexityDecision(ctx context.Context, complexity TaskComplexity, reasoning string) context.Context
 
@@ -49,8 +44,8 @@ type EnhancedMultiAgentCallback interface {
 	OnPlanCreationEnd(ctx context.Context, plan *TaskPlan) context.Context
 
 	// Plan update callbacks
-	OnPlanUpdateStart(ctx context.Context, currentPlan *TaskPlan, feedback map[string]any) context.Context
-	OnPlanUpdateEnd(ctx context.Context, updatedPlan *TaskPlan, update *PlanUpdate) context.Context
+	OnPlanUpdateStart(ctx context.Context, state *EnhancedState, reason string) context.Context
+	OnPlanUpdateEnd(ctx context.Context, state *EnhancedState, oldPlan, newPlan *TaskPlan, update *PlanUpdate) context.Context
 
 	// Execution callbacks
 	OnExecutionStart(ctx context.Context, plan *TaskPlan) context.Context
@@ -70,7 +65,14 @@ type EnhancedMultiAgentCallback interface {
 	OnFeedbackProcessingEnd(ctx context.Context, feedback map[string]any) context.Context
 
 	// Reflection decision callbacks
-	OnReflectionDecision(ctx context.Context, shouldContinue bool, reasoning string) context.Context
+	OnReflectionDecision(ctx context.Context, branch string, reasoning string) context.Context
+	OnContinueExecution(ctx context.Context, state *EnhancedState, reasoning string) context.Context
+	OnPlanUpdateDecision(ctx context.Context, state *EnhancedState, reason string) context.Context
+	OnExecutionCompletion(ctx context.Context, state *EnhancedState) context.Context
+
+	// State transition callbacks
+	OnExecutionStatusChange(ctx context.Context, state *EnhancedState, oldStatus, newStatus ExecutionStatus) context.Context
+	OnReflectionCountIncrement(ctx context.Context, state *EnhancedState, count int) context.Context
 
 	// Round control callbacks
 	OnRoundStart(ctx context.Context, roundNumber int, state *EnhancedState) context.Context
@@ -118,7 +120,7 @@ func (cb *DefaultEnhancedCallback) OnConversationAnalysisStart(ctx context.Conte
 }
 
 func (cb *DefaultEnhancedCallback) OnConversationAnalysisEnd(ctx context.Context, context *ConversationContext) context.Context {
-	cb.logger.Printf("[CONVERSATION] Conversation analysis completed. Intent: %s, Complexity: %s", 
+	cb.logger.Printf("[CONVERSATION] Conversation analysis completed. Intent: %s, Complexity: %s",
 		context.UserIntent, context.Complexity.String())
 	return ctx
 }
@@ -157,13 +159,13 @@ func (cb *DefaultEnhancedCallback) OnPlanCreationEnd(ctx context.Context, plan *
 }
 
 // Plan update callbacks
-func (cb *DefaultEnhancedCallback) OnPlanUpdateStart(ctx context.Context, currentPlan *TaskPlan, feedback map[string]any) context.Context {
-	cb.logger.Printf("[PLANNING] Starting plan update for plan %s (version %d)", currentPlan.ID, currentPlan.Version)
+func (cb *DefaultEnhancedCallback) OnPlanUpdateStart(ctx context.Context, state *EnhancedState, reason string) context.Context {
+	cb.logger.Printf("[PLANNING] Starting plan update: %s", reason)
 	return ctx
 }
 
-func (cb *DefaultEnhancedCallback) OnPlanUpdateEnd(ctx context.Context, updatedPlan *TaskPlan, update *PlanUpdate) context.Context {
-	cb.logger.Printf("[PLANNING] Plan updated to version %d: %s", updatedPlan.Version, update.Description)
+func (cb *DefaultEnhancedCallback) OnPlanUpdateEnd(ctx context.Context, state *EnhancedState, oldPlan, newPlan *TaskPlan, update *PlanUpdate) context.Context {
+	cb.logger.Printf("[PLANNING] Plan updated from version %d to %d: %s", oldPlan.Version, newPlan.Version, update.Description)
 	return ctx
 }
 
@@ -221,12 +223,34 @@ func (cb *DefaultEnhancedCallback) OnFeedbackProcessingEnd(ctx context.Context, 
 }
 
 // Reflection decision callbacks
-func (cb *DefaultEnhancedCallback) OnReflectionDecision(ctx context.Context, shouldContinue bool, reasoning string) context.Context {
-	action := "continue"
-	if !shouldContinue {
-		action = "stop"
-	}
-	cb.logger.Printf("[REFLECTION] Decision to %s: %s", action, reasoning)
+func (cb *DefaultEnhancedCallback) OnReflectionDecision(ctx context.Context, branch string, reasoning string) context.Context {
+	cb.logger.Printf("[REFLECTION] Decision branch %s: %s", branch, reasoning)
+	return ctx
+}
+
+func (cb *DefaultEnhancedCallback) OnContinueExecution(ctx context.Context, state *EnhancedState, reasoning string) context.Context {
+	cb.logger.Printf("[CONTINUE] Continue execution: %s", reasoning)
+	return ctx
+}
+
+func (cb *DefaultEnhancedCallback) OnPlanUpdateDecision(ctx context.Context, state *EnhancedState, reason string) context.Context {
+	cb.logger.Printf("[PLAN_UPDATE] Plan update decision: %s", reason)
+	return ctx
+}
+
+func (cb *DefaultEnhancedCallback) OnExecutionCompletion(ctx context.Context, state *EnhancedState) context.Context {
+	cb.logger.Printf("[COMPLETION] Execution completed")
+	return ctx
+}
+
+// State transition callbacks
+func (cb *DefaultEnhancedCallback) OnExecutionStatusChange(ctx context.Context, state *EnhancedState, oldStatus, newStatus ExecutionStatus) context.Context {
+	cb.logger.Printf("[STATUS] Execution status changed from %s to %s", oldStatus.String(), newStatus.String())
+	return ctx
+}
+
+func (cb *DefaultEnhancedCallback) OnReflectionCountIncrement(ctx context.Context, state *EnhancedState, count int) context.Context {
+	cb.logger.Printf("[REFLECTION] Reflection count incremented to %d", count)
 	return ctx
 }
 

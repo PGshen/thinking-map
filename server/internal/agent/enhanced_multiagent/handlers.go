@@ -1,19 +1,3 @@
-/*
- * Copyright 2024 CloudWeGo Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package enhanced
 
 import (
@@ -48,6 +32,10 @@ func (h *ConversationAnalyzerHandler) PreHandler(ctx context.Context, input []*s
 	// Store original messages in state
 	state.OriginalMessages = input
 
+	// Set analysis state
+	state.SetExecutionStatus(ExecutionStatusAnalyzing)
+	state.SetCurrentStep("context_analysis")
+
 	// Build conversation analysis prompt
 	prompt := h.buildConversationAnalysisPrompt(input)
 	return []*schema.Message{prompt}, nil
@@ -61,7 +49,9 @@ func (h *ConversationAnalyzerHandler) PostHandler(ctx context.Context, output *s
 		return nil, fmt.Errorf("failed to parse conversation context: %w", err)
 	}
 
-	state.ConversationContext = context
+	// Update state using unified method
+	state.UpdateConversationContext(context)
+	state.SetExecutionStatus(ExecutionStatusPlanning)
 	return output, nil
 }
 
@@ -75,6 +65,8 @@ Conversation:
 	}
 
 	prompt += `
+IMPORTANT: You MUST respond with ONLY a valid JSON object. Do not include any explanations, comments, or additional text before or after the JSON. Your response should start with { and end with }.
+
 Please analyze and provide the following information in JSON format:
 {
   "user_intent": "Brief description of what the user wants to achieve",
@@ -82,7 +74,9 @@ Please analyze and provide the following information in JSON format:
   "context_summary": "Summary of the conversation context",
   "complexity": "simple|moderate|complex|very_complex",
   "metadata": {}
-}`
+}
+
+Remember: Output ONLY the JSON object, no other text.`
 
 	return &schema.Message{
 		Role:    schema.User,
@@ -128,11 +122,6 @@ func (h *ConversationAnalyzerHandler) parseConversationContext(content string) (
 	}, nil
 }
 
-// HostThinkHandler handles host agent thinking
-type HostThinkHandler struct {
-	config *EnhancedMultiAgentConfig
-}
-
 // ComplexityBranchHandler handles complexity-based branching
 type ComplexityBranchHandler struct {
 	config *EnhancedMultiAgentConfig
@@ -148,16 +137,16 @@ func NewComplexityBranchHandler(config *EnhancedMultiAgentConfig) *ComplexityBra
 // Evaluate determines the branch based on task complexity
 func (h *ComplexityBranchHandler) Evaluate(ctx context.Context, state *EnhancedState) (string, error) {
 	if state.ConversationContext == nil {
-		return "direct_answer", nil
+		return directAnswerNodeKey, nil
 	}
 
 	switch state.ConversationContext.Complexity {
 	case TaskComplexitySimple:
-		return "direct_answer", nil
+		return directAnswerNodeKey, nil
 	case TaskComplexityModerate, TaskComplexityComplex, TaskComplexityVeryComplex:
-		return "plan_and_execute", nil
+		return planCreationNodeKey, nil
 	default:
-		return "direct_answer", nil
+		return directAnswerNodeKey, nil
 	}
 }
 
@@ -175,6 +164,10 @@ func NewPlanCreationHandler(config *EnhancedMultiAgentConfig) *PlanCreationHandl
 
 // PreHandler prepares input for plan creation
 func (h *PlanCreationHandler) PreHandler(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+	// Set planning state
+	state.SetExecutionStatus(ExecutionStatusPlanning)
+	state.SetCurrentStep("planning")
+
 	prompt := h.buildPlanCreationPrompt(state)
 	return []*schema.Message{prompt}, nil
 }
@@ -187,8 +180,10 @@ func (h *PlanCreationHandler) PostHandler(ctx context.Context, output *schema.Me
 		return nil, fmt.Errorf("failed to parse task plan: %w", err)
 	}
 
-	state.CurrentPlan = plan
-	state.PlanHistory = append(state.PlanHistory, plan)
+	// Update state using unified methods
+	state.SetCurrentPlan(plan)
+	state.SetExecutionStatus(ExecutionStatusExecuting)
+	state.SetCurrentStep("execution")
 	return output, nil
 }
 
@@ -208,6 +203,8 @@ Task Context:
 Available Specialists:
 %s
 
+IMPORTANT: You MUST respond with ONLY a valid JSON object. Do not include any explanations, comments, or additional text before or after the JSON. Your response should start with { and end with }.
+
 Create a plan with the following JSON structure:
 {
   "id": "unique_plan_id",
@@ -220,12 +217,13 @@ Create a plan with the following JSON structure:
       "description": "Step Description",
       "assigned_specialist": "specialist_name",
       "priority": 1,
-      "estimated_time": "5m",
       "dependencies": [],
       "parameters": {}
     }
   ]
-}`,
+}
+
+Remember: Output ONLY the JSON object, no other text.`,
 		state.ConversationContext.UserIntent,
 		state.ConversationContext.Complexity.String(),
 		state.ConversationContext.KeyTopics,
@@ -249,7 +247,6 @@ func (h *PlanCreationHandler) parseTaskPlan(content string) (*TaskPlan, error) {
 			Description        string         `json:"description"`
 			AssignedSpecialist string         `json:"assigned_specialist"`
 			Priority           int            `json:"priority"`
-			EstimatedTime      string         `json:"estimated_time"`
 			Dependencies       []string       `json:"dependencies"`
 			Parameters         map[string]any `json:"parameters"`
 		} `json:"steps"`
@@ -324,11 +321,18 @@ func (h *SpecialistHandler) PostHandler(ctx context.Context, output *schema.Mess
 		QualityScore: 0.8, // TODO: implement quality scoring
 	}
 
-	// Store result in state
-	if state.SpecialistResults == nil {
-		state.SpecialistResults = make(map[string]*StepResult)
+	// Update state using unified method
+	state.UpdateSpecialistResult(h.specialistName, result)
+
+	// Create execution record
+	record := &ExecutionRecord{
+		StepID:    state.CurrentStep,
+		Action:    ActionTypeExecute,
+		Output:    output,
+		StartTime: time.Now(),
+		Status:    ExecutionStatusCompleted,
 	}
-	state.SpecialistResults[h.specialistName] = result
+	state.AddExecutionRecord(record)
 
 	// Update step status
 	currentStep := h.findCurrentStep(state)
@@ -383,7 +387,11 @@ Please complete this step and provide your result.`,
 
 // ResultCollectorLambda collects and summarizes specialist results
 func ResultCollectorLambda(ctx context.Context, input []*schema.Message, state *EnhancedState) (*schema.Message, error) {
-	if state.SpecialistResults == nil || len(state.SpecialistResults) == 0 {
+	// Set collecting state
+	state.SetExecutionStatus(ExecutionStatusCollecting)
+	state.SetCurrentStep("collecting")
+
+	if len(state.SpecialistResults) == 0 {
 		return &schema.Message{
 			Role:    schema.Assistant,
 			Content: "No specialist results to collect.",
@@ -400,10 +408,9 @@ func ResultCollectorLambda(ctx context.Context, input []*schema.Message, state *
 				Content: fmt.Sprintf("[%s]: %s", specialistName, result.Output.Content),
 			}
 			results = append(results, msg)
+			state.AddCollectedResult(msg)
 		}
 	}
-
-	state.CollectedResults = results
 
 	// Create summary
 	summary := "Specialist Results Summary:\n\n"
@@ -411,10 +418,15 @@ func ResultCollectorLambda(ctx context.Context, input []*schema.Message, state *
 		summary += msg.Content + "\n\n"
 	}
 
-	return &schema.Message{
+	finalResult := &schema.Message{
 		Role:    schema.Assistant,
 		Content: summary,
-	}, nil
+	}
+
+	// Update state using unified method
+	state.SetFinalResult(finalResult)
+
+	return finalResult, nil
 }
 
 // PlanExecutionHandler handles plan execution coordination
@@ -435,6 +447,11 @@ func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Messag
 		return nil, fmt.Errorf("no current plan to execute")
 	}
 
+	// Set execution state
+	state.SetExecutionStatus(ExecutionStatusExecuting)
+	state.SetCurrentStep("execution")
+	state.ClearSpecialistResults() // Clear previous round results
+
 	// Find the next step to execute
 	nextStep := h.findNextStep(state)
 	if nextStep == nil {
@@ -449,8 +466,8 @@ func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Messag
 	nextStep.Status = StepStatusRunning
 	now := time.Now()
 
-	// Update state
-	state.CurrentStep = nextStep.ID
+	// Update current step using unified method
+	state.SetCurrentStep(nextStep.ID)
 
 	// Create execution record
 	record := &ExecutionRecord{
@@ -460,7 +477,7 @@ func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Messag
 		StartTime: now,
 		Status:    ExecutionStatusStarted,
 	}
-	state.ExecutionHistory = append(state.ExecutionHistory, record)
+	state.AddExecutionRecord(record)
 
 	return &schema.Message{
 		Role:    schema.Assistant,
@@ -556,9 +573,6 @@ func buildSpecialistBranchMap(specialists []*EnhancedSpecialist) map[string]bool
 	for _, specialist := range specialists {
 		branchMap[specialist.Name] = true
 	}
-
-	// Add result collector as a fallback branch
-	branchMap["result_collector"] = true
 
 	return branchMap
 }

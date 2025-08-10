@@ -11,8 +11,9 @@ flowchart TB
         ComplexityJudge["复杂度判断器"]
         PlanManager["动态规划管理器"]
         SpecialistPool["专家池"]
-        FeedbackProcessor["反馈处理器"]
-        StateManager["状态管理器"]
+        ResultCollector["结果收集器"]
+        DirectAnswer["直接回答"]
+        FinalAnswer["最终答案"]
         
         subgraph "Core Components"
             Planner["规划器"]
@@ -21,10 +22,10 @@ flowchart TB
         end
         
         subgraph "Specialists"
-            Spec1["编程专家"]
-            Spec2["分析专家"]
-            Spec3["写作专家"]
-            Spec4["研究专家"]
+            Spec1["专家1"]
+            Spec2["专家2"]
+            Spec3["专家3"]
+            SpecN["专家N"]
         end
         
         subgraph "Support Components"
@@ -36,29 +37,25 @@ flowchart TB
     
     User["用户对话历史<br/>[]*schema.Message"] --> ConversationAnalyzer
     ConversationAnalyzer --> ComplexityJudge
-    ComplexityJudge -->|简单任务| DirectAnswer["直接回答"]
+    ComplexityJudge -->|简单任务| DirectAnswer
     ComplexityJudge -->|复杂任务| Planner
-    Planner --> PlanManager
+    Planner --> Executor
     PlanManager --> Executor
     Executor --> SpecialistPool
     SpecialistPool --> Spec1
     SpecialistPool --> Spec2
     SpecialistPool --> Spec3
-    SpecialistPool --> Spec4
-    Spec1 --> FeedbackProcessor
-    Spec2 --> FeedbackProcessor
-    Spec3 --> FeedbackProcessor
-    Spec4 --> FeedbackProcessor
-    FeedbackProcessor --> Reflector
-    Reflector -->|继续执行| PlanManager
-    Reflector -->|任务完成| FinalAnswer["最终答案"]
+    SpecialistPool --> SpecN
+    Spec1 --> ResultCollector
+    Spec2 --> ResultCollector
+    Spec3 --> ResultCollector
+    SpecN --> ResultCollector
+    ResultCollector --> Reflector
+    Reflector -->|更新计划| PlanManager
+    Reflector -->|继续执行| Executor
+    Reflector -->|任务完成| FinalAnswer
     DirectAnswer --> User
     FinalAnswer --> User
-    
-    StateManager -.-> ConversationAnalyzer
-    StateManager -.-> PlanManager
-    StateManager -.-> SpecialistPool
-    StateManager -.-> FeedbackProcessor
     
     ContextCompressor -.-> ConversationAnalyzer
     HistoryFilter -.-> ConversationAnalyzer
@@ -93,10 +90,11 @@ flowchart TD
     
     RESULT_COLLECT --> FEEDBACK_PROCESS["Feedback Processor<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• CurrentFeedbackResult 设置<br/>• ShouldContinue 判断<br/>• SuggestedAction 确定<br/>• 对话连贯性评估"]
     
-    FEEDBACK_PROCESS --> REFLECT_BRANCH{"Reflection Branch<br/>StreamBranch<br/><br/>状态读取:<br/>• CurrentFeedbackResult.ShouldContinue<br/>• 最大轮次检查<br/>• 对话完整性评估"}
+    FEEDBACK_PROCESS --> REFLECT_BRANCH{"Reflection Branch<br/>ThreeBranch<br/><br/>状态读取:<br/>• feedback_execution_completed<br/>• feedback_plan_needs_update<br/>• feedback_overall_quality<br/>• feedback_confidence<br/>• 最大轮次检查"}
     
-    REFLECT_BRANCH -->|需要继续| PLAN_UPDATE["Plan Update Node<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• CurrentPlan.Version++<br/>• UpdateHistory 追加<br/>• CurrentRound++<br/>• Steps 动态调整<br/>• 基于反馈的规划优化"]
-    REFLECT_BRANCH -->|任务完成| FINAL_ANSWER["Final Answer Node<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• IsCompleted = true<br/>• FinalAnswer 设置<br/>• 对话历史整合的最终回答"]
+    REFLECT_BRANCH -->|继续执行| PLAN_EXECUTE
+    REFLECT_BRANCH -->|更新计划| PLAN_UPDATE["Plan Update Node<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• ExecutionStatus = Planning<br/>• CurrentPlan.Version++<br/>• UpdateHistory 追加<br/>• CurrentRound++<br/>• Steps 动态调整<br/>• 基于反馈的规划优化"]
+    REFLECT_BRANCH -->|任务完成| FINAL_ANSWER["Final Answer Node<br/>输入: *schema.Message<br/>输出: *schema.Message<br/><br/>状态更新:<br/>• ExecutionStatus = Completed<br/>• IsCompleted = true<br/>• FinalAnswer 设置<br/>• 对话历史整合的最终回答"]
     
     PLAN_UPDATE --> PLAN_EXECUTE
     

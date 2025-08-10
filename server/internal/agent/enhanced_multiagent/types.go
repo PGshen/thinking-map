@@ -1,21 +1,3 @@
-/*
- * Copyright 2024 CloudWeGo Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-// Package enhanced implements the enhanced multi-agent system with ReAct thinking,
-// task planning, and continuous feedback capabilities.
 package enhanced
 
 import (
@@ -117,8 +99,14 @@ type ExecutionStatus int
 
 const (
 	ExecutionStatusUnknown ExecutionStatus = iota
+	ExecutionStatusPending
+	ExecutionStatusAnalyzing
+	ExecutionStatusPlanning
 	ExecutionStatusStarted
 	ExecutionStatusRunning
+	ExecutionStatusExecuting
+	ExecutionStatusCollecting
+	ExecutionStatusCompleted
 	ExecutionStatusSuccess
 	ExecutionStatusFailed
 	ExecutionStatusTimeout
@@ -127,10 +115,22 @@ const (
 
 func (es ExecutionStatus) String() string {
 	switch es {
+	case ExecutionStatusPending:
+		return "pending"
+	case ExecutionStatusAnalyzing:
+		return "analyzing"
+	case ExecutionStatusPlanning:
+		return "planning"
 	case ExecutionStatusStarted:
 		return "started"
 	case ExecutionStatusRunning:
 		return "running"
+	case ExecutionStatusExecuting:
+		return "executing"
+	case ExecutionStatusCollecting:
+		return "collecting"
+	case ExecutionStatusCompleted:
+		return "completed"
 	case ExecutionStatusSuccess:
 		return "success"
 	case ExecutionStatusFailed:
@@ -313,13 +313,131 @@ func (es *EnhancedState) Clone() (*EnhancedState, error) {
 		return nil, err
 	}
 
-	var cloned EnhancedState
+	cloned := &EnhancedState{}
 	err = cloned.FromJSON(data)
 	if err != nil {
 		return nil, err
 	}
 
-	return &cloned, nil
+	return cloned, nil
+}
+
+// 基础字段管理方法
+func (es *EnhancedState) SetRoundNumber(round int) {
+	es.RoundNumber = round
+}
+
+func (es *EnhancedState) IncrementRound() {
+	es.RoundNumber++
+}
+
+func (es *EnhancedState) SetStartTime(t time.Time) {
+	es.StartTime = t
+}
+
+// 对话上下文管理方法
+func (es *EnhancedState) UpdateConversationContext(ctx *ConversationContext) {
+	es.ConversationContext = ctx
+}
+
+func (es *EnhancedState) SetOriginalMessages(messages []*schema.Message) {
+	es.OriginalMessages = messages
+}
+
+// 计划管理方法
+func (es *EnhancedState) SetCurrentPlan(plan *TaskPlan) {
+	es.CurrentPlan = plan
+}
+
+func (es *EnhancedState) AddPlanToHistory(plan *TaskPlan) {
+	if es.PlanHistory == nil {
+		es.PlanHistory = make([]*TaskPlan, 0)
+	}
+	es.PlanHistory = append(es.PlanHistory, plan)
+}
+
+// 执行记录管理方法
+func (es *EnhancedState) SetExecutionStatus(status ExecutionStatus) {
+	es.ExecutionStatus = status
+}
+
+func (es *EnhancedState) SetCurrentStep(stepID string) {
+	es.CurrentStep = stepID
+}
+
+func (es *EnhancedState) AddExecutionRecord(record *ExecutionRecord) {
+	if es.ExecutionHistory == nil {
+		es.ExecutionHistory = make([]*ExecutionRecord, 0)
+	}
+	es.ExecutionHistory = append(es.ExecutionHistory, record)
+}
+
+// 专家结果管理方法
+func (es *EnhancedState) UpdateSpecialistResult(specialist string, result *StepResult) {
+	if es.SpecialistResults == nil {
+		es.SpecialistResults = make(map[string]*StepResult)
+	}
+	es.SpecialistResults[specialist] = result
+}
+
+func (es *EnhancedState) ClearSpecialistResults() {
+	es.SpecialistResults = make(map[string]*StepResult)
+}
+
+// 结果收集管理方法
+func (es *EnhancedState) AddCollectedResult(result *schema.Message) {
+	if es.CollectedResults == nil {
+		es.CollectedResults = make([]*schema.Message, 0)
+	}
+	es.CollectedResults = append(es.CollectedResults, result)
+}
+
+func (es *EnhancedState) SetFinalResult(result *schema.Message) {
+	es.FinalResult = result
+}
+
+// 反馈管理方法
+func (es *EnhancedState) AddFeedback(feedback map[string]any) {
+	if es.FeedbackHistory == nil {
+		es.FeedbackHistory = make([]map[string]any, 0)
+	}
+	es.FeedbackHistory = append(es.FeedbackHistory, feedback)
+}
+
+func (es *EnhancedState) IncrementReflection() {
+	es.ReflectionCount++
+}
+
+// 元数据管理方法
+func (es *EnhancedState) SetMaxRounds(max int) {
+	es.MaxRounds = max
+}
+
+func (es *EnhancedState) SetShouldContinue(should bool) {
+	es.ShouldContinue = should
+}
+
+func (es *EnhancedState) SetCompleted(completed bool) {
+	es.IsCompleted = completed
+}
+
+func (es *EnhancedState) SetFinalAnswer(answer *schema.Message) {
+	es.FinalAnswer = answer
+}
+
+func (es *EnhancedState) SetMetadata(key string, value any) {
+	if es.Metadata == nil {
+		es.Metadata = make(map[string]any)
+	}
+	es.Metadata[key] = value
+}
+
+func (es *EnhancedState) GetMetadata(key string) (any, bool) {
+	if es.Metadata == nil {
+		return nil, false
+	}
+	value, exists := es.Metadata[key]
+	return value, exists
 }
 
 // EnhancedMultiAgent represents the enhanced multi-agent system
