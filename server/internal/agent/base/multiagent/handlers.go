@@ -1,4 +1,4 @@
-package enhanced
+package multiagent
 
 import (
 	"context"
@@ -10,25 +10,25 @@ import (
 )
 
 // StatePreHandler handles state preparation before node execution
-type StatePreHandler[I any] func(ctx context.Context, input I, state *EnhancedState) (I, error)
+type StatePreHandler[I any] func(ctx context.Context, input I, state *MultiAgentState) (I, error)
 
 // StatePostHandler handles state updates after node execution
-type StatePostHandler[O any] func(ctx context.Context, output O, state *EnhancedState) (O, error)
+type StatePostHandler[O any] func(ctx context.Context, output O, state *MultiAgentState) (O, error)
 
 // ConversationAnalyzerHandler analyzes conversation context
 type ConversationAnalyzerHandler struct {
-	config *EnhancedMultiAgentConfig
+	config *MultiAgentConfig
 }
 
 // NewConversationAnalyzerHandler creates a new conversation analyzer handler
-func NewConversationAnalyzerHandler(config *EnhancedMultiAgentConfig) *ConversationAnalyzerHandler {
+func NewConversationAnalyzerHandler(config *MultiAgentConfig) *ConversationAnalyzerHandler {
 	return &ConversationAnalyzerHandler{
 		config: config,
 	}
 }
 
 // PreHandler prepares input for conversation analysis
-func (h *ConversationAnalyzerHandler) PreHandler(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+func (h *ConversationAnalyzerHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 	// Store original messages in state
 	state.OriginalMessages = input
 
@@ -42,7 +42,7 @@ func (h *ConversationAnalyzerHandler) PreHandler(ctx context.Context, input []*s
 }
 
 // PostHandler processes conversation analysis results
-func (h *ConversationAnalyzerHandler) PostHandler(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
+func (h *ConversationAnalyzerHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	// Parse conversation context from LLM response
 	context, err := h.parseConversationContext(output.Content)
 	if err != nil {
@@ -124,18 +124,18 @@ func (h *ConversationAnalyzerHandler) parseConversationContext(content string) (
 
 // ComplexityBranchHandler handles complexity-based branching
 type ComplexityBranchHandler struct {
-	config *EnhancedMultiAgentConfig
+	config *MultiAgentConfig
 }
 
 // NewComplexityBranchHandler creates a new complexity branch handler
-func NewComplexityBranchHandler(config *EnhancedMultiAgentConfig) *ComplexityBranchHandler {
+func NewComplexityBranchHandler(config *MultiAgentConfig) *ComplexityBranchHandler {
 	return &ComplexityBranchHandler{
 		config: config,
 	}
 }
 
 // Evaluate determines the branch based on task complexity
-func (h *ComplexityBranchHandler) Evaluate(ctx context.Context, state *EnhancedState) (string, error) {
+func (h *ComplexityBranchHandler) Evaluate(ctx context.Context, state *MultiAgentState) (string, error) {
 	if state.ConversationContext == nil {
 		return directAnswerNodeKey, nil
 	}
@@ -152,18 +152,18 @@ func (h *ComplexityBranchHandler) Evaluate(ctx context.Context, state *EnhancedS
 
 // PlanCreationHandler handles task plan creation
 type PlanCreationHandler struct {
-	config *EnhancedMultiAgentConfig
+	config *MultiAgentConfig
 }
 
 // NewPlanCreationHandler creates a new plan creation handler
-func NewPlanCreationHandler(config *EnhancedMultiAgentConfig) *PlanCreationHandler {
+func NewPlanCreationHandler(config *MultiAgentConfig) *PlanCreationHandler {
 	return &PlanCreationHandler{
 		config: config,
 	}
 }
 
 // PreHandler prepares input for plan creation
-func (h *PlanCreationHandler) PreHandler(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+func (h *PlanCreationHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 	// Set planning state
 	state.SetExecutionStatus(ExecutionStatusPlanning)
 	state.SetCurrentStep("planning")
@@ -173,7 +173,7 @@ func (h *PlanCreationHandler) PreHandler(ctx context.Context, input []*schema.Me
 }
 
 // PostHandler processes plan creation results
-func (h *PlanCreationHandler) PostHandler(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
+func (h *PlanCreationHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	// Parse task plan from LLM response
 	plan, err := h.parseTaskPlan(output.Content)
 	if err != nil {
@@ -187,7 +187,7 @@ func (h *PlanCreationHandler) PostHandler(ctx context.Context, output *schema.Me
 	return output, nil
 }
 
-func (h *PlanCreationHandler) buildPlanCreationPrompt(state *EnhancedState) *schema.Message {
+func (h *PlanCreationHandler) buildPlanCreationPrompt(state *MultiAgentState) *schema.Message {
 	specialistList := ""
 	for _, specialist := range h.config.Specialists {
 		specialistList += fmt.Sprintf("- %s: %s\n", specialist.Name, specialist.IntendedUse)
@@ -299,7 +299,7 @@ func NewSpecialistHandler(specialistName string) *SpecialistHandler {
 }
 
 // PreHandler prepares input for specialist execution
-func (h *SpecialistHandler) PreHandler(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+func (h *SpecialistHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 	// Find the current step for this specialist
 	currentStep := h.findCurrentStep(state)
 	if currentStep == nil {
@@ -312,7 +312,7 @@ func (h *SpecialistHandler) PreHandler(ctx context.Context, input []*schema.Mess
 }
 
 // PostHandler processes specialist execution results
-func (h *SpecialistHandler) PostHandler(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
+func (h *SpecialistHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	// Create step result
 	result := &StepResult{
 		Success:      true,
@@ -344,7 +344,7 @@ func (h *SpecialistHandler) PostHandler(ctx context.Context, output *schema.Mess
 	return output, nil
 }
 
-func (h *SpecialistHandler) findCurrentStep(state *EnhancedState) *PlanStep {
+func (h *SpecialistHandler) findCurrentStep(state *MultiAgentState) *PlanStep {
 	if state.CurrentPlan == nil {
 		return nil
 	}
@@ -358,7 +358,7 @@ func (h *SpecialistHandler) findCurrentStep(state *EnhancedState) *PlanStep {
 	return nil
 }
 
-func (h *SpecialistHandler) buildSpecialistPrompt(step *PlanStep, state *EnhancedState) *schema.Message {
+func (h *SpecialistHandler) buildSpecialistPrompt(step *PlanStep, state *MultiAgentState) *schema.Message {
 	prompt := fmt.Sprintf(`You are a %s specialist. Execute the following step:
 
 Step: %s
@@ -386,7 +386,7 @@ Please complete this step and provide your result.`,
 }
 
 // ResultCollectorLambda collects and summarizes specialist results
-func ResultCollectorLambda(ctx context.Context, input []*schema.Message, state *EnhancedState) (*schema.Message, error) {
+func ResultCollectorLambda(ctx context.Context, input []*schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	// Set collecting state
 	state.SetExecutionStatus(ExecutionStatusCollecting)
 	state.SetCurrentStep("collecting")
@@ -431,18 +431,18 @@ func ResultCollectorLambda(ctx context.Context, input []*schema.Message, state *
 
 // PlanExecutionHandler handles plan execution coordination
 type PlanExecutionHandler struct {
-	config *EnhancedMultiAgentConfig
+	config *MultiAgentConfig
 }
 
 // NewPlanExecutionHandler creates a new plan execution handler
-func NewPlanExecutionHandler(config *EnhancedMultiAgentConfig) *PlanExecutionHandler {
+func NewPlanExecutionHandler(config *MultiAgentConfig) *PlanExecutionHandler {
 	return &PlanExecutionHandler{
 		config: config,
 	}
 }
 
 // Execute coordinates the execution of the current plan
-func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Message, state *EnhancedState) (*schema.Message, error) {
+func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	if state.CurrentPlan == nil {
 		return nil, fmt.Errorf("no current plan to execute")
 	}
@@ -486,7 +486,7 @@ func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Messag
 }
 
 // findNextStep finds the next step to execute based on dependencies and status
-func (h *PlanExecutionHandler) findNextStep(state *EnhancedState) *PlanStep {
+func (h *PlanExecutionHandler) findNextStep(state *MultiAgentState) *PlanStep {
 	for _, step := range state.CurrentPlan.Steps {
 		if step.Status == StepStatusPending {
 			// Check if all dependencies are completed
@@ -499,7 +499,7 @@ func (h *PlanExecutionHandler) findNextStep(state *EnhancedState) *PlanStep {
 }
 
 // areDependenciesCompleted checks if all dependencies for a step are completed
-func (h *PlanExecutionHandler) areDependenciesCompleted(step *PlanStep, state *EnhancedState) bool {
+func (h *PlanExecutionHandler) areDependenciesCompleted(step *PlanStep, state *MultiAgentState) bool {
 	for _, depID := range step.Dependencies {
 		for _, planStep := range state.CurrentPlan.Steps {
 			if planStep.ID == depID && planStep.Status != StepStatusCompleted {
@@ -512,18 +512,18 @@ func (h *PlanExecutionHandler) areDependenciesCompleted(step *PlanStep, state *E
 
 // SpecialistBranchHandler handles specialist selection and branching
 type SpecialistBranchHandler struct {
-	config *EnhancedMultiAgentConfig
+	config *MultiAgentConfig
 }
 
 // NewSpecialistBranchHandler creates a new specialist branch handler
-func NewSpecialistBranchHandler(config *EnhancedMultiAgentConfig) *SpecialistBranchHandler {
+func NewSpecialistBranchHandler(config *MultiAgentConfig) *SpecialistBranchHandler {
 	return &SpecialistBranchHandler{
 		config: config,
 	}
 }
 
 // Evaluate determines which specialist should handle the current step
-func (h *SpecialistBranchHandler) Evaluate(ctx context.Context, state *EnhancedState) (string, error) {
+func (h *SpecialistBranchHandler) Evaluate(ctx context.Context, state *MultiAgentState) (string, error) {
 	if state.CurrentStep == "" {
 		return "result_collector", nil // No current step, go to result collection
 	}
@@ -552,7 +552,7 @@ func (h *SpecialistBranchHandler) Evaluate(ctx context.Context, state *EnhancedS
 }
 
 // findStepByID finds a step by its ID in the current plan
-func (h *SpecialistBranchHandler) findStepByID(stepID string, state *EnhancedState) *PlanStep {
+func (h *SpecialistBranchHandler) findStepByID(stepID string, state *MultiAgentState) *PlanStep {
 	if state.CurrentPlan == nil {
 		return nil
 	}
@@ -566,7 +566,7 @@ func (h *SpecialistBranchHandler) findStepByID(stepID string, state *EnhancedSta
 }
 
 // buildSpecialistBranchMap creates a map of specialist names to branch conditions
-func buildSpecialistBranchMap(specialists []*EnhancedSpecialist) map[string]bool {
+func buildSpecialistBranchMap(specialists []*Specialist) map[string]bool {
 	branchMap := make(map[string]bool)
 
 	// Add all specialist names as valid branches

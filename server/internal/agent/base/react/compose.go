@@ -23,12 +23,12 @@ const (
 )
 
 // NewAgent creates a new ReAct agent with the given configuration
-func NewAgent(ctx context.Context, config ReactAgentConfig, opts ...base.AgentOption) (*Agent, error) {
+func NewAgent(ctx context.Context, config ReactAgentConfig, opts ...base.AgentOption) (*ReactAgent, error) {
 	if err := validateConfig(&config); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	agent := &Agent{
+	agent := &ReactAgent{
 		config:       config,
 		agentOptions: opts,
 	}
@@ -59,7 +59,7 @@ func NewAgent(ctx context.Context, config ReactAgentConfig, opts ...base.AgentOp
 }
 
 // setupChatModel sets up the chat model for the agent
-func (a *Agent) setupChatModel(ctx context.Context) (model.BaseChatModel, error) {
+func (a *ReactAgent) setupChatModel(ctx context.Context) (model.BaseChatModel, error) {
 
 	// Use the tool calling model as the base chat model
 	chatModel := a.config.ToolCallingModel
@@ -94,7 +94,7 @@ func genToolInfos(ctx context.Context, config compose.ToolsNodeConfig) ([]*schem
 }
 
 // buildGraph builds the execution graph for the ReAct agent
-func (a *Agent) buildGraph(ctx context.Context, chatModel model.BaseChatModel) (*compose.Graph[[]*schema.Message, *schema.Message], error) {
+func (a *ReactAgent) buildGraph(ctx context.Context, chatModel model.BaseChatModel) (*compose.Graph[[]*schema.Message, *schema.Message], error) {
 	// Create graph with state enabled
 	graph := compose.NewGraph[[]*schema.Message, *schema.Message](compose.WithGenLocalState(func(ctx context.Context) *AgentState {
 		return &AgentState{
@@ -151,7 +151,7 @@ func (a *Agent) buildGraph(ctx context.Context, chatModel model.BaseChatModel) (
 }
 
 // addInitNode adds the initialization node to the graph
-func (a *Agent) addInitNode(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
+func (a *ReactAgent) addInitNode(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
 	initHandler := NewInitHandler(a.config)
 	return graph.AddLambdaNode(nodeKeyInit, compose.InvokableLambda(
 		func(ctx context.Context, input []*schema.Message) ([]*schema.Message, error) {
@@ -162,7 +162,7 @@ func (a *Agent) addInitNode(graph *compose.Graph[[]*schema.Message, *schema.Mess
 }
 
 // addReasoningNode adds the reasoning node to the graph
-func (a *Agent) addReasoningNode(graph *compose.Graph[[]*schema.Message, *schema.Message], chatModel model.BaseChatModel) error {
+func (a *ReactAgent) addReasoningNode(graph *compose.Graph[[]*schema.Message, *schema.Message], chatModel model.BaseChatModel) error {
 	reasoningHandler := NewReasoningHandler(a.config)
 	return graph.AddChatModelNode(nodeKeyReasoning, chatModel,
 		compose.WithStatePreHandler(reasoningHandler.PreHandler),
@@ -171,12 +171,12 @@ func (a *Agent) addReasoningNode(graph *compose.Graph[[]*schema.Message, *schema
 }
 
 // addToReasoningNode adds the to-reasoning conversion node
-func (a *Agent) addToReasoningNode(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
+func (a *ReactAgent) addToReasoningNode(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
 	return graph.AddLambdaNode(nodeKeyToReasoning, compose.ToList[*schema.Message]())
 }
 
 // addToolsNode adds the tools execution node to the graph
-func (a *Agent) addToolsNode(ctx context.Context, graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
+func (a *ReactAgent) addToolsNode(ctx context.Context, graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
 	toolsNodeConfig := &a.config.ToolsConfig
 	toolsNode, err := compose.NewToolNode(ctx, toolsNodeConfig)
 	if err != nil {
@@ -190,7 +190,7 @@ func (a *Agent) addToolsNode(ctx context.Context, graph *compose.Graph[[]*schema
 }
 
 // addToolsCheckerNode adds the tools checker node to the graph
-func (a *Agent) addToolsCheckerNode(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
+func (a *ReactAgent) addToolsCheckerNode(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
 	return graph.AddLambdaNode(nodeKeyToolsChecker, compose.InvokableLambda(
 		func(ctx context.Context, input []*schema.Message) (*schema.Message, error) {
 			return a.toolsCheckerNodeHandler(ctx, input)
@@ -199,7 +199,7 @@ func (a *Agent) addToolsCheckerNode(graph *compose.Graph[[]*schema.Message, *sch
 }
 
 // toolsCheckerNodeHandler handles the tools checker node logic
-func (a *Agent) toolsCheckerNodeHandler(ctx context.Context, input []*schema.Message) (*schema.Message, error) {
+func (a *ReactAgent) toolsCheckerNodeHandler(ctx context.Context, input []*schema.Message) (*schema.Message, error) {
 	// Find the message that should return directly
 	var directReturnMsg *schema.Message
 	err := compose.ProcessState(ctx, func(_ context.Context, state *AgentState) error {
@@ -233,7 +233,7 @@ func (a *Agent) toolsCheckerNodeHandler(ctx context.Context, input []*schema.Mes
 }
 
 // addCompleteNode adds the completion node to the graph
-func (a *Agent) addCompleteNode(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
+func (a *ReactAgent) addCompleteNode(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
 	completeHandler := NewCompleteHandler(a.config)
 	return graph.AddLambdaNode(nodeKeyComplete, compose.InvokableLambda(
 		func(ctx context.Context, input *schema.Message) (*schema.Message, error) {
@@ -244,7 +244,7 @@ func (a *Agent) addCompleteNode(graph *compose.Graph[[]*schema.Message, *schema.
 }
 
 // addDecisionBranch adds the decision branch to the graph
-func (a *Agent) addDecisionBranch(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
+func (a *ReactAgent) addDecisionBranch(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
 	return graph.AddBranch(nodeKeyReasoning, compose.NewStreamGraphBranch(
 		a.decisionBranchHandler,
 		map[string]bool{
@@ -256,7 +256,7 @@ func (a *Agent) addDecisionBranch(graph *compose.Graph[[]*schema.Message, *schem
 }
 
 // decisionBranchHandler handles the decision branch logic
-func (a *Agent) decisionBranchHandler(ctx context.Context, msgsStream *schema.StreamReader[*schema.Message]) (endNode string, err error) {
+func (a *ReactAgent) decisionBranchHandler(ctx context.Context, msgsStream *schema.StreamReader[*schema.Message]) (endNode string, err error) {
 	msgsStream.Close()
 
 	// Default to continue reasoning
@@ -307,7 +307,7 @@ func (a *Agent) decisionBranchHandler(ctx context.Context, msgsStream *schema.St
 }
 
 // addToolsCheckerBranch adds the tools checker branch to the graph
-func (a *Agent) addToolsCheckerBranch(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
+func (a *ReactAgent) addToolsCheckerBranch(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
 	return graph.AddBranch(nodeKeyToolsChecker, compose.NewStreamGraphBranch(
 		a.toolsCheckerBranchHandler,
 		map[string]bool{
@@ -318,7 +318,7 @@ func (a *Agent) addToolsCheckerBranch(graph *compose.Graph[[]*schema.Message, *s
 }
 
 // toolsCheckerBranchHandler handles the tools checker branch logic
-func (a *Agent) toolsCheckerBranchHandler(ctx context.Context, msgStream *schema.StreamReader[*schema.Message]) (endNode string, err error) {
+func (a *ReactAgent) toolsCheckerBranchHandler(ctx context.Context, msgStream *schema.StreamReader[*schema.Message]) (endNode string, err error) {
 	msgStream.Close()
 
 	err = compose.ProcessState(ctx, func(_ context.Context, state *AgentState) error {
@@ -337,7 +337,7 @@ func (a *Agent) toolsCheckerBranchHandler(ctx context.Context, msgStream *schema
 }
 
 // addGraphEdges adds all edges to connect the graph nodes
-func (a *Agent) addGraphEdges(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
+func (a *ReactAgent) addGraphEdges(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
 	// Start -> Init (entry point)
 	if err := graph.AddEdge(compose.START, nodeKeyInit); err != nil {
 		return fmt.Errorf("failed to add start edge: %w", err)
@@ -367,7 +367,7 @@ func (a *Agent) addGraphEdges(graph *compose.Graph[[]*schema.Message, *schema.Me
 }
 
 // Generate executes the agent with comprehensive error handling and monitoring
-func (a *Agent) Generate(ctx context.Context, messages []*schema.Message, opts ...base.AgentOption) (*schema.Message, error) {
+func (a *ReactAgent) Generate(ctx context.Context, messages []*schema.Message, opts ...base.AgentOption) (*schema.Message, error) {
 	// Validate input
 	if len(messages) == 0 {
 		return nil, fmt.Errorf("input messages cannot be empty")
@@ -383,7 +383,7 @@ func (a *Agent) Generate(ctx context.Context, messages []*schema.Message, opts .
 }
 
 // Stream executes the agent with streaming support and comprehensive monitoring
-func (a *Agent) Stream(ctx context.Context, messages []*schema.Message, opts ...base.AgentOption) (*schema.StreamReader[*schema.Message], error) {
+func (a *ReactAgent) Stream(ctx context.Context, messages []*schema.Message, opts ...base.AgentOption) (*schema.StreamReader[*schema.Message], error) {
 	// Validate input
 	if len(messages) == 0 {
 		return nil, fmt.Errorf("input messages cannot be empty")

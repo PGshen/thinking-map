@@ -1,4 +1,4 @@
-package enhanced
+package multiagent
 
 import (
 	"context"
@@ -30,20 +30,20 @@ const (
 	finalAnswerNodeKey          = "final_answer"
 )
 
-// NewEnhancedMultiAgent creates a new enhanced multi-agent system
-func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig) (*EnhancedMultiAgent, error) {
+// NewMultiAgent creates a new multi-agent system
+func NewMultiAgent(ctx context.Context, config *MultiAgentConfig) (*MultiAgent, error) {
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
 	// Create the graph with state
 	graph := compose.NewGraph[[]*schema.Message, *schema.Message](
-		compose.WithGenLocalState(func(ctx context.Context) *EnhancedState {
-			return &EnhancedState{
+		compose.WithGenLocalState(func(ctx context.Context) *MultiAgentState {
+			return &MultiAgentState{
 				RoundNumber:     1,
 				StartTime:       time.Now(),
 				ExecutionStatus: ExecutionStatusStarted,
-				MaxRounds:       config.ExecutionControl.MaxRounds,
+				MaxRounds:       config.MaxRounds,
 				ShouldContinue:  true,
 				IsCompleted:     false,
 			}
@@ -53,10 +53,10 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	// Add conversation analyzer node
 	conversationAnalyzer := NewConversationAnalyzerHandler(config)
 	err := graph.AddChatModelNode(conversationAnalyzerNodeKey, config.Host.Model,
-		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 			return conversationAnalyzer.PreHandler(ctx, input, state)
 		}),
-		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
+		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 			return conversationAnalyzer.PostHandler(ctx, output, state)
 		}),
 		compose.WithNodeName("conversation_analyzer"),
@@ -72,7 +72,7 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	complexityBranchHandler := NewComplexityBranchHandler(config)
 	complexityBranch := compose.NewGraphBranch(func(ctx context.Context, input []*schema.Message) (string, error) {
 		var result string
-		err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
+		err = compose.ProcessState(ctx, func(ctx context.Context, state *MultiAgentState) error {
 			result, err = complexityBranchHandler.Evaluate(ctx, state)
 			return err
 		})
@@ -81,12 +81,12 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 
 	// Add direct answer node for simple tasks
 	err = graph.AddChatModelNode(directAnswerNodeKey, config.Host.Model,
-		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 			// Build direct answer prompt
 			prompt := buildDirectAnswerPrompt(state)
 			return []*schema.Message{prompt}, nil
 		}),
-		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
+		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 			state.FinalAnswer = output
 			state.IsCompleted = true
 			return output, nil
@@ -100,10 +100,10 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	// Add plan creation node
 	planCreationHandler := NewPlanCreationHandler(config)
 	err = graph.AddChatModelNode(planCreationNodeKey, config.Host.Model,
-		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 			return planCreationHandler.PreHandler(ctx, input, state)
 		}),
-		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
+		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 			return planCreationHandler.PostHandler(ctx, output, state)
 		}),
 		compose.WithNodeName("plan_creation"),
@@ -117,7 +117,7 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	err = graph.AddLambdaNode(planExecutionNodeKey,
 		compose.InvokableLambda(func(ctx context.Context, input *schema.Message) (*schema.Message, error) {
 			var result *schema.Message
-			err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
+			err = compose.ProcessState(ctx, func(ctx context.Context, state *MultiAgentState) error {
 				result, err = planExecutionHandler.Execute(ctx, input, state)
 				return err
 			})
@@ -136,7 +136,7 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	specialistBranchHandler := NewSpecialistBranchHandler(config)
 	specialistBranch := compose.NewGraphBranch(func(ctx context.Context, input []*schema.Message) (string, error) {
 		var result string
-		err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
+		err = compose.ProcessState(ctx, func(ctx context.Context, state *MultiAgentState) error {
 			result, err = specialistBranchHandler.Evaluate(ctx, state)
 			return err
 		})
@@ -154,7 +154,7 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	err = graph.AddLambdaNode(resultCollectorNodeKey,
 		compose.InvokableLambda(func(ctx context.Context, input *schema.Message) (*schema.Message, error) {
 			var result *schema.Message
-			err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
+			err = compose.ProcessState(ctx, func(ctx context.Context, state *MultiAgentState) error {
 				// Convert single message to slice for ResultCollectorLambda
 				messages := []*schema.Message{input}
 				result, err = ResultCollectorLambda(ctx, messages, state)
@@ -173,12 +173,12 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 
 	// Add feedback processor node
 	err = graph.AddChatModelNode(feedbackProcessorNodeKey, config.Host.Model,
-		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 			// Set feedback processing state
 			state.SetExecutionStatus(ExecutionStatusRunning)
 			return buildFeedbackPrompt(state), nil
 		}),
-		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
+		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 			err = processFeedbackResult(output, state)
 			if err != nil {
 				return output, err
@@ -196,7 +196,7 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	// Add reflection branch node
 	reflectionBranch := compose.NewGraphBranch(func(ctx context.Context, input *schema.Message) (string, error) {
 		var result string
-		err = compose.ProcessState(ctx, func(ctx context.Context, state *EnhancedState) error {
+		err = compose.ProcessState(ctx, func(ctx context.Context, state *MultiAgentState) error {
 			result, err = evaluateReflectionDecision(state)
 			return err
 		})
@@ -212,12 +212,12 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 
 	// Add plan update node
 	err = graph.AddChatModelNode(planUpdateNodeKey, config.Host.Model,
-		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 			// Set plan update state
 			state.SetExecutionStatus(ExecutionStatusPlanning)
 			return buildPlanUpdatePrompt(state), nil
 		}),
-		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
+		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 			err = processPlanUpdate(output, state)
 			if err != nil {
 				return output, err
@@ -237,12 +237,12 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 
 	// Add final answer node
 	err = graph.AddChatModelNode(finalAnswerNodeKey, config.Host.Model,
-		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 			// Build final answer prompt
 			prompt := buildFinalAnswerPrompt(state)
 			return []*schema.Message{prompt}, nil
 		}),
-		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
+		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 			state.FinalAnswer = output
 			state.IsCompleted = true
 			return output, nil
@@ -296,7 +296,7 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 		return nil, fmt.Errorf("failed to compile graph: %w", err)
 	}
 
-	return &EnhancedMultiAgent{
+	return &MultiAgent{
 		runnable:         runnable,
 		graph:            graph,
 		graphAddNodeOpts: []compose.GraphAddNodeOpt{},
@@ -304,17 +304,17 @@ func NewEnhancedMultiAgent(ctx context.Context, config *EnhancedMultiAgentConfig
 	}, nil
 }
 
-func addSpecialist(graph *compose.Graph[[]*schema.Message, *schema.Message], specialist *EnhancedSpecialist) error {
+func addSpecialist(graph *compose.Graph[[]*schema.Message, *schema.Message], specialist *Specialist) error {
 	specialistHandler := NewSpecialistHandler(specialist.Name)
 	if specialist.Invokable != nil || specialist.Streamable != nil {
 		lambda, err := compose.AnyLambda(specialist.Invokable, specialist.Streamable, nil, nil, compose.WithLambdaType("Specialist"))
 		if err != nil {
 			return err
 		}
-		if err := graph.AddLambdaNode(specialist.Name, lambda, compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+		if err := graph.AddLambdaNode(specialist.Name, lambda, compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 			return specialistHandler.PreHandler(ctx, input, state)
 		}),
-			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
+			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 				return specialistHandler.PostHandler(ctx, output, state)
 			}),
 			compose.WithNodeName(specialist.Name)); err != nil {
@@ -322,10 +322,10 @@ func addSpecialist(graph *compose.Graph[[]*schema.Message, *schema.Message], spe
 		}
 	} else if specialist.ChatModel != nil {
 		if err := graph.AddChatModelNode(specialist.Name, specialist.ChatModel,
-			compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *EnhancedState) ([]*schema.Message, error) {
+			compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 				return specialistHandler.PreHandler(ctx, input, state)
 			}),
-			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *EnhancedState) (*schema.Message, error) {
+			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 				return specialistHandler.PostHandler(ctx, output, state)
 			}),
 			compose.WithNodeName(specialist.Name),
@@ -338,7 +338,7 @@ func addSpecialist(graph *compose.Graph[[]*schema.Message, *schema.Message], spe
 
 // Helper functions
 
-func buildDirectAnswerPrompt(state *EnhancedState) *schema.Message {
+func buildDirectAnswerPrompt(state *MultiAgentState) *schema.Message {
 	prompt := fmt.Sprintf(`Provide a direct answer to the user's request.
 
 User Intent: %s
@@ -355,7 +355,7 @@ Please provide a clear, helpful response.`,
 	}
 }
 
-func buildFeedbackPrompt(state *EnhancedState) []*schema.Message {
+func buildFeedbackPrompt(state *MultiAgentState) []*schema.Message {
 	prompt := `Analyze the execution results and provide comprehensive feedback.
 
 Original User Intent: ` + state.ConversationContext.UserIntent + `
@@ -403,7 +403,7 @@ Remember: Output ONLY the JSON object, no other text.`, len(state.ExecutionHisto
 	}}
 }
 
-func processFeedbackResult(output *schema.Message, state *EnhancedState) error {
+func processFeedbackResult(output *schema.Message, state *MultiAgentState) error {
 	// Parse feedback result
 	var feedback struct {
 		ExecutionCompleted bool     `json:"execution_completed"`
@@ -441,7 +441,7 @@ func processFeedbackResult(output *schema.Message, state *EnhancedState) error {
 	return nil
 }
 
-func evaluateReflectionDecision(state *EnhancedState) (string, error) {
+func evaluateReflectionDecision(state *MultiAgentState) (string, error) {
 	// Get feedback decision from metadata
 	executionCompleted, hasCompleted := state.GetMetadata("feedback_execution_completed")
 	planNeedsUpdate, hasUpdate := state.GetMetadata("feedback_plan_needs_update")
@@ -500,7 +500,7 @@ func evaluateReflectionDecision(state *EnhancedState) (string, error) {
 	return toFinalAnswerNodeKey, nil
 }
 
-func buildPlanUpdatePrompt(state *EnhancedState) []*schema.Message {
+func buildPlanUpdatePrompt(state *MultiAgentState) []*schema.Message {
 	prompt := `Update the current plan based on feedback and execution results.
 
 Original User Intent: ` + state.ConversationContext.UserIntent + `
@@ -567,7 +567,7 @@ Guidelines:
 	}}
 }
 
-func processPlanUpdate(output *schema.Message, state *EnhancedState) error {
+func processPlanUpdate(output *schema.Message, state *MultiAgentState) error {
 	// Parse updated plan
 	var planData struct {
 		Name         string `json:"name"`
@@ -650,7 +650,7 @@ func processPlanUpdate(output *schema.Message, state *EnhancedState) error {
 	return nil
 }
 
-func buildFinalAnswerPrompt(state *EnhancedState) *schema.Message {
+func buildFinalAnswerPrompt(state *MultiAgentState) *schema.Message {
 	// Build prompt for final answer generation
 	content := "Please provide a comprehensive final answer based on the following analysis and execution results:\n\n"
 

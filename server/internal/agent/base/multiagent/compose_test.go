@@ -1,9 +1,9 @@
 /*
  * @Date: 2025-01-27
  * @LastEditors: AI Assistant
- * @FilePath: /thinking-map/server/internal/agent/enhanced_multiagent/compose_test.go
+ * @FilePath: /thinking-map/server/internal/agent/base/multiagent/compose_test.go
  */
-package enhanced
+package multiagent
 
 import (
 	"context"
@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/agent/base"
 	"github.com/cloudwego/eino-ext/components/model/openai"
 	"github.com/cloudwego/eino/callbacks"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/compose"
-	"github.com/cloudwego/eino/flow/agent"
 	"github.com/cloudwego/eino/schema"
 	ub "github.com/cloudwego/eino/utils/callbacks"
 	"github.com/stretchr/testify/assert"
@@ -52,11 +52,11 @@ var chatModel, err = openai.NewChatModel(context.Background(), &openai.ChatModel
 })
 
 // createTestConfig 创建测试用的配置
-func createTestConfig() *EnhancedMultiAgentConfig {
-	return &EnhancedMultiAgentConfig{
-		Name:        "test-enhanced-multi-agent",
-		Description: "Test Enhanced Multi-Agent System",
-		Host: EnhancedHost{
+func createTestConfig() *MultiAgentConfig {
+	return &MultiAgentConfig{
+		Name:        "test-multi-agent",
+		Description: "Test  Multi-Agent System",
+		Host: Host{
 			Model:        chatModel,
 			SystemPrompt: "You are a test assistant.",
 			Thinking: ThinkingConfig{
@@ -73,46 +73,26 @@ func createTestConfig() *EnhancedMultiAgentConfig {
 			},
 		},
 		// Temporarily disable specialists to test basic functionality
-		Specialists: []*EnhancedSpecialist{
+		Specialists: []*Specialist{
 			{
 				Name:        "common specialist",
 				IntendedUse: "common tasks",
 				ChatModel:   chatModel,
 			},
 		},
-		System: SystemConfig{
-			Version:     "1.0.0",
-			Environment: "test",
-			DebugMode:   true,
-		},
-		ExecutionControl: ExecutionControlConfig{
-			MaxRounds:        5,
-			Timeout:          5 * time.Minute,
-			GracefulShutdown: true,
-		},
 		Session: SessionConfig{
 			HistoryLength: 100,
 			ContextWindow: 4096,
 		},
-		Performance: PerformanceConfig{
-			Concurrency: map[string]int{
-				"max_concurrent_specialists": 3,
-			},
-		},
-		Logging: LoggingConfig{
-			Level:  "info",
-			Format: "json",
-			Output: []string{"stdout"},
-		},
 	}
 }
 
-func TestNewEnhancedMultiAgent_Success(t *testing.T) {
+func TestNewMultiAgent_Success(t *testing.T) {
 	ctx := context.Background()
 	config := createTestConfig()
 
 	// 测试成功创建
-	agent, err := NewEnhancedMultiAgent(ctx, config)
+	agent, err := NewMultiAgent(ctx, config)
 	require.NoError(t, err)
 	require.NotNil(t, agent)
 
@@ -125,12 +105,12 @@ func TestNewEnhancedMultiAgent_Success(t *testing.T) {
 	assert.NotNil(t, opts)
 }
 
-func TestNewEnhancedMultiAgent_InvalidConfig(t *testing.T) {
+func TestNewMultiAgent_InvalidConfig(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
 		name   string
-		config *EnhancedMultiAgentConfig
+		config *MultiAgentConfig
 	}{
 		{
 			name:   "nil config",
@@ -138,13 +118,13 @@ func TestNewEnhancedMultiAgent_InvalidConfig(t *testing.T) {
 		},
 		{
 			name:   "empty config",
-			config: &EnhancedMultiAgentConfig{},
+			config: &MultiAgentConfig{},
 		},
 		{
 			name: "missing host model",
-			config: &EnhancedMultiAgentConfig{
+			config: &MultiAgentConfig{
 				Name: "test",
-				Host: EnhancedHost{
+				Host: Host{
 					SystemPrompt: "test",
 					// Model 缺失
 				},
@@ -154,18 +134,18 @@ func TestNewEnhancedMultiAgent_InvalidConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			agent, err := NewEnhancedMultiAgent(ctx, tt.config)
+			agent, err := NewMultiAgent(ctx, tt.config)
 			assert.Error(t, err)
 			assert.Nil(t, agent)
 		})
 	}
 }
 
-func TestEnhancedMultiAgent_BasicExxecution(t *testing.T) {
+func TestMultiAgent_BasicExxecution(t *testing.T) {
 	ctx := context.Background()
 	config := createTestConfig()
 
-	agent, err := NewEnhancedMultiAgent(ctx, config)
+	agent, err := NewMultiAgent(ctx, config)
 	require.NoError(t, err)
 
 	// 准备测试输入
@@ -186,11 +166,11 @@ func TestEnhancedMultiAgent_BasicExxecution(t *testing.T) {
 	assert.NotEmpty(t, result.Content)
 }
 
-func TestEnhancedMultiAgent_StreamExecution(t *testing.T) {
+func TestMultiAgent_StreamExecution(t *testing.T) {
 	ctx := context.Background()
 	config := createTestConfig()
 
-	agent, err := NewEnhancedMultiAgent(ctx, config)
+	agent, err := NewMultiAgent(ctx, config)
 	require.NoError(t, err)
 
 	// 准备测试输入
@@ -225,11 +205,11 @@ func TestEnhancedMultiAgent_StreamExecution(t *testing.T) {
 	assert.Greater(t, len(chunks), 0)
 }
 
-func TestEnhancedMultiAgent_ComplexTask(t *testing.T) {
+func TestMultiAgent_ComplexTask(t *testing.T) {
 	ctx := context.Background()
 	config := createTestConfig()
 
-	enhancedMultiAgent, err := NewEnhancedMultiAgent(ctx, config)
+	multiAgent, err := NewMultiAgent(ctx, config)
 	require.NoError(t, err)
 
 	// 准备复杂任务输入
@@ -241,8 +221,9 @@ func TestEnhancedMultiAgent_ComplexTask(t *testing.T) {
 	}
 
 	// 执行流式生成
-	stream, err := enhancedMultiAgent.Stream(ctx, input, agent.WithComposeOptions(compose.WithCallbacks(callbackForTest)))
+	stream, err := multiAgent.Stream(ctx, input, base.WithComposeOptions(compose.WithCallbacks(callbackForTest)))
 	if err != nil {
+		fmt.Println(err.Error())
 		// 如果模拟模型不支持流式，跳过测试
 		t.Skip("Mock model does not support streaming")
 		return
@@ -264,11 +245,11 @@ func TestEnhancedMultiAgent_ComplexTask(t *testing.T) {
 	assert.Greater(t, len(chunks), 0)
 }
 
-func TestEnhancedMultiAgent_MultiRoundConversation(t *testing.T) {
+func TestMultiAgent_MultiRoundConversation(t *testing.T) {
 	ctx := context.Background()
 	config := createTestConfig()
 
-	enhancedMultiAgent, err := NewEnhancedMultiAgent(ctx, config)
+	multiAgent, err := NewMultiAgent(ctx, config)
 	require.NoError(t, err)
 
 	// 第一轮对话
@@ -279,14 +260,14 @@ func TestEnhancedMultiAgent_MultiRoundConversation(t *testing.T) {
 		},
 	}
 
-	stream1, err := enhancedMultiAgent.Stream(ctx, input1, agent.WithComposeOptions(compose.WithCallbacks(callbackForTest)))
+	stream1, err := multiAgent.Stream(ctx, input1, base.WithComposeOptions(compose.WithCallbacks(callbackForTest)))
 	require.NoError(t, err)
 	require.NotNil(t, stream1)
 	// 读取流式结果
 	var chunks1 []*schema.Message
 	for {
-		chunk, err := stream1.Recv()
-		if err != nil {
+		chunk, err1 := stream1.Recv()
+		if err1 != nil {
 			break
 		}
 		chunks1 = append(chunks1, chunk)
@@ -306,7 +287,7 @@ func TestEnhancedMultiAgent_MultiRoundConversation(t *testing.T) {
 		},
 	}
 
-	stream2, err := enhancedMultiAgent.Stream(ctx, input2, agent.WithComposeOptions(compose.WithCallbacks(callbackForTest)))
+	stream2, err := multiAgent.Stream(ctx, input2, base.WithComposeOptions(compose.WithCallbacks(callbackForTest)))
 	require.NoError(t, err)
 	require.NotNil(t, stream2)
 
@@ -326,13 +307,13 @@ func TestEnhancedMultiAgent_MultiRoundConversation(t *testing.T) {
 	assert.NotEmpty(t, result2.Content)
 }
 
-func TestEnhancedMultiAgent_ContextTimeout(t *testing.T) {
+func TestMultiAgent_ContextTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
 	config := createTestConfig()
 
-	agent, err := NewEnhancedMultiAgent(ctx, config)
+	agent, err := NewMultiAgent(ctx, config)
 	if err != nil {
 		// 如果在创建时就超时，这是预期的
 		assert.Contains(t, err.Error(), "context")
@@ -357,12 +338,12 @@ func TestEnhancedMultiAgent_ContextTimeout(t *testing.T) {
 	}
 }
 
-// BenchmarkEnhancedMultiAgent_Generate 性能基准测试
-func BenchmarkEnhancedMultiAgent_Generate(b *testing.B) {
+// BenchmarkMultiAgent_Generate 性能基准测试
+func BenchmarkMultiAgent_Generate(b *testing.B) {
 	ctx := context.Background()
 	config := createTestConfig()
 
-	agent, err := NewEnhancedMultiAgent(ctx, config)
+	agent, err := NewMultiAgent(ctx, config)
 	if err != nil {
 		b.Fatalf("Failed to create agent: %v", err)
 	}

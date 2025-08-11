@@ -9,8 +9,8 @@ import (
 // MessageModifier is a function type for modifying messages
 type MessageModifier func([]*schema.Message) []*schema.Message
 
-// Agent represents the ReAct agent
-type Agent struct {
+// ReactAgent represents the ReAct agent
+type ReactAgent struct {
 	runnable         compose.Runnable[[]*schema.Message, *schema.Message]
 	graph            *compose.Graph[[]*schema.Message, *schema.Message]
 	graphAddNodeOpts []compose.GraphAddNodeOpt

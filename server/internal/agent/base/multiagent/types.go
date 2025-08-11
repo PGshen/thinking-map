@@ -1,12 +1,11 @@
-package enhanced
+package multiagent
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/agent/base"
 	"github.com/cloudwego/eino/compose"
-	"github.com/cloudwego/eino/flow/agent"
 	"github.com/cloudwego/eino/schema"
 )
 
@@ -255,202 +254,17 @@ type TaskPlan struct {
 	Metadata      map[string]any  `json:"metadata,omitempty"`
 }
 
-// EnhancedState represents the complete state of the enhanced multi-agent system
-type EnhancedState struct {
-	RoundNumber int       `json:"round_number"`
-	StartTime   time.Time `json:"start_time"`
-
-	// Conversation Context
-	ConversationContext *ConversationContext `json:"conversation_context,omitempty"`
-	OriginalMessages    []*schema.Message    `json:"original_messages"`
-
-	// Task Planning
-	CurrentPlan *TaskPlan   `json:"current_plan,omitempty"`
-	PlanHistory []*TaskPlan `json:"plan_history,omitempty"`
-
-	// Execution Status
-	ExecutionStatus  ExecutionStatus    `json:"execution_status"`
-	CurrentStep      string             `json:"current_step,omitempty"`
-	ExecutionHistory []*ExecutionRecord `json:"execution_history,omitempty"`
-
-	// Specialist Results
-	SpecialistResults map[string]*StepResult `json:"specialist_results,omitempty"`
-
-	// Collected Results
-	CollectedResults []*schema.Message `json:"collected_results,omitempty"`
-	FinalResult      *schema.Message   `json:"final_result,omitempty"`
-
-	// Feedback and Reflection
-	FeedbackHistory []map[string]any `json:"feedback_history,omitempty"`
-	ReflectionCount int              `json:"reflection_count"`
-
-	// Execution Control
-	MaxRounds      int  `json:"max_rounds"`
-	ShouldContinue bool `json:"should_continue"`
-	IsCompleted    bool `json:"is_completed"`
-
-	// Final Answer
-	FinalAnswer *schema.Message `json:"final_answer,omitempty"`
-
-	// Metadata
-	Metadata map[string]any `json:"metadata,omitempty"`
-}
-
-// ToJSON serializes the state to JSON
-func (es *EnhancedState) ToJSON() ([]byte, error) {
-	return json.Marshal(es)
-}
-
-// FromJSON deserializes the state from JSON
-func (es *EnhancedState) FromJSON(data []byte) error {
-	return json.Unmarshal(data, es)
-}
-
-// Clone creates a deep copy of the state
-func (es *EnhancedState) Clone() (*EnhancedState, error) {
-	data, err := es.ToJSON()
-	if err != nil {
-		return nil, err
-	}
-
-	cloned := &EnhancedState{}
-	err = cloned.FromJSON(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return cloned, nil
-}
-
-// 基础字段管理方法
-func (es *EnhancedState) SetRoundNumber(round int) {
-	es.RoundNumber = round
-}
-
-func (es *EnhancedState) IncrementRound() {
-	es.RoundNumber++
-}
-
-func (es *EnhancedState) SetStartTime(t time.Time) {
-	es.StartTime = t
-}
-
-// 对话上下文管理方法
-func (es *EnhancedState) UpdateConversationContext(ctx *ConversationContext) {
-	es.ConversationContext = ctx
-}
-
-func (es *EnhancedState) SetOriginalMessages(messages []*schema.Message) {
-	es.OriginalMessages = messages
-}
-
-// 计划管理方法
-func (es *EnhancedState) SetCurrentPlan(plan *TaskPlan) {
-	es.CurrentPlan = plan
-}
-
-func (es *EnhancedState) AddPlanToHistory(plan *TaskPlan) {
-	if es.PlanHistory == nil {
-		es.PlanHistory = make([]*TaskPlan, 0)
-	}
-	es.PlanHistory = append(es.PlanHistory, plan)
-}
-
-// 执行记录管理方法
-func (es *EnhancedState) SetExecutionStatus(status ExecutionStatus) {
-	es.ExecutionStatus = status
-}
-
-func (es *EnhancedState) SetCurrentStep(stepID string) {
-	es.CurrentStep = stepID
-}
-
-func (es *EnhancedState) AddExecutionRecord(record *ExecutionRecord) {
-	if es.ExecutionHistory == nil {
-		es.ExecutionHistory = make([]*ExecutionRecord, 0)
-	}
-	es.ExecutionHistory = append(es.ExecutionHistory, record)
-}
-
-// 专家结果管理方法
-func (es *EnhancedState) UpdateSpecialistResult(specialist string, result *StepResult) {
-	if es.SpecialistResults == nil {
-		es.SpecialistResults = make(map[string]*StepResult)
-	}
-	es.SpecialistResults[specialist] = result
-}
-
-func (es *EnhancedState) ClearSpecialistResults() {
-	es.SpecialistResults = make(map[string]*StepResult)
-}
-
-// 结果收集管理方法
-func (es *EnhancedState) AddCollectedResult(result *schema.Message) {
-	if es.CollectedResults == nil {
-		es.CollectedResults = make([]*schema.Message, 0)
-	}
-	es.CollectedResults = append(es.CollectedResults, result)
-}
-
-func (es *EnhancedState) SetFinalResult(result *schema.Message) {
-	es.FinalResult = result
-}
-
-// 反馈管理方法
-func (es *EnhancedState) AddFeedback(feedback map[string]any) {
-	if es.FeedbackHistory == nil {
-		es.FeedbackHistory = make([]map[string]any, 0)
-	}
-	es.FeedbackHistory = append(es.FeedbackHistory, feedback)
-}
-
-func (es *EnhancedState) IncrementReflection() {
-	es.ReflectionCount++
-}
-
-// 元数据管理方法
-func (es *EnhancedState) SetMaxRounds(max int) {
-	es.MaxRounds = max
-}
-
-func (es *EnhancedState) SetShouldContinue(should bool) {
-	es.ShouldContinue = should
-}
-
-func (es *EnhancedState) SetCompleted(completed bool) {
-	es.IsCompleted = completed
-}
-
-func (es *EnhancedState) SetFinalAnswer(answer *schema.Message) {
-	es.FinalAnswer = answer
-}
-
-func (es *EnhancedState) SetMetadata(key string, value any) {
-	if es.Metadata == nil {
-		es.Metadata = make(map[string]any)
-	}
-	es.Metadata[key] = value
-}
-
-func (es *EnhancedState) GetMetadata(key string) (any, bool) {
-	if es.Metadata == nil {
-		return nil, false
-	}
-	value, exists := es.Metadata[key]
-	return value, exists
-}
-
-// EnhancedMultiAgent represents the enhanced multi-agent system
-type EnhancedMultiAgent struct {
+// MultiAgent represents the enhanced multi-agent system
+type MultiAgent struct {
 	runnable         compose.Runnable[[]*schema.Message, *schema.Message]
 	graph            *compose.Graph[[]*schema.Message, *schema.Message]
 	graphAddNodeOpts []compose.GraphAddNodeOpt
-	config           *EnhancedMultiAgentConfig
+	config           *MultiAgentConfig
 }
 
 // Generate executes the enhanced multi-agent system
-func (ema *EnhancedMultiAgent) Generate(ctx context.Context, input []*schema.Message, opts ...agent.AgentOption) (*schema.Message, error) {
-	composeOptions := agent.GetComposeOptions(opts...)
+func (ema *MultiAgent) Generate(ctx context.Context, input []*schema.Message, opts ...base.AgentOption) (*schema.Message, error) {
+	composeOptions := base.GetComposeOptions(opts...)
 
 	// TODO: implement convertCallbacks function
 	// handler := convertCallbacks(opts...)
@@ -462,8 +276,8 @@ func (ema *EnhancedMultiAgent) Generate(ctx context.Context, input []*schema.Mes
 }
 
 // Stream executes the enhanced multi-agent system in streaming mode
-func (ema *EnhancedMultiAgent) Stream(ctx context.Context, input []*schema.Message, opts ...agent.AgentOption) (*schema.StreamReader[*schema.Message], error) {
-	composeOptions := agent.GetComposeOptions(opts...)
+func (ema *MultiAgent) Stream(ctx context.Context, input []*schema.Message, opts ...base.AgentOption) (*schema.StreamReader[*schema.Message], error) {
+	composeOptions := base.GetComposeOptions(opts...)
 
 	// TODO: implement convertCallbacks function
 	// handler := convertCallbacks(opts...)
@@ -475,11 +289,11 @@ func (ema *EnhancedMultiAgent) Stream(ctx context.Context, input []*schema.Messa
 }
 
 // ExportGraph exports the underlying graph
-func (ema *EnhancedMultiAgent) ExportGraph() (compose.AnyGraph, []compose.GraphAddNodeOpt) {
+func (ema *MultiAgent) ExportGraph() (compose.AnyGraph, []compose.GraphAddNodeOpt) {
 	return ema.graph, ema.graphAddNodeOpts
 }
 
 // GetConfig returns the configuration
-func (ema *EnhancedMultiAgent) GetConfig() *EnhancedMultiAgentConfig {
+func (ema *MultiAgent) GetConfig() *MultiAgentConfig {
 	return ema.config
 }

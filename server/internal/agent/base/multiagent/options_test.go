@@ -1,4 +1,4 @@
-package enhanced
+package multiagent
 
 import (
 	"context"
@@ -49,7 +49,7 @@ func TestWithConversationAnalyzer_BasicFunctionality(t *testing.T) {
 	mockAnalyzer := &mockConversationAnalyzer{}
 
 	// 创建enhanced multi-agent
-	enhancedMultiAgent, err := NewEnhancedMultiAgent(ctx, config)
+	enhancedMultiAgent, err := NewMultiAgent(ctx, config)
 	require.NoError(t, err)
 
 	// 准备测试输入
@@ -83,7 +83,7 @@ func TestWithConversationAnalyzer_StreamFunctionality(t *testing.T) {
 	mockAnalyzer := &mockConversationAnalyzer{}
 
 	// 创建enhanced multi-agent
-	enhancedMultiAgent, err := NewEnhancedMultiAgent(ctx, config)
+	enhancedMultiAgent, err := NewMultiAgent(ctx, config)
 	require.NoError(t, err)
 
 	// 准备测试输入
@@ -127,7 +127,7 @@ func TestWithConversationAnalyzer_MultiRoundConversation(t *testing.T) {
 	config := createTestConfig()
 	mockAnalyzer := &mockConversationAnalyzer{}
 
-	enhancedMultiAgent, err := NewEnhancedMultiAgent(ctx, config)
+	enhancedMultiAgent, err := NewMultiAgent(ctx, config)
 	require.NoError(t, err)
 
 	// 第一轮对话
@@ -144,8 +144,8 @@ func TestWithConversationAnalyzer_MultiRoundConversation(t *testing.T) {
 	// 读取流式结果
 	var chunks1 []*schema.Message
 	for {
-		chunk, err := stream1.Recv()
-		if err != nil {
+		chunk, err1 := stream1.Recv()
+		if err1 != nil {
 			break
 		}
 		chunks1 = append(chunks1, chunk)
@@ -194,7 +194,7 @@ func TestWithConversationAnalyzer_MultipleMessages(t *testing.T) {
 	mockAnalyzer := &mockConversationAnalyzer{}
 
 	// 创建enhanced multi-agent
-	enhancedMultiAgent, err := NewEnhancedMultiAgent(ctx, config)
+	enhancedMultiAgent, err := NewMultiAgent(ctx, config)
 	require.NoError(t, err)
 
 	// 准备多轮对话输入
@@ -237,7 +237,7 @@ func TestWithConversationAnalyzer_ErrorHandling(t *testing.T) {
 	errorAnalyzer := &errorConversationAnalyzer{}
 
 	// 创建enhanced multi-agent
-	enhancedMultiAgent, err := NewEnhancedMultiAgent(ctx, config)
+	enhancedMultiAgent, err := NewMultiAgent(ctx, config)
 	require.NoError(t, err)
 
 	// 准备测试输入
@@ -283,7 +283,7 @@ func TestWithConversationAnalyzer_ContextPropagation(t *testing.T) {
 	contextAnalyzer := &contextModifyingAnalyzer{}
 
 	// 创建enhanced multi-agent
-	enhancedMultiAgent, err := NewEnhancedMultiAgent(ctx, config)
+	enhancedMultiAgent, err := NewMultiAgent(ctx, config)
 	require.NoError(t, err)
 
 	// 准备测试输入
@@ -377,7 +377,7 @@ func TestWithDirectAnswerHandler(t *testing.T) {
 
 	// 创建测试agent并应用option
 	config := createTestConfig()
-	agent, err := NewEnhancedMultiAgent(context.Background(), config)
+	agent, err := NewMultiAgent(context.Background(), config)
 	assert.NoError(t, err)
 
 	// 测试消息处理
@@ -398,7 +398,7 @@ func TestWithPlanCreationHandler(t *testing.T) {
 
 	// 创建测试agent并应用option
 	config := createTestConfig()
-	agent, err := NewEnhancedMultiAgent(context.Background(), config)
+	agent, err := NewMultiAgent(context.Background(), config)
 	assert.NoError(t, err)
 
 	// 测试消息处理
@@ -419,7 +419,7 @@ func TestWithFeedbackProcessorHandler(t *testing.T) {
 
 	// 创建测试agent并应用option
 	config := createTestConfig()
-	agent, err := NewEnhancedMultiAgent(context.Background(), config)
+	agent, err := NewMultiAgent(context.Background(), config)
 	assert.NoError(t, err)
 
 	// 测试消息处理
@@ -440,7 +440,7 @@ func TestWithPlanUpdateHandler(t *testing.T) {
 
 	// 创建测试agent并应用option
 	config := createTestConfig()
-	agent, err := NewEnhancedMultiAgent(context.Background(), config)
+	agent, err := NewMultiAgent(context.Background(), config)
 	assert.NoError(t, err)
 
 	// 测试消息处理
@@ -461,7 +461,7 @@ func TestWithFinalAnswerHandler(t *testing.T) {
 
 	// 创建测试agent并应用option
 	config := createTestConfig()
-	agent, err := NewEnhancedMultiAgent(context.Background(), config)
+	agent, err := NewMultiAgent(context.Background(), config)
 	assert.NoError(t, err)
 
 	// 测试消息处理
@@ -482,7 +482,7 @@ func TestWithPlanExecutionHandler(t *testing.T) {
 
 	// 创建测试agent并应用option
 	config := createTestConfig()
-	agent, err := NewEnhancedMultiAgent(context.Background(), config)
+	agent, err := NewMultiAgent(context.Background(), config)
 	assert.NoError(t, err)
 
 	// 测试消息处理
@@ -503,7 +503,7 @@ func TestWithResultCollectorHandler(t *testing.T) {
 
 	// 创建测试agent并应用option
 	config := createTestConfig()
-	agent, err := NewEnhancedMultiAgent(context.Background(), config)
+	agent, err := NewMultiAgent(context.Background(), config)
 	assert.NoError(t, err)
 
 	// 测试消息处理
@@ -524,7 +524,7 @@ func TestWithSpecialistHandler(t *testing.T) {
 
 	// 创建测试agent并应用option
 	config := createTestConfig()
-	agent, err := NewEnhancedMultiAgent(context.Background(), config)
+	agent, err := NewMultiAgent(context.Background(), config)
 	assert.NoError(t, err)
 
 	// 测试消息处理
