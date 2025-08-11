@@ -1,4 +1,4 @@
-package react
+package base
 
 import (
 	"encoding/json"
@@ -38,18 +38,6 @@ type Monitor struct {
 	enabled  bool
 	logLevel LogLevel
 	logger   *log.Logger
-	metrics  *Metrics
-}
-
-// Metrics holds performance and execution metrics
-type Metrics struct {
-	TotalExecutions      int64         `json:"total_executions"`
-	SuccessfulRuns       int64         `json:"successful_runs"`
-	FailedRuns           int64         `json:"failed_runs"`
-	AverageExecutionTime time.Duration `json:"average_execution_time"`
-	TotalExecutionTime   time.Duration `json:"total_execution_time"`
-	ToolCallCount        int64         `json:"tool_call_count"`
-	ReasoningSteps       int64         `json:"reasoning_steps"`
 }
 
 // NewMonitor creates a new monitor instance
@@ -62,7 +50,6 @@ func NewMonitor(enabled bool, logLevel LogLevel, logger *log.Logger) *Monitor {
 		enabled:  enabled,
 		logLevel: logLevel,
 		logger:   logger,
-		metrics:  &Metrics{},
 	}
 }
 

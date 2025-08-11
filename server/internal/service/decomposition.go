@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/PGshen/thinking-map/server/internal/agent/react"
+	"github.com/PGshen/thinking-map/server/internal/agent/base/react"
 	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/pkg/logger"

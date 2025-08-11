@@ -3,8 +3,9 @@ package decomposition
 import (
 	"context"
 
+	"github.com/PGshen/thinking-map/server/internal/agent/base"
+	"github.com/PGshen/thinking-map/server/internal/agent/base/react"
 	"github.com/PGshen/thinking-map/server/internal/agent/llmmodel"
-	"github.com/PGshen/thinking-map/server/internal/agent/react"
 	"github.com/PGshen/thinking-map/server/internal/agent/tool/messaging"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
@@ -12,7 +13,7 @@ import (
 )
 
 // 意图识别Agent
-func BuildRecognitionAgent(ctx context.Context, option react.AgentOption) (r compose.Runnable[[]*schema.Message, *schema.Message], err error) {
+func BuildRecognitionAgent(ctx context.Context, option base.AgentOption) (r compose.Runnable[[]*schema.Message, *schema.Message], err error) {
 	cm, err := llmmodel.NewOpenAIModel(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -21,7 +22,7 @@ func BuildRecognitionAgent(ctx context.Context, option react.AgentOption) (r com
 	if err != nil {
 		return nil, err
 	}
-	agent, err := react.NewAgent(ctx, &react.AgentConfig{
+	agent, err := react.NewAgent(ctx, react.ReactAgentConfig{
 		ToolCallingModel: cm,
 		ToolsConfig: compose.ToolsNodeConfig{
 			Tools: []tool.BaseTool{
