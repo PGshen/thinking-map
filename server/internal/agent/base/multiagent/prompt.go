@@ -76,8 +76,16 @@ Remember: Output ONLY the JSON object, no other text.`,
 	}
 }
 
-func buildSpecialistPrompt(specialist *Specialist, step *PlanStep, state *MultiAgentState) *schema.Message {
-	prompt := fmt.Sprintf(`You are a %s specialist. Execute the following step:
+func buildSpecialistPrompt(specialist *Specialist, step *PlanStep, state *MultiAgentState) []*schema.Message {
+	messages := []*schema.Message{}
+	if specialist.SystemPrompt != "" {
+		messages = append(messages, &schema.Message{
+			Role:    schema.System,
+			Content: specialist.SystemPrompt,
+		})
+	}
+	// Build specialist prompt
+	prompt := fmt.Sprintf(`You are a %s specialist, intended to %s. Execute the following step:
 
 Step: %s
 Description: %s
@@ -90,17 +98,19 @@ Parameters: %v
 
 Please complete this step and provide your result.`,
 		specialist.Name,
+		specialist.IntendedUse,
 		step.Name,
 		step.Description,
 		state.ConversationContext.UserIntent,
 		state.CurrentPlan.Description,
 		step.Parameters,
 	)
-
-	return &schema.Message{
+	messages = append(messages, &schema.Message{
 		Role:    schema.User,
 		Content: prompt,
-	}
+	})
+
+	return messages
 }
 
 func buildFeedbackPrompt(state *MultiAgentState) []*schema.Message {
@@ -152,7 +162,7 @@ Remember: Output ONLY the JSON object, no other text.`, len(state.ExecutionHisto
 }
 
 func buildPlanUpdatePrompt(state *MultiAgentState) []*schema.Message {
-	prompt := `Update the current plan based on feedback and execution results.
+	prompt := `Analyze the current plan and provide incremental updates based on feedback and execution results.
 
 Original User Intent: ` + state.ConversationContext.UserIntent + `
 
@@ -162,12 +172,34 @@ Current Plan:
 		prompt += fmt.Sprintf("Plan: %s\nDescription: %s\n", state.CurrentPlan.Name, state.CurrentPlan.Description)
 		for _, step := range state.CurrentPlan.Steps {
 			prompt += fmt.Sprintf("- Step %s: %s (Status: %s, Priority: %d)\n", step.ID, step.Name, step.Status.String(), step.Priority)
+			if step.AssignedSpecialist != "" {
+				prompt += fmt.Sprintf("  Assigned Specialist: %s\n", step.AssignedSpecialist)
+			}
+			if step.Description != "" {
+				prompt += fmt.Sprintf("  Description: %s\n", step.Description)
+			}
+			if len(step.Parameters) > 0 {
+				prompt += fmt.Sprintf("  Parameters: %v\n", step.Parameters)
+			}
+			if len(step.Dependencies) > 0 {
+				prompt += fmt.Sprintf("  Dependencies: %v\n", step.Dependencies)
+			}
+			prompt += "\n"
 		}
 	}
 
 	prompt += `\nExecution Results:\n`
 	for _, result := range state.CollectedResults {
 		prompt += result.Content + "\n\n"
+	}
+
+	// Add execution history for context
+	if len(state.ExecutionHistory) > 0 {
+		prompt += "\nExecution History:\n"
+		for _, record := range state.ExecutionHistory {
+			prompt += fmt.Sprintf("- Step %s: %s (Status: %s)\n", record.StepID, record.Action.String(), record.Status.String())
+		}
+		prompt += "\n"
 	}
 
 	// Add feedback information
@@ -187,30 +219,53 @@ Current Plan:
 
 	prompt += fmt.Sprintf(`Round: %d/%d
 
-Provide updated plan in JSON format:
+IMPORTANT: You MUST respond with ONLY a valid JSON object. Do not include any explanations, comments, or additional text before or after the JSON. Your response should start with { and end with }.
+
+Provide incremental plan updates in JSON format:
 {
-  "name": "Updated Plan Name",
-  "description": "Detailed plan description",
   "update_reason": "Why this update is needed",
-  "steps": [
+  "operations": [
     {
-      "id": "step1",
-      "name": "Step name",
-      "description": "Detailed step description",
-      "assigned_specialist": "specialist_name",
-      "priority": 1,
-      "dependencies": ["prerequisite_step_ids"],
-      "parameters": {"key": "value"}
+      "type": "add|modify|remove|reorder",
+      "step_id": "target_step_id",
+      "step_data": {
+        "id": "new_step_id",
+        "name": "Step name",
+        "description": "Detailed step description",
+        "assigned_specialist": "specialist_name",
+        "priority": 1,
+        "dependencies": ["prerequisite_step_ids"],
+        "parameters": {"key": "value"}
+      },
+      "position": "before|after|index_number",
+      "reason": "Why this operation is needed"
     }
-  ]
+  ],
+  "plan_metadata": {
+    "name": "Updated plan name (if changed)",
+    "description": "Updated plan description (if changed)"
+  }
 }
 
+Operation Types:
+- "add": Add a new step. Use step_data and position fields.
+- "modify": Modify an existing step. Use step_id and step_data fields. Can not modify completed steps.
+- "remove": Remove a step. Use step_id field only.
+- "reorder": Change step order. Use step_id and position fields.
+
+Position Values:
+- "before": Insert before the specified step_id
+- "after": Insert after the specified step_id  
+- number: Insert at specific index (0-based)
+
 Guidelines:
-- Address the issues identified in the feedback
-- Maintain continuity with completed steps
-- Optimize step order and dependencies
-- Assign appropriate specialists to each step
-- Set realistic priorities based on importance and dependencies`, state.RoundNumber, state.MaxRounds)
+- PRESERVE completed steps (Status: completed) - do not modify or remove them
+- Only suggest changes that address the feedback issues
+- Maintain logical dependencies between steps
+- Consider the current execution state when making changes
+- Be conservative - only make necessary changes
+
+Remember: Output ONLY the JSON object, no other text.`, state.RoundNumber, state.MaxRounds)
 
 	return []*schema.Message{{
 		Role:    schema.User,

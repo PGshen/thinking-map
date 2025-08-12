@@ -259,7 +259,7 @@ func (h *SpecialistHandler) PreHandler(ctx context.Context, input []*schema.Mess
 
 	// Build specialist prompt
 	prompt := buildSpecialistPrompt(h.specialist, currentStep, state)
-	return []*schema.Message{prompt}, nil
+	return prompt, nil
 }
 
 // PostHandler processes specialist execution results
@@ -307,50 +307,6 @@ func (h *SpecialistHandler) findCurrentStep(state *MultiAgentState) *PlanStep {
 	}
 
 	return nil
-}
-
-// ResultCollectorLambda collects and summarizes specialist results
-func ResultCollectorLambda(ctx context.Context, input []*schema.Message, state *MultiAgentState) (*schema.Message, error) {
-	// Set collecting state
-	state.SetExecutionStatus(ExecutionStatusCollecting)
-	state.SetCurrentStep("collecting")
-
-	if len(state.SpecialistResults) == 0 {
-		return &schema.Message{
-			Role:    schema.Assistant,
-			Content: "No specialist results to collect.",
-		}, nil
-	}
-
-	// Collect all results
-	var results []*schema.Message
-	for specialistName, result := range state.SpecialistResults {
-		if result.Success && result.Output != nil {
-			// Add specialist name as context
-			msg := &schema.Message{
-				Role:    result.Output.Role,
-				Content: fmt.Sprintf("[%s]: %s", specialistName, result.Output.Content),
-			}
-			results = append(results, msg)
-			state.AddCollectedResult(msg)
-		}
-	}
-
-	// Create summary
-	summary := "Specialist Results Summary:\n\n"
-	for _, msg := range results {
-		summary += msg.Content + "\n\n"
-	}
-
-	finalResult := &schema.Message{
-		Role:    schema.Assistant,
-		Content: summary,
-	}
-
-	// Update state using unified method
-	state.SetFinalResult(finalResult)
-
-	return finalResult, nil
 }
 
 // PlanExecutionHandler handles plan execution coordination
@@ -499,4 +455,657 @@ func buildSpecialistBranchMap(specialists []*Specialist) map[string]bool {
 	}
 
 	return branchMap
+}
+
+// ResultCollectorHandler handles result collection and summarization
+type ResultCollectorHandler struct {
+	config *MultiAgentConfig
+}
+
+// NewResultCollectorHandler creates a new result collector handler
+func NewResultCollectorHandler(config *MultiAgentConfig) *ResultCollectorHandler {
+	return &ResultCollectorHandler{
+		config: config,
+	}
+}
+
+// ResultCollectorLambda collects and summarizes specialist results
+func (h *ResultCollectorHandler) ResultCollector(ctx context.Context, input []*schema.Message, state *MultiAgentState) (*schema.Message, error) {
+	// Set collecting state
+	state.SetExecutionStatus(ExecutionStatusCollecting)
+	state.SetCurrentStep("collecting")
+
+	if len(state.SpecialistResults) == 0 {
+		return &schema.Message{
+			Role:    schema.Assistant,
+			Content: "No specialist results to collect.",
+		}, nil
+	}
+
+	// Collect all results
+	var results []*schema.Message
+	for specialistName, result := range state.SpecialistResults {
+		if result.Success && result.Output != nil {
+			// Add specialist name as context
+			msg := &schema.Message{
+				Role:    result.Output.Role,
+				Content: fmt.Sprintf("[%s]: %s", specialistName, result.Output.Content),
+			}
+			results = append(results, msg)
+			state.AddCollectedResult(msg)
+		}
+	}
+
+	// Create summary
+	summary := "Specialist Results Summary:\n\n"
+	for _, msg := range results {
+		summary += msg.Content + "\n\n"
+	}
+
+	finalResult := &schema.Message{
+		Role:    schema.Assistant,
+		Content: summary,
+	}
+
+	// Update state using unified method
+	state.SetFinalResult(finalResult)
+
+	return finalResult, nil
+}
+
+type FeedbackProcessorHandler struct {
+	config *MultiAgentConfig
+}
+
+func NewFeedbackProcessorHandler(config *MultiAgentConfig) *FeedbackProcessorHandler {
+	return &FeedbackProcessorHandler{
+		config: config,
+	}
+}
+
+func (h *FeedbackProcessorHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
+	// Set feedback processing state
+	state.SetExecutionStatus(ExecutionStatusRunning)
+	return buildFeedbackPrompt(state), nil
+}
+
+func (h *FeedbackProcessorHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
+	err := h.processFeedbackResult(output, state)
+	if err != nil {
+		return output, err
+	}
+	// Update feedback history and reflection count
+	state.IncrementReflection()
+	return output, nil
+}
+
+func (h *FeedbackProcessorHandler) processFeedbackResult(output *schema.Message, state *MultiAgentState) error {
+	// Parse feedback result
+	var feedback struct {
+		ExecutionCompleted bool     `json:"execution_completed"`
+		OverallQuality     float64  `json:"overall_quality"`
+		PlanNeedsUpdate    bool     `json:"plan_needs_update"`
+		Issues             []string `json:"issues"`
+		Suggestions        []string `json:"suggestions"`
+		Confidence         float64  `json:"confidence"`
+		NextActionReason   string   `json:"next_action_reason"`
+	}
+
+	err := json.Unmarshal([]byte(output.Content), &feedback)
+	if err != nil {
+		return fmt.Errorf("failed to parse feedback result: %w", err)
+	}
+
+	// Update state with feedback
+	feedbackData := map[string]any{
+		"content":             output.Content,
+		"timestamp":           time.Now(),
+		"execution_completed": feedback.ExecutionCompleted,
+		"plan_needs_update":   feedback.PlanNeedsUpdate,
+		"overall_quality":     feedback.OverallQuality,
+		"confidence":          feedback.Confidence,
+	}
+	state.AddFeedback(feedbackData)
+
+	// Store feedback decision for branch evaluation
+	state.SetMetadata("feedback_execution_completed", feedback.ExecutionCompleted)
+	state.SetMetadata("feedback_plan_needs_update", feedback.PlanNeedsUpdate)
+	state.SetMetadata("feedback_overall_quality", feedback.OverallQuality)
+	state.SetMetadata("feedback_confidence", feedback.Confidence)
+	state.SetMetadata("feedback_next_action_reason", feedback.NextActionReason)
+
+	return nil
+}
+
+// ReflectionBranchHandler handles the decision logic for reflection branches
+type ReflectionBranchHandler struct {
+	config *MultiAgentConfig
+}
+
+func NewReflectionBranchHandler(config *MultiAgentConfig) *ReflectionBranchHandler {
+	return &ReflectionBranchHandler{
+		config: config,
+	}
+}
+
+func (h *ReflectionBranchHandler) evaluateReflectionDecision(state *MultiAgentState) (string, error) {
+	// Get feedback decision from metadata
+	executionCompleted, hasCompleted := state.GetMetadata("feedback_execution_completed")
+	planNeedsUpdate, hasUpdate := state.GetMetadata("feedback_plan_needs_update")
+	overallQuality, hasQuality := state.GetMetadata("feedback_overall_quality")
+	confidence, hasConfidence := state.GetMetadata("feedback_confidence")
+
+	// If feedback metadata is missing, default to continue execution
+	if !hasCompleted || !hasUpdate {
+		return planExecutionNodeKey, nil
+	}
+
+	// Convert metadata to appropriate types
+	isCompleted, ok := executionCompleted.(bool)
+	if !ok {
+		return planExecutionNodeKey, fmt.Errorf("invalid execution_completed type")
+	}
+
+	needsUpdate, ok := planNeedsUpdate.(bool)
+	if !ok {
+		return planExecutionNodeKey, fmt.Errorf("invalid plan_needs_update type")
+	}
+
+	// Decision logic based on feedback
+	if isCompleted {
+		// Task is completed, proceed to final answer
+		state.SetExecutionStatus(ExecutionStatusCompleted)
+		return toFinalAnswerNodeKey, nil
+	}
+
+	if needsUpdate {
+		// Plan needs update, go to plan update
+		state.SetExecutionStatus(ExecutionStatusPlanning)
+		return toPlanUpdateNodeKey, nil
+	}
+
+	// Check quality and confidence thresholds
+	if hasQuality && hasConfidence {
+		quality, qOk := overallQuality.(float64)
+		conf, cOk := confidence.(float64)
+		if qOk && cOk && (quality < 0.6 || conf < 0.7) {
+			// Low quality or confidence, consider plan update
+			state.SetExecutionStatus(ExecutionStatusPlanning)
+			return toPlanUpdateNodeKey, nil
+		}
+	}
+
+	if !isCompleted {
+		// If not completed, continue execution
+		state.SetExecutionStatus(ExecutionStatusExecuting)
+		return planExecutionNodeKey, nil
+	}
+
+	// Check if we've reached max rounds
+	if state.RoundNumber >= state.MaxRounds {
+		// Force completion if max rounds reached
+		state.SetExecutionStatus(ExecutionStatusCompleted)
+		return toFinalAnswerNodeKey, nil
+	}
+
+	// Default: continue execution with current plan
+	state.SetExecutionStatus(ExecutionStatusExecuting)
+	return toFinalAnswerNodeKey, nil
+}
+
+// PlanUpdateHandler handles the plan update process
+type PlanUpdateHandler struct {
+	config *MultiAgentConfig
+}
+
+func NewPlanUpdateHandler(config *MultiAgentConfig) *PlanUpdateHandler {
+	return &PlanUpdateHandler{
+		config: config,
+	}
+}
+
+func (h *PlanUpdateHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
+	// Set plan update state
+	state.SetExecutionStatus(ExecutionStatusPlanning)
+	return buildPlanUpdatePrompt(state), nil
+}
+
+func (h *PlanUpdateHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
+	err := h.processPlanUpdate(output, state)
+	if err != nil {
+		return output, err
+	}
+	// After plan update, set status to execute the updated plan
+	state.SetExecutionStatus(ExecutionStatusExecuting)
+	return output, nil
+}
+
+func (h *PlanUpdateHandler) processPlanUpdate(output *schema.Message, state *MultiAgentState) error {
+	// Parse incremental update operations
+	var updateData struct {
+		UpdateReason string `json:"update_reason"`
+		Operations   []struct {
+			Type     string    `json:"type"`
+			StepID   string    `json:"step_id"`
+			StepData *StepData `json:"step_data,omitempty"`
+			Position string    `json:"position,omitempty"`
+			Reason   string    `json:"reason,omitempty"`
+		} `json:"operations"`
+		PlanMetadata *struct {
+			Name        string `json:"name,omitempty"`
+			Description string `json:"description,omitempty"`
+		} `json:"plan_metadata,omitempty"`
+	}
+
+	err := json.Unmarshal([]byte(output.Content), &updateData)
+	if err != nil {
+		return fmt.Errorf("failed to parse plan update operations: %w", err)
+	}
+
+	if state.CurrentPlan == nil {
+		return fmt.Errorf("no current plan to update")
+	}
+
+	// Create a copy of the current plan for incremental updates
+	updatedPlan := h.clonePlan(state.CurrentPlan)
+	updatedPlan.Version++
+	updatedPlan.UpdatedAt = time.Now()
+
+	// Update plan metadata if provided
+	if updateData.PlanMetadata != nil {
+		if updateData.PlanMetadata.Name != "" {
+			updatedPlan.Name = updateData.PlanMetadata.Name
+		}
+		if updateData.PlanMetadata.Description != "" {
+			updatedPlan.Description = updateData.PlanMetadata.Description
+		}
+	}
+
+	// Apply operations in order
+	var appliedOperations []string
+	var operationDataList []OperationData
+	for _, op := range updateData.Operations {
+		opData := &OperationData{
+			Type:     op.Type,
+			StepID:   op.StepID,
+			StepData: op.StepData,
+			Position: op.Position,
+			Reason:   op.Reason,
+		}
+		err := h.applyOperation(updatedPlan, opData)
+		if err != nil {
+			return fmt.Errorf("failed to apply operation %s: %w", op.Type, err)
+		}
+		appliedOperations = append(appliedOperations, fmt.Sprintf("%s:%s", op.Type, op.StepID))
+		operationDataList = append(operationDataList, *opData)
+	}
+
+	// Add old plan to history
+	state.AddPlanToHistory(state.CurrentPlan)
+
+	// Update state with modified plan
+	state.SetCurrentPlan(updatedPlan)
+
+	// Record the plan update
+	planUpdate := &PlanUpdate{
+		ID:          fmt.Sprintf("update_%d", time.Now().Unix()),
+		PlanVersion: updatedPlan.Version,
+		UpdateType:  h.determineUpdateType(operationDataList),
+		Description: updateData.UpdateReason,
+		Reason:      "Plan updated incrementally based on execution feedback",
+		Timestamp:   time.Now(),
+		Metadata: map[string]any{
+			"round":              state.RoundNumber,
+			"applied_operations": appliedOperations,
+			"operation_count":    len(updateData.Operations),
+		},
+	}
+
+	// Add update to plan history
+	if updatedPlan.UpdateHistory == nil {
+		updatedPlan.UpdateHistory = make([]*PlanUpdate, 0)
+	}
+	updatedPlan.UpdateHistory = append(updatedPlan.UpdateHistory, planUpdate)
+
+	// Only clear specialist results for steps that were modified/removed
+	// This preserves results for completed and unmodified steps
+	h.selectiveClearSpecialistResults(state, operationDataList)
+
+	state.RoundNumber++
+	return nil
+}
+
+// clonePlan creates a deep copy of the task plan
+func (h *PlanUpdateHandler) clonePlan(plan *TaskPlan) *TaskPlan {
+	cloned := &TaskPlan{
+		ID:            plan.ID,
+		Version:       plan.Version,
+		Name:          plan.Name,
+		Description:   plan.Description,
+		Status:        plan.Status,
+		CreatedAt:     plan.CreatedAt,
+		UpdatedAt:     plan.UpdatedAt,
+		Steps:         make([]*PlanStep, len(plan.Steps)),
+		UpdateHistory: make([]*PlanUpdate, len(plan.UpdateHistory)),
+		Metadata:      make(map[string]any),
+	}
+
+	// Clone steps
+	for i, step := range plan.Steps {
+		cloned.Steps[i] = &PlanStep{
+			ID:                 step.ID,
+			Name:               step.Name,
+			Description:        step.Description,
+			AssignedSpecialist: step.AssignedSpecialist,
+			Priority:           step.Priority,
+			Status:             step.Status,
+			Dependencies:       make([]string, len(step.Dependencies)),
+			Parameters:         make(map[string]any),
+			Result:             step.Result, // Shallow copy is fine for Result
+			Metadata:           make(map[string]any),
+		}
+		copy(cloned.Steps[i].Dependencies, step.Dependencies)
+		for k, v := range step.Parameters {
+			cloned.Steps[i].Parameters[k] = v
+		}
+		for k, v := range step.Metadata {
+			cloned.Steps[i].Metadata[k] = v
+		}
+	}
+
+	// Clone update history
+	copy(cloned.UpdateHistory, plan.UpdateHistory)
+
+	// Clone metadata
+	for k, v := range plan.Metadata {
+		cloned.Metadata[k] = v
+	}
+
+	return cloned
+}
+
+// OperationData defines the structure for plan update operations
+type OperationData struct {
+	Type     string    `json:"type"`
+	StepID   string    `json:"step_id"`
+	StepData *StepData `json:"step_data,omitempty"`
+	Position string    `json:"position,omitempty"`
+	Reason   string    `json:"reason,omitempty"`
+}
+
+type StepData struct {
+	ID                 string         `json:"id"`
+	Name               string         `json:"name"`
+	Description        string         `json:"description"`
+	AssignedSpecialist string         `json:"assigned_specialist"`
+	Priority           int            `json:"priority"`
+	Dependencies       []string       `json:"dependencies,omitempty"`
+	Parameters         map[string]any `json:"parameters,omitempty"`
+}
+
+// applyOperation applies a single update operation to the plan
+func (h *PlanUpdateHandler) applyOperation(plan *TaskPlan, op *OperationData) error {
+	switch op.Type {
+	case "add":
+		return h.addStep(plan, op)
+	case "modify":
+		return h.modifyStep(plan, op)
+	case "remove":
+		return h.removeStep(plan, op)
+	case "reorder":
+		return h.reorderStep(plan, op)
+	default:
+		return fmt.Errorf("unknown operation type: %s", op.Type)
+	}
+}
+
+// addStep adds a new step to the plan
+func (h *PlanUpdateHandler) addStep(plan *TaskPlan, op *OperationData) error {
+	if op.StepData == nil {
+		return fmt.Errorf("step_data is required for add operation")
+	}
+
+	newStep := &PlanStep{
+		ID:                 op.StepData.ID,
+		Name:               op.StepData.Name,
+		Description:        op.StepData.Description,
+		AssignedSpecialist: op.StepData.AssignedSpecialist,
+		Priority:           op.StepData.Priority,
+		Status:             StepStatusPending,
+		Dependencies:       op.StepData.Dependencies,
+		Parameters:         op.StepData.Parameters,
+		Metadata:           map[string]any{"created_at": time.Now(), "operation": "add"},
+	}
+
+	// Determine insertion position
+	insertIndex := len(plan.Steps) // Default: append at end
+
+	if op.Position != "" {
+		switch op.Position {
+		case "before":
+			if idx := h.findStepIndex(plan, op.StepID); idx >= 0 {
+				insertIndex = idx
+			}
+		case "after":
+			if idx := h.findStepIndex(plan, op.StepID); idx >= 0 {
+				insertIndex = idx + 1
+			}
+		default:
+			// Try to parse as index
+			if idx, err := fmt.Sscanf(op.Position, "%d", &insertIndex); err == nil && idx == 1 {
+				if insertIndex < 0 || insertIndex > len(plan.Steps) {
+					insertIndex = len(plan.Steps)
+				}
+			}
+		}
+	}
+
+	// Insert step at the determined position
+	plan.Steps = append(plan.Steps[:insertIndex], append([]*PlanStep{newStep}, plan.Steps[insertIndex:]...)...)
+	return nil
+}
+
+// modifyStep modifies an existing step
+func (h *PlanUpdateHandler) modifyStep(plan *TaskPlan, op *OperationData) error {
+	stepIndex := h.findStepIndex(plan, op.StepID)
+	if stepIndex < 0 {
+		return fmt.Errorf("step %s not found", op.StepID)
+	}
+
+	step := plan.Steps[stepIndex]
+
+	// Don't modify completed steps unless explicitly allowed
+	if step.Status == StepStatusCompleted {
+		return fmt.Errorf("cannot modify completed step %s", op.StepID)
+	}
+
+	if op.StepData != nil {
+		if op.StepData.Name != "" {
+			step.Name = op.StepData.Name
+		}
+		if op.StepData.Description != "" {
+			step.Description = op.StepData.Description
+		}
+		if op.StepData.AssignedSpecialist != "" {
+			step.AssignedSpecialist = op.StepData.AssignedSpecialist
+		}
+		if op.StepData.Priority > 0 {
+			step.Priority = op.StepData.Priority
+		}
+		if op.StepData.Dependencies != nil {
+			step.Dependencies = op.StepData.Dependencies
+		}
+		if op.StepData.Parameters != nil {
+			step.Parameters = op.StepData.Parameters
+		}
+	}
+
+	// Update metadata
+	if step.Metadata == nil {
+		step.Metadata = make(map[string]any)
+	}
+	step.Metadata["last_modified"] = time.Now()
+	step.Metadata["operation"] = "modify"
+
+	return nil
+}
+
+// removeStep removes a step from the plan
+func (h *PlanUpdateHandler) removeStep(plan *TaskPlan, op *OperationData) error {
+	stepIndex := h.findStepIndex(plan, op.StepID)
+	if stepIndex < 0 {
+		return fmt.Errorf("step %s not found", op.StepID)
+	}
+
+	step := plan.Steps[stepIndex]
+
+	// Don't remove completed steps
+	if step.Status == StepStatusCompleted {
+		return fmt.Errorf("cannot remove completed step %s", op.StepID)
+	}
+
+	// Check if other steps depend on this step
+	for _, otherStep := range plan.Steps {
+		for _, dep := range otherStep.Dependencies {
+			if dep == op.StepID {
+				return fmt.Errorf("cannot remove step %s: step %s depends on it", op.StepID, otherStep.ID)
+			}
+		}
+	}
+
+	// Remove the step
+	plan.Steps = append(plan.Steps[:stepIndex], plan.Steps[stepIndex+1:]...)
+	return nil
+}
+
+// reorderStep changes the position of a step
+func (h *PlanUpdateHandler) reorderStep(plan *TaskPlan, op *OperationData) error {
+	stepIndex := h.findStepIndex(plan, op.StepID)
+	if stepIndex < 0 {
+		return fmt.Errorf("step %s not found", op.StepID)
+	}
+
+	step := plan.Steps[stepIndex]
+
+	// Don't reorder completed steps
+	if step.Status == StepStatusCompleted {
+		return fmt.Errorf("cannot reorder completed step %s", op.StepID)
+	}
+
+	// Remove step from current position
+	plan.Steps = append(plan.Steps[:stepIndex], plan.Steps[stepIndex+1:]...)
+
+	// Determine new position
+	newIndex := len(plan.Steps) // Default: append at end
+
+	if op.Position != "" {
+		switch op.Position {
+		case "before":
+			// Position is relative to another step, but we need the target step ID
+			// This would need additional logic to specify the target step
+		case "after":
+			// Similar to "before"
+		default:
+			// Try to parse as index
+			if idx, err := fmt.Sscanf(op.Position, "%d", &newIndex); err == nil && idx == 1 {
+				if newIndex < 0 || newIndex > len(plan.Steps) {
+					newIndex = len(plan.Steps)
+				}
+			}
+		}
+	}
+
+	// Insert step at new position
+	plan.Steps = append(plan.Steps[:newIndex], append([]*PlanStep{step}, plan.Steps[newIndex:]...)...)
+	return nil
+}
+
+// findStepIndex finds the index of a step by ID
+func (h *PlanUpdateHandler) findStepIndex(plan *TaskPlan, stepID string) int {
+	for i, step := range plan.Steps {
+		if step.ID == stepID {
+			return i
+		}
+	}
+	return -1
+}
+
+// determineUpdateType determines the primary update type based on operations
+func (h *PlanUpdateHandler) determineUpdateType(operations []OperationData) PlanUpdateType {
+	if len(operations) == 0 {
+		return PlanUpdateTypeUnknown
+	}
+
+	// Count operation types
+	typeCounts := make(map[string]int)
+	for _, op := range operations {
+		typeCounts[op.Type]++
+	}
+
+	// Determine primary type based on most frequent operation
+	if typeCounts["add"] > 0 {
+		return PlanUpdateTypeStepAdd
+	}
+	if typeCounts["modify"] > 0 {
+		return PlanUpdateTypeStepModify
+	}
+	if typeCounts["remove"] > 0 {
+		return PlanUpdateTypeStepRemove
+	}
+	if typeCounts["reorder"] > 0 {
+		return PlanUpdateTypeStepReorder
+	}
+
+	return PlanUpdateTypeStrategyChange
+}
+
+// selectiveClearSpecialistResults clears results only for affected steps
+func (h *PlanUpdateHandler) selectiveClearSpecialistResults(state *MultiAgentState, operations []OperationData) {
+	// Collect step IDs that were modified or removed
+	affectedSteps := make(map[string]bool)
+	for _, op := range operations {
+		switch op.Type {
+		case "modify", "remove":
+			affectedSteps[op.StepID] = true
+		case "add":
+			// New steps don't have existing results to clear
+		case "reorder":
+			// Reordering doesn't affect results, but might affect dependencies
+			// For now, we'll be conservative and clear reordered steps
+			affectedSteps[op.StepID] = true
+		}
+	}
+
+	// Clear specialist results only for affected steps
+	if len(affectedSteps) > 0 {
+		newResults := make(map[string]*StepResult)
+		for stepID, result := range state.SpecialistResults {
+			if !affectedSteps[stepID] {
+				newResults[stepID] = result
+			}
+		}
+		state.SpecialistResults = newResults
+	}
+}
+
+type FinalAnswerHandler struct {
+	config *MultiAgentConfig
+}
+
+func NewFinalAnswerHandler(config *MultiAgentConfig) *FinalAnswerHandler {
+	return &FinalAnswerHandler{
+		config: config,
+	}
+}
+
+func (h *FinalAnswerHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
+	// Build final answer prompt
+	prompt := buildFinalAnswerPrompt(state)
+	return []*schema.Message{prompt}, nil
+}
+
+func (h *FinalAnswerHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
+	state.FinalAnswer = output
+	state.IsCompleted = true
+	return output, nil
 }
