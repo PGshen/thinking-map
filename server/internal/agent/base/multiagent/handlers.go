@@ -168,7 +168,7 @@ func (h *PlanCreationHandler) PreHandler(ctx context.Context, input []*schema.Me
 	state.SetExecutionStatus(ExecutionStatusPlanning)
 	state.SetCurrentStep("planning")
 
-	prompt := h.buildPlanCreationPrompt(state)
+	prompt := buildPlanCreationPrompt(state, h.config.Specialists)
 	return []*schema.Message{prompt}, nil
 }
 
@@ -185,55 +185,6 @@ func (h *PlanCreationHandler) PostHandler(ctx context.Context, output *schema.Me
 	state.SetExecutionStatus(ExecutionStatusExecuting)
 	state.SetCurrentStep("execution")
 	return output, nil
-}
-
-func (h *PlanCreationHandler) buildPlanCreationPrompt(state *MultiAgentState) *schema.Message {
-	specialistList := ""
-	for _, specialist := range h.config.Specialists {
-		specialistList += fmt.Sprintf("- %s: %s\n", specialist.Name, specialist.IntendedUse)
-	}
-
-	prompt := fmt.Sprintf(`Create a detailed execution plan for the following task.
-
-Task Context:
-- User Intent: %s
-- Complexity: %s
-- Key Topics: %v
-
-Available Specialists:
-%s
-
-IMPORTANT: You MUST respond with ONLY a valid JSON object. Do not include any explanations, comments, or additional text before or after the JSON. Your response should start with { and end with }.
-
-Create a plan with the following JSON structure:
-{
-  "id": "unique_plan_id",
-  "name": "Plan Name",
-  "description": "Plan Description",
-  "steps": [
-    {
-      "id": "step_1",
-      "name": "Step Name",
-      "description": "Step Description",
-      "assigned_specialist": "specialist_name",
-      "priority": 1,
-      "dependencies": [],
-      "parameters": {}
-    }
-  ]
-}
-
-Remember: Output ONLY the JSON object, no other text.`,
-		state.ConversationContext.UserIntent,
-		state.ConversationContext.Complexity.String(),
-		state.ConversationContext.KeyTopics,
-		specialistList,
-	)
-
-	return &schema.Message{
-		Role:    schema.User,
-		Content: prompt,
-	}
 }
 
 func (h *PlanCreationHandler) parseTaskPlan(content string) (*TaskPlan, error) {
@@ -288,13 +239,13 @@ func (h *PlanCreationHandler) parseTaskPlan(content string) (*TaskPlan, error) {
 
 // SpecialistHandler handles specialist execution
 type SpecialistHandler struct {
-	specialistName string
+	specialist *Specialist
 }
 
 // NewSpecialistHandler creates a new specialist handler
-func NewSpecialistHandler(specialistName string) *SpecialistHandler {
+func NewSpecialistHandler(specialist *Specialist) *SpecialistHandler {
 	return &SpecialistHandler{
-		specialistName: specialistName,
+		specialist: specialist,
 	}
 }
 
@@ -303,11 +254,11 @@ func (h *SpecialistHandler) PreHandler(ctx context.Context, input []*schema.Mess
 	// Find the current step for this specialist
 	currentStep := h.findCurrentStep(state)
 	if currentStep == nil {
-		return nil, fmt.Errorf("no current step found for specialist %s", h.specialistName)
+		return nil, fmt.Errorf("no current step found for specialist %s", h.specialist.Name)
 	}
 
 	// Build specialist prompt
-	prompt := h.buildSpecialistPrompt(currentStep, state)
+	prompt := buildSpecialistPrompt(h.specialist, currentStep, state)
 	return []*schema.Message{prompt}, nil
 }
 
@@ -322,7 +273,7 @@ func (h *SpecialistHandler) PostHandler(ctx context.Context, output *schema.Mess
 	}
 
 	// Update state using unified method
-	state.UpdateSpecialistResult(h.specialistName, result)
+	state.UpdateSpecialistResult(h.specialist.Name, result)
 
 	// Create execution record
 	record := &ExecutionRecord{
@@ -350,39 +301,12 @@ func (h *SpecialistHandler) findCurrentStep(state *MultiAgentState) *PlanStep {
 	}
 
 	for _, step := range state.CurrentPlan.Steps {
-		if step.AssignedSpecialist == h.specialistName && step.Status == StepStatusPending {
+		if step.AssignedSpecialist == h.specialist.Name && step.Status == StepStatusPending {
 			return step
 		}
 	}
 
 	return nil
-}
-
-func (h *SpecialistHandler) buildSpecialistPrompt(step *PlanStep, state *MultiAgentState) *schema.Message {
-	prompt := fmt.Sprintf(`You are a %s specialist. Execute the following step:
-
-Step: %s
-Description: %s
-
-Context:
-- User Intent: %s
-- Overall Plan: %s
-
-Parameters: %v
-
-Please complete this step and provide your result.`,
-		h.specialistName,
-		step.Name,
-		step.Description,
-		state.ConversationContext.UserIntent,
-		state.CurrentPlan.Description,
-		step.Parameters,
-	)
-
-	return &schema.Message{
-		Role:    schema.User,
-		Content: prompt,
-	}
 }
 
 // ResultCollectorLambda collects and summarizes specialist results
