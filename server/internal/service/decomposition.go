@@ -156,6 +156,7 @@ func (m *messageSender) OnStreamMessage(ctx context.Context, sr *schema.StreamRe
 		// fmt.Println("fullMsg.Content", fullMsg.Content)
 		msgReq := dto.CreateMessageRequest{
 			ID:          messageID,
+			UserID:      m.userID,
 			MessageType: model.MsgTypeText,
 			Role:        schema.Assistant,
 			Content: model.MessageContent{

@@ -11,6 +11,7 @@ import (
 type CreateMessageRequest struct {
 	ID          string               `json:"ID"`
 	ParentID    string               `json:"parentID" binding:"omitempty,uuid"`
+	UserID      string               `json:"userID" binding:"omitempty,uuid"`
 	MessageType model.MsgType        `json:"messageType" binding:"required,oneof=text rag notice action"`
 	Role        schema.RoleType      `json:"role" binding:"required,oneof=system assistant user"`
 	Content     model.MessageContent `json:"content" binding:"required"`
