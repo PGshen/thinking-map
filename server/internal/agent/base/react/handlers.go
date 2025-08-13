@@ -47,6 +47,9 @@ func (h *ReasoningHandler) PreHandler(ctx context.Context, input []*schema.Messa
 		{Role: schema.System, Content: systemPrompt},
 	}
 	messages = append(messages, state.Messages...)
+	// for i, message := range messages {
+	// 	fmt.Printf("ReasoningHandler: %d %s %s\n", i, message.Role, message.Content)
+	// }
 
 	return messages, nil
 }

@@ -41,7 +41,7 @@ func NewDecompositionService(contextManager *ContextManager, nodeRepo repository
 	}
 }
 
-func (s *DecompositionService) Decomposition(ctx *gin.Context, req dto.DecompositionRequest) (event string, sr *schema.StreamReader[*schema.Message], err error) {
+func (s *DecompositionService) Decomposition(ctx *gin.Context, req dto.DecompositionRequest) (err error) {
 	node, err := s.nodeRepo.FindByID(ctx, req.NodeID)
 	if err != nil {
 		return
@@ -54,7 +54,7 @@ func (s *DecompositionService) Decomposition(ctx *gin.Context, req dto.Decomposi
 }
 
 // Recognize performs intent recognition for a given node
-func (s *DecompositionService) Recognize(ctx *gin.Context, req dto.DecompositionRequest) (event string, sr *schema.StreamReader[*schema.Message], err error) {
+func (s *DecompositionService) Recognize(ctx *gin.Context, req dto.DecompositionRequest) (err error) {
 	userID := ctx.GetString("user_id")
 	// 1. 构建上下文消息
 	contextInfo, err := s.contextManager.GetContextInfo(ctx, req.NodeID)
@@ -85,9 +85,18 @@ func (s *DecompositionService) Recognize(ctx *gin.Context, req dto.Decomposition
 	}
 
 	// 5. 执行意图识别
-	sr, err = agent.Stream(ctx, messages, compose.WithCallbacks(callback.LogCbHandler))
+	sr, err := agent.Stream(ctx, messages, compose.WithCallbacks(callback.LogCbHandler))
 	if err != nil {
 		return
+	}
+	for {
+		_, err := sr.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
 	}
 	return
 }
@@ -193,6 +202,6 @@ outer:
 }
 
 // Decompose 拆解节点
-func (s *DecompositionService) Decompose(ctx *gin.Context, req dto.DecompositionRequest) (event string, sr *schema.StreamReader[*schema.Message], err error) {
+func (s *DecompositionService) Decompose(ctx *gin.Context, req dto.DecompositionRequest) (err error) {
 	return
 }

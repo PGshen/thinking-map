@@ -40,10 +40,12 @@ func WithMessageHandler(handler MessageHandler) base.AgentOption {
 			return ctx
 		},
 		OnEndWithStreamOutput: func(ctx context.Context, runInfo *callbacks.RunInfo, output *schema.StreamReader[*model.CallbackOutput]) context.Context {
+			// fmt.Printf("messageHandler: %s", time.Now().Format("2006-01-02 15:04:05"))
 			c := func(output *model.CallbackOutput) (*schema.Message, error) {
 				return output.Message, nil
 			}
 			s := schema.StreamReaderWithConvert(output, c)
+			// fmt.Printf("\n\nstreamReader: %p\n\n", s)
 			ctx, _ = handler.OnStreamMessage(ctx, s)
 			return ctx
 		},
