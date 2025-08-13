@@ -108,7 +108,7 @@ func (s *MessageManager) SaveDecompositionMessage(ctx context.Context, nodeID st
 	lastMessageID := node.Decomposition.LastMessageID
 	// 1. 保存消息
 	req.ParentID = lastMessageID
-	msg, err := s.CreateMessage(ctx, "", req)
+	msg, err := s.CreateMessage(ctx, req.UserID, req)
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +358,7 @@ func (s *MessageManager) getMessageChainOptimized(ctx context.Context, messageID
 		resp := dto.ToMessageResponse(msg)
 		result = append([]*dto.MessageResponse{&resp}, result...)
 		currentID = msg.ParentID
-		
+
 		// 如果ParentID是uuid.Nil.String()，说明到达根消息
 		if currentID == uuid.Nil.String() {
 			break

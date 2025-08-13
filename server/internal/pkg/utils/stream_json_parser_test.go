@@ -230,16 +230,17 @@ func TestStreamingJsonParserIncremental(t *testing.T) {
 
 func TestStreamingJsonParserRealtimeIncremental(t *testing.T) {
 	// 测试实时模式下的增量解析
-	var thoughtResults []string
-	matcher := NewSimplePathMatcher()
-	matcher.On("thought", func(value interface{}, path []interface{}) {
+	var incrementalResults []string
+	matcher1 := NewSimplePathMatcher()
+	matcher1.On("thought", func(value interface{}, path []interface{}) {
 		if str, ok := value.(string); ok {
-			thoughtResults = append(thoughtResults, str)
+			incrementalResults = append(incrementalResults, str)
+			t.Logf("Incremental result: %q", str)
 		}
 	})
 
 	// 测试增量模式
-	parser := NewStreamingJsonParser(matcher, true, true)
+	parser := NewStreamingJsonParser(matcher1, true, true)
 
 	// 模拟流式输入 - 在字符串内部分块
 	chunks := []string{
@@ -254,21 +255,28 @@ func TestStreamingJsonParserRealtimeIncremental(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 
-	// 在增量模式下，应该收到每个字符的增量更新
-	// 但最后一个结果应该是完整的字符串
-	if len(thoughtResults) == 0 {
+	// 在增量模式下，应该只收到增量更新，不应该有完整字符串
+	if len(incrementalResults) == 0 {
 		t.Fatal("Expected at least one result")
 	}
 
-	// 最后一个结果应该包含完整内容
-	lastResult := thoughtResults[len(thoughtResults)-1]
-	if lastResult != "Let me think about this problem" {
-		t.Errorf("Expected final result to be complete string, got: %q", lastResult)
+	// 验证没有完整字符串被发送
+	for _, result := range incrementalResults {
+		if result == "Let me think about this problem" {
+			t.Errorf("Incremental mode should not send complete string, but got: %q", result)
+		}
 	}
 
 	// 测试累积模式
-	thoughtResults = nil // 重置结果
-	parser2 := NewStreamingJsonParser(matcher, true, false)
+	var cumulativeResults []string
+	matcher2 := NewSimplePathMatcher()
+	matcher2.On("thought", func(value interface{}, path []interface{}) {
+		if str, ok := value.(string); ok {
+			cumulativeResults = append(cumulativeResults, str)
+			t.Logf("Cumulative result: %q", str)
+		}
+	})
+	parser2 := NewStreamingJsonParser(matcher2, true, false)
 
 	for _, chunk := range chunks {
 		if err := parser2.Write(chunk); err != nil {
@@ -276,17 +284,19 @@ func TestStreamingJsonParserRealtimeIncremental(t *testing.T) {
 		}
 	}
 
-	if len(thoughtResults) == 0 {
+	if len(cumulativeResults) == 0 {
 		t.Fatal("Expected at least one result in cumulative mode")
 	}
 
-	// 在累积模式下，最后一个结果也应该是完整的字符串
-	lastResult2 := thoughtResults[len(thoughtResults)-1]
-	if lastResult2 != "Let me think about this problem" {
-		t.Errorf("Expected final result to be complete string in cumulative mode, got: %q", lastResult2)
+	// 在累积模式下，最后一个结果应该是完整的字符串
+	lastResult := cumulativeResults[len(cumulativeResults)-1]
+	if lastResult != "Let me think about this problem" {
+		t.Errorf("Expected final result to be complete string in cumulative mode, got: %q", lastResult)
 	}
 
-	// 验证增量模式产生的结果数量应该少于或等于累积模式
-	// （因为增量模式避免了重复发送相同内容）
-	t.Logf("Incremental mode results: %d, Cumulative mode results: %d", len(thoughtResults), len(thoughtResults))
+	// 验证增量模式的结果数量应该更少（因为避免了重复发送完整字符串）
+	t.Logf("Incremental mode results: %d, Cumulative mode results: %d", len(incrementalResults), len(cumulativeResults))
+	if len(incrementalResults) >= len(cumulativeResults) {
+		t.Errorf("Expected incremental mode to have fewer results than cumulative mode, got incremental: %d, cumulative: %d", len(incrementalResults), len(cumulativeResults))
+	}
 }

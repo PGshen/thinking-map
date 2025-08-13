@@ -240,12 +240,17 @@ func (p *StreamingJsonParser) processChar(char rune) error {
 				p.buffer = ""
 				p.state = COLON
 			} else if p.state == VALUE {
-				// 字符串值完成时，重置该路径的位置计数器
-				if p.incremental {
+				// 字符串值完成时，检查是否已经发送过增量内容
+				hasIncremental := false
+				if p.realtime && p.incremental {
 					pathKey := p.getPathKey()
+					_, hasIncremental = p.lastSentPos[pathKey]
 					delete(p.lastSentPos, pathKey)
 				}
-				p.addValue(p.buffer)
+				// 只有在非实时增量模式或者没有发送过增量内容时才调用addValue
+				if !(p.realtime && p.incremental && hasIncremental) {
+					p.addValue(p.buffer)
+				}
 				p.buffer = ""
 				p.state = COMMA
 			}
@@ -407,7 +412,7 @@ func (p *StreamingJsonParser) handleCommaState(char rune) error {
 				p.state = VALUE
 			} else {
 				// 对象中的下一个键 - 移除当前键
-				if len(p.path) > 1 {
+				if len(p.path) > 0 {
 					p.path = p.path[:len(p.path)-1]
 				}
 				p.state = KEY
@@ -559,7 +564,10 @@ func (p *StreamingJsonParser) addValue(value interface{}) {
 	if len(p.stack) == 0 {
 		// 根值
 		p.stack = append(p.stack, value)
-		p.matcher.CheckPatterns(p.path, value)
+		// 在增量模式下，如果是实时模式且已经发送过增量内容，则不再发送完整值
+		if !(p.realtime && p.incremental && p.hasIncrementalContent(value)) {
+			p.matcher.CheckPatterns(p.path, value)
+		}
 		return
 	}
 
@@ -582,8 +590,10 @@ func (p *StreamingJsonParser) addValue(value interface{}) {
 		}
 	}
 
-	// 检查路径匹配
-	p.matcher.CheckPatterns(p.path, value)
+	// 在增量模式下，如果是实时模式且已经发送过增量内容，则不再发送完整值
+	if !(p.realtime && p.incremental && p.hasIncrementalContent(value)) {
+		p.matcher.CheckPatterns(p.path, value)
+	}
 }
 
 // endObject 结束对象处理
@@ -639,4 +649,21 @@ func (p *StreamingJsonParser) getPathKey() string {
 		pathStr.WriteString(fmt.Sprintf("%v", segment))
 	}
 	return pathStr.String()
+}
+
+// hasIncrementalContent 检查是否已经发送过增量内容
+func (p *StreamingJsonParser) hasIncrementalContent(value interface{}) bool {
+	// 只有在实时增量模式下才进行检查
+	if !p.realtime || !p.incremental {
+		return false
+	}
+	
+	// 只对字符串类型进行增量处理，检查是否已经发送过增量内容
+	if _, isString := value.(string); isString {
+		pathKey := p.getPathKey()
+		_, exists := p.lastSentPos[pathKey]
+		return exists
+	}
+	// 对于其他类型（数字、布尔值、null、对象、数组），不进行增量处理
+	return false
 }

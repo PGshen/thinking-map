@@ -104,7 +104,8 @@ func SetupRouter(
 			thinking := protected.Group("/thinking")
 			{
 				thinking.POST("/understanding", thinkinghandler.NewStreamReply(understandingHandler))
-				thinking.POST("/decomposition", thinkinghandler.NewStreamReply(decompositionHandler))
+				// thinking.POST("/decomposition", thinkinghandler.NewStreamReply(decompositionHandler))
+				thinking.POST("/decomposition", decompositionHandler.Handle)
 				thinking.POST("/repeat", thinkinghandler.NewStreamReply(repeaterHandler))
 			}
 
