@@ -97,5 +97,15 @@ func (m MessageContent) Value() (driver.Value, error) {
 
 // String()
 func (m MessageContent) String() string {
-	return m.Text
+	if m.Text != "" {
+		return m.Text
+	}
+	if len(m.Notice) > 0 {
+		noticeStr := ""
+		for _, notice := range m.Notice {
+			noticeStr += fmt.Sprintf("%s: %s\n", notice.Type, notice.Content)
+		}
+		return noticeStr
+	}
+	return ""
 }

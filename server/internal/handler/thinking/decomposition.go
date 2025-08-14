@@ -42,6 +42,6 @@ func (h *DecompositionHandler) Handle(c *gin.Context) {
 		Message:   "success",
 		Data:      nil,
 		Timestamp: time.Now(),
-		RequestID: req.MsgID,
+		RequestID: uuid.NewString(),
 	})
 }

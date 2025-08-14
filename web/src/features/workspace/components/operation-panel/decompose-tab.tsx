@@ -229,12 +229,12 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
           setLoading(false);
           return;
         }
+      }).finally(() => {
+        setLoading(false);
       });
     } catch (error) {
       toast.error('网络错误，请重试');
       console.error('加载拆解消息失败', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -266,7 +266,7 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 min-h-0 overflow-hidden">
-        <DecomposeArea messages={messages} />
+        <DecomposeArea loading={loading} messages={messages} />
       </div>
 
       {/* 固定在底部的输入区域 */}

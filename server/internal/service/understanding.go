@@ -51,9 +51,9 @@ func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.Understan
 	var msgs []*dto.MessageResponse
 	if req.ParentMsgID != "" {
 		// 先获取父消息以得到conversationID
-		parentMsg, err := msgManager.GetMessageByID(ctx, req.ParentMsgID)
-		if err != nil {
-			return "", nil, err
+		parentMsg, err2 := msgManager.GetMessageByID(ctx, req.ParentMsgID)
+		if err2 != nil {
+			return "", nil, err2
 		}
 		msgs, err = msgManager.GetMessageChain(ctx, req.ParentMsgID, parentMsg.ConversationID)
 		if err != nil {

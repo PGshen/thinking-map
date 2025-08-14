@@ -50,14 +50,15 @@ func (s *DecompositionService) Decomposition(ctx *gin.Context, req dto.Decomposi
 	if isDecompose {
 		return s.Decompose(ctx, req)
 	}
-	return s.Recognize(ctx, req)
+	lastMsgID := node.Decomposition.LastMessageID
+	return s.Analyze(ctx, req, lastMsgID)
 }
 
-// Recognize performs intent recognition for a given node
-func (s *DecompositionService) Recognize(ctx *gin.Context, req dto.DecompositionRequest) (err error) {
+// Analyze performs intent analysis for a given node
+func (s *DecompositionService) Analyze(ctx *gin.Context, req dto.DecompositionRequest, lastMsgID string) (err error) {
 	userID := ctx.GetString("user_id")
 	// 1. 构建上下文消息
-	contextInfo, err := s.contextManager.GetContextInfo(ctx, req.NodeID)
+	contextInfo, err := s.contextManager.GetNodeContextWithConversation(ctx, req.NodeID, lastMsgID)
 	if err != nil {
 		return
 	}
@@ -70,6 +71,15 @@ func (s *DecompositionService) Recognize(ctx *gin.Context, req dto.Decomposition
 	messages := []*schema.Message{ctxMsg}
 	if req.Clarification != "" {
 		messages = append(messages, schema.UserMessage(req.Clarification))
+		// 3. 保存用户消息
+		_, err = s.msgManager.SaveDecompositionMessage(ctx, req.NodeID, dto.CreateMessageRequest{
+			ID:          uuid.NewString(),
+			ParentID:    lastMsgID,
+			UserID:      userID,
+			MessageType: model.MsgTypeText,
+			Role:        schema.User,
+			Content:     model.MessageContent{Text: req.Clarification},
+		})
 	}
 
 	messageSender := &messageSender{
@@ -78,8 +88,8 @@ func (s *DecompositionService) Recognize(ctx *gin.Context, req dto.Decomposition
 		userID:     userID,
 		msgManager: s.msgManager,
 	}
-	// 4. 调用意图识别Agent
-	agent, err := decomposition.BuildRecognitionAgent(ctx, react.WithMessageHandler(messageSender))
+	// 4. 调用分析Agent
+	agent, err := decomposition.BuildAnalysisAgent(ctx, react.WithMessageHandler(messageSender))
 	if err != nil {
 		return
 	}

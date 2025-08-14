@@ -6,12 +6,14 @@ import {
 } from "@/components/ui/chat-message";
 import { ChatMessageArea } from "@/components/ui/chat-message-area";
 import { MessageResponse } from "@/types/message";
+import { Loader } from "lucide-react";
 
 interface DecomposeAreaProps {
+  loading: boolean;
   messages: MessageResponse[];
 }
 
-export function DecomposeArea({ messages }: DecomposeAreaProps) {
+export function DecomposeArea({ loading, messages }: DecomposeAreaProps) {
   return (
     <div className="h-full">
       <ChatMessageArea scrollButtonAlignment="center" className="px-2 py-2 space-y-4 text-sm">
@@ -223,6 +225,20 @@ export function DecomposeArea({ messages }: DecomposeAreaProps) {
             );
           }
         })}
+        
+        {/* Loading状态 */}
+        {loading && (
+          <ChatMessage
+            id="loading-message"
+            type="incoming"
+          >
+            <ChatMessageAvatar />
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader className="h-4 w-4 animate-spin" />
+              <span className="text-sm">正在思考中...</span>
+            </div>
+          </ChatMessage>
+        )}
       </ChatMessageArea>
     </div>
   );

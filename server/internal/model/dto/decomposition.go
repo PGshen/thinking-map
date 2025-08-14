@@ -3,7 +3,6 @@ package dto
 // DecompositionRequest represents the request for intent recognition
 type DecompositionRequest struct {
 	NodeID        string `json:"nodeID" binding:"required,uuid"`
-	MsgID         string `json:"msgID"`
 	IsDecompose   bool   `json:"isDecompose"`
 	Clarification string `json:"clarification"`
 }
