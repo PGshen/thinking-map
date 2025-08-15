@@ -75,6 +75,9 @@ func main() {
 	// 初始化全局消息管理器
 	global.InitMessageManager(repository.NewMessageRepository(db), repository.NewThinkingNodeRepository(db))
 
+	// 初始化全局节点操作器
+	global.InitNodeOperator(repository.NewThinkingNodeRepository(db), repository.NewThinkingMapRepository(db))
+
 	// 解析 JWT 配置
 	expireDuration, err := time.ParseDuration(cfg.JWT.Expire)
 	if err != nil {

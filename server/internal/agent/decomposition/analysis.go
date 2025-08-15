@@ -43,7 +43,7 @@ func BuildAnalysisAgent(ctx context.Context, option base.AgentOption) (r compose
 	// 构建链
 	chain := compose.NewChain[[]*schema.Message, *schema.Message]()
 	chain.AppendLambda(compose.InvokableLambdaWithOption(func(ctx context.Context, input []*schema.Message, opts ...any) (output []*schema.Message, err error) {
-		systemMsg := schema.SystemMessage(analysisPrompt)
+		systemMsg := schema.SystemMessage(buildDecompositionAnalysisPrompt())
 		return append([]*schema.Message{systemMsg}, input...), nil
 	})).AppendLambda(lbaAgent)
 	return chain.Compile(ctx, compose.WithGraphName("analysis"))

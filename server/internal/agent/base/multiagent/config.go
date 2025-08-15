@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/agent/base"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/compose"
-	"github.com/cloudwego/eino/flow/agent"
 	"github.com/cloudwego/eino/schema"
 )
 
@@ -42,8 +42,8 @@ type Specialist struct {
 	IntendedUse  string `yaml:"intended_use" json:"intended_use"`
 	ChatModel    model.BaseChatModel
 	SystemPrompt string `yaml:"system_prompt" json:"system_prompt"`
-	Invokable    compose.Invoke[[]*schema.Message, *schema.Message, agent.AgentOption]
-	Streamable   compose.Stream[[]*schema.Message, *schema.Message, agent.AgentOption]
+	Invokable    compose.Invoke[[]*schema.Message, *schema.Message, base.AgentOption]
+	Streamable   compose.Stream[[]*schema.Message, *schema.Message, base.AgentOption]
 }
 
 // SessionConfig represents session management configuration

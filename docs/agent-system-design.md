@@ -111,27 +111,25 @@ flowchart TD
 
 **职责**：在意图识别确定需要拆解后，判断具体的拆解策略和方式
 
-**决策逻辑**：
-```python
-class DecompositionDecisionAgent:
-    def decide_decomposition_strategy(self, node_context):
-        factors = {
-            'complexity_score': self.assess_complexity(node_context.question),
-            'knowledge_gaps': self.identify_knowledge_gaps(node_context),
-            'subtask_potential': self.detect_subtasks(node_context.question),
-            'user_preference': node_context.user_settings.decomposition_preference
-        }
-        
-        # 选择最适合的拆解策略
-        strategy = self.select_decomposition_strategy(factors)
-        return strategy
-```
-
 **拆解策略类型**：
 1. **顺序型拆解**：按时间或流程顺序分解
 2. **并行型拆解**：按维度或方面并行分解
 3. **层次型拆解**：按抽象层级递进分解
 4. **探索型拆解**：按假设或路径分支分解
+
+**拆解类型示例**：
+
+1. **顺序型拆解**（适用于流程性问题）：
+   - 研究问题 → 文献调研 → 方法设计 → 数据收集 → 分析结论
+
+2. **并行型拆解**（适用于多维度分析）：
+   - 产品设计 → 用户需求分析 + 技术可行性 + 商业模式 + 竞品分析
+
+3. **层次型拆解**（适用于复杂概念）：
+   - 理解机器学习 → 基础数学概念 → 算法原理 → 实际应用
+
+4. **探索型拆解**（适用于开放性问题）：
+   - 创新方案 → 方案A探索 + 方案B探索 + 方案C探索
 
 ### 2.4 问题拆解Agent (Problem Decomposition Agent)
 
@@ -165,24 +163,9 @@ flowchart TD
 ```
 
 **可用工具**：
-- **知识检索工具**：根据需要调用MCP方式实现的知识检索
+- **知识检索工具**：根据需要的知识进行检索
 - **节点创建工具**：创建子节点并设置依赖关系
 - **节点修改工具**：修改已创建的子节点信息
-- **SSE通知工具**：实时通知前端更新可视化界面
-
-**拆解类型示例**：
-
-1. **顺序型拆解**（适用于流程性问题）：
-   - 研究问题 → 文献调研 → 方法设计 → 数据收集 → 分析结论
-
-2. **并行型拆解**（适用于多维度分析）：
-   - 产品设计 → 用户需求分析 + 技术可行性 + 商业模式 + 竞品分析
-
-3. **层次型拆解**（适用于复杂概念）：
-   - 理解机器学习 → 基础数学概念 → 算法原理 → 实际应用
-
-4. **探索型拆解**（适用于开放性问题）：
-   - 创新方案 → 方案A探索 + 方案B探索 + 方案C探索
 
 **用户干预机制**：
 - 实时对话调整拆解方向
