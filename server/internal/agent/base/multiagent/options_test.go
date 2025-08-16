@@ -473,48 +473,6 @@ func TestWithFinalAnswerHandler(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestWithPlanExecutionHandler(t *testing.T) {
-	mockHandler := &mockMessageHandler{}
-	option := WithPlanExecutionHandler(mockHandler)
-
-	// 验证option不为nil
-	assert.NotNil(t, option)
-
-	// 创建测试agent并应用option
-	config := createTestConfig()
-	agent, err := NewMultiAgent(context.Background(), config)
-	assert.NoError(t, err)
-
-	// 测试消息处理
-	input := []*schema.Message{
-		{Role: schema.User, Content: "测试计划执行"},
-	}
-
-	_, err = agent.Generate(context.Background(), input, option)
-	assert.NoError(t, err)
-}
-
-func TestWithResultCollectorHandler(t *testing.T) {
-	mockHandler := &mockMessageHandler{}
-	option := WithResultCollectorHandler(mockHandler)
-
-	// 验证option不为nil
-	assert.NotNil(t, option)
-
-	// 创建测试agent并应用option
-	config := createTestConfig()
-	agent, err := NewMultiAgent(context.Background(), config)
-	assert.NoError(t, err)
-
-	// 测试消息处理
-	input := []*schema.Message{
-		{Role: schema.User, Content: "测试结果收集"},
-	}
-
-	_, err = agent.Generate(context.Background(), input, option)
-	assert.NoError(t, err)
-}
-
 func TestWithSpecialistHandler(t *testing.T) {
 	mockHandler := &mockMessageHandler{}
 	option := WithSpecialistHandler("common specialist", mockHandler)

@@ -222,7 +222,7 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
 
     setLoading(true);
     try {
-      decomposition(nodeID, inputValue).then(res => {
+      decomposition(nodeID, inputValue, isDecomposed).then(res => {
         console.log("res", res);
         if (res.code !== 200) {
           toast.error(`加载失败: ${res.message}`);

@@ -68,18 +68,6 @@ func WithFinalAnswerHandler(handler MessageHandler) base.AgentOption {
 	return createMessageHandlerOption(handler, finalAnswerNodeKey)
 }
 
-// WithPlanExecutionHandler 为计划执行节点添加消息处理器
-// 注意：Lambda节点的回调处理需要根据具体实现调整
-func WithPlanExecutionHandler(handler MessageHandler) base.AgentOption {
-	return createMessageHandlerOption(handler, planExecutionNodeKey)
-}
-
-// WithResultCollectorHandler 为结果收集节点添加消息处理器
-// 注意：Lambda节点的回调处理需要根据具体实现调整
-func WithResultCollectorHandler(handler MessageHandler) base.AgentOption {
-	return createMessageHandlerOption(handler, resultCollectorNodeKey)
-}
-
 // WithSpecialistHandler 为指定专家节点添加消息处理器
 func WithSpecialistHandler(specialistName string, handler MessageHandler) base.AgentOption {
 	return createMessageHandlerOption(handler, specialistName)

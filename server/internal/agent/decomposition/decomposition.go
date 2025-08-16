@@ -10,9 +10,10 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/agent/tool/node"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
+	"github.com/cloudwego/eino/schema"
 )
 
-func BuildDecompositionAgent(ctx context.Context, option base.AgentOption) (*multiagent.MultiAgent, error) {
+func BuildDecompositionAgent(ctx context.Context, option ...base.AgentOption) (compose.Runnable[[]*schema.Message, *schema.Message], error) {
 	// 创建主模型
 	cm, err := llmmodel.NewOpenAIModel(ctx, nil)
 	if err != nil {
@@ -20,13 +21,13 @@ func BuildDecompositionAgent(ctx context.Context, option base.AgentOption) (*mul
 	}
 
 	// 创建拆解决策Agent specialist
-	decompositionDecisionAgent, err := buildDecompositionDecisionAgent(ctx, option)
+	decompositionDecisionAgent, err := buildDecompositionDecisionAgent(ctx, option...)
 	if err != nil {
 		return nil, err
 	}
 
 	// 创建问题拆解Agent specialist
-	problemDecompositionAgent, err := buildProblemDecompositionAgent(ctx, option)
+	problemDecompositionAgent, err := buildProblemDecompositionAgent(ctx, option...)
 	if err != nil {
 		return nil, err
 	}
@@ -52,11 +53,11 @@ func BuildDecompositionAgent(ctx context.Context, option base.AgentOption) (*mul
 		return nil, err
 	}
 
-	return agent, nil
+	return agent.Runnable, nil
 }
 
 // buildDecompositionDecisionAgent 创建拆解决策Agent specialist
-func buildDecompositionDecisionAgent(ctx context.Context, option base.AgentOption) (*multiagent.Specialist, error) {
+func buildDecompositionDecisionAgent(ctx context.Context, option ...base.AgentOption) (*multiagent.Specialist, error) {
 	// 创建模型
 	cm, err := llmmodel.NewOpenAIModel(ctx, nil)
 	if err != nil {
@@ -76,14 +77,14 @@ func buildDecompositionDecisionAgent(ctx context.Context, option base.AgentOptio
 		ToolsConfig: compose.ToolsNodeConfig{
 			Tools: allTools,
 		},
-	}, option)
+	}, option...)
 	if err != nil {
 		return nil, err
 	}
 
 	return &multiagent.Specialist{
-		Name:         "DecompositionDecisionAgent",
-		IntendedUse:  "分析问题复杂度并决定拆解策略类型（顺序型、并行型、层次型、探索型）",
+		Name:        "DecompositionDecisionAgent",
+		IntendedUse: "分析问题复杂度并决定拆解策略类型（顺序型、并行型、层次型、探索型）",
 		// ChatModel:    cm,
 		SystemPrompt: buildDecompositionDecisionPrompt(),
 		Invokable:    agent.Generate,
@@ -92,7 +93,7 @@ func buildDecompositionDecisionAgent(ctx context.Context, option base.AgentOptio
 }
 
 // buildProblemDecompositionAgent 创建问题拆解Agent specialist
-func buildProblemDecompositionAgent(ctx context.Context, option base.AgentOption) (*multiagent.Specialist, error) {
+func buildProblemDecompositionAgent(ctx context.Context, option ...base.AgentOption) (*multiagent.Specialist, error) {
 	// 创建模型
 	cm, err := llmmodel.NewOpenAIModel(ctx, nil)
 	if err != nil {
@@ -112,7 +113,7 @@ func buildProblemDecompositionAgent(ctx context.Context, option base.AgentOption
 		ToolsConfig: compose.ToolsNodeConfig{
 			Tools: allTools,
 		},
-	}, option)
+	}, option...)
 	if err != nil {
 		return nil, err
 	}

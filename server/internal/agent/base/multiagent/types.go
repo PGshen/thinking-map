@@ -256,10 +256,10 @@ type TaskPlan struct {
 
 // MultiAgent represents the enhanced multi-agent system
 type MultiAgent struct {
-	runnable         compose.Runnable[[]*schema.Message, *schema.Message]
-	graph            *compose.Graph[[]*schema.Message, *schema.Message]
-	graphAddNodeOpts []compose.GraphAddNodeOpt
-	config           *MultiAgentConfig
+	Runnable         compose.Runnable[[]*schema.Message, *schema.Message]
+	Graph            *compose.Graph[[]*schema.Message, *schema.Message]
+	GraphAddNodeOpts []compose.GraphAddNodeOpt
+	Config           *MultiAgentConfig
 }
 
 // Generate executes the enhanced multi-agent system
@@ -272,7 +272,7 @@ func (ema *MultiAgent) Generate(ctx context.Context, input []*schema.Message, op
 	//	composeOptions = append(composeOptions, compose.WithCallbacks(handler))
 	// }
 
-	return ema.runnable.Invoke(ctx, input, composeOptions...)
+	return ema.Runnable.Invoke(ctx, input, composeOptions...)
 }
 
 // Stream executes the enhanced multi-agent system in streaming mode
@@ -285,15 +285,15 @@ func (ema *MultiAgent) Stream(ctx context.Context, input []*schema.Message, opts
 	//	composeOptions = append(composeOptions, compose.WithCallbacks(handler))
 	// }
 
-	return ema.runnable.Stream(ctx, input, composeOptions...)
+	return ema.Runnable.Stream(ctx, input, composeOptions...)
 }
 
 // ExportGraph exports the underlying graph
 func (ema *MultiAgent) ExportGraph() (compose.AnyGraph, []compose.GraphAddNodeOpt) {
-	return ema.graph, ema.graphAddNodeOpts
+	return ema.Graph, ema.GraphAddNodeOpts
 }
 
 // GetConfig returns the configuration
 func (ema *MultiAgent) GetConfig() *MultiAgentConfig {
-	return ema.config
+	return ema.Config
 }

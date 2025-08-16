@@ -269,10 +269,10 @@ func NewMultiAgent(ctx context.Context, config *MultiAgentConfig) (*MultiAgent, 
 	}
 
 	return &MultiAgent{
-		runnable:         runnable,
-		graph:            graph,
-		graphAddNodeOpts: []compose.GraphAddNodeOpt{},
-		config:           config,
+		Runnable:         runnable,
+		Graph:            graph,
+		GraphAddNodeOpts: []compose.GraphAddNodeOpt{},
+		Config:           config,
 	}, nil
 }
 

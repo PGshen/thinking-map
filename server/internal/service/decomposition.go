@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/PGshen/thinking-map/server/internal/agent/base/multiagent"
 	"github.com/PGshen/thinking-map/server/internal/agent/base/react"
 	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model"
@@ -47,15 +48,7 @@ func (s *DecompositionService) Decomposition(ctx *gin.Context, req dto.Decomposi
 		return
 	}
 	isDecompose := req.IsDecompose || node.Decomposition.IsDecomposed // 是否执行拆解
-	if isDecompose {
-		return s.Decompose(ctx, req)
-	}
 	lastMsgID := node.Decomposition.LastMessageID
-	return s.Analyze(ctx, req, lastMsgID)
-}
-
-// Analyze performs intent analysis for a given node
-func (s *DecompositionService) Analyze(ctx *gin.Context, req dto.DecompositionRequest, lastMsgID string) (err error) {
 	userID := ctx.GetString("user_id")
 	// 1. 构建上下文消息
 	contextInfo, err := s.contextManager.GetNodeContextWithConversation(ctx, req.NodeID, lastMsgID)
@@ -81,10 +74,21 @@ func (s *DecompositionService) Analyze(ctx *gin.Context, req dto.DecompositionRe
 			Content:     model.MessageContent{Text: req.Clarification},
 		})
 	}
+	// 拆解
+	if isDecompose {
+		return s.Decompose(ctx, contextInfo, messages)
+	}
+	// 分析
+	return s.Analyze(ctx, contextInfo, messages)
+}
 
-	messageSender := &messageSender{
+// Analyze performs intent analysis for a given node
+func (s *DecompositionService) Analyze(ctx *gin.Context, contextInfo *ContextInfo, messages []*schema.Message) (err error) {
+	userID := ctx.GetString("user_id")
+
+	messageSender := &analyzeMessageSender{
 		mapID:      contextInfo.MapInfo.ID,
-		nodeID:     req.NodeID,
+		nodeID:     contextInfo.NodeInfo.ID,
 		userID:     userID,
 		msgManager: s.msgManager,
 	}
@@ -112,19 +116,19 @@ func (s *DecompositionService) Analyze(ctx *gin.Context, req dto.DecompositionRe
 }
 
 // 消息发送
-type messageSender struct {
+type analyzeMessageSender struct {
 	mapID      string
 	nodeID     string
 	userID     string
 	msgManager *global.MessageManager
 }
 
-func (m *messageSender) OnMessage(ctx context.Context, message *schema.Message) (context.Context, error) {
+func (m *analyzeMessageSender) OnMessage(ctx context.Context, message *schema.Message) (context.Context, error) {
 	// 用不上，空实现
 	return ctx, nil
 }
 
-func (m *messageSender) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
+func (m *analyzeMessageSender) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
 	// 生成新的messageID
 	messageID := uuid.NewString()
 	// 使用流式JSON解析器解析ReasoningOutput
@@ -212,6 +216,198 @@ outer:
 }
 
 // Decompose 拆解节点
-func (s *DecompositionService) Decompose(ctx *gin.Context, req dto.DecompositionRequest) (err error) {
+func (s *DecompositionService) Decompose(ctx *gin.Context, contextInfo *ContextInfo, messages []*schema.Message) (err error) {
+	userID := ctx.GetString("user_id")
+
+	conversationAnalyzerMessageSender := &conversationAnalyzerMessageSender{
+		mapID:      contextInfo.MapInfo.ID,
+		nodeID:     contextInfo.NodeInfo.ID,
+		userID:     userID,
+		msgManager: s.msgManager,
+	}
+	messageSender := &messageSender{
+		mapID:      contextInfo.MapInfo.ID,
+		nodeID:     contextInfo.NodeInfo.ID,
+		userID:     userID,
+		msgManager: s.msgManager,
+	}
+	// 4. 调用分析Agent
+	agent, err := decomposition.BuildDecompositionAgent(ctx,
+		multiagent.WithConversationAnalyzer(conversationAnalyzerMessageSender),
+		multiagent.WithDirectAnswerHandler(messageSender),
+		multiagent.WithFinalAnswerHandler(messageSender),
+		multiagent.WithSpecialistHandler("DecompositionDecisionAgent", messageSender),
+		multiagent.WithSpecialistHandler("ProblemDecompositionAgent", messageSender),
+	)
+	if err != nil {
+		return
+	}
+
+	// 5. 执行意图识别
+	sr, err := agent.Stream(ctx, messages, compose.WithCallbacks(callback.LogCbHandler))
+	if err != nil {
+		return
+	}
+	for {
+		_, err := sr.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
+	}
 	return
+}
+
+type conversationAnalyzerMessageSender struct {
+	mapID      string
+	nodeID     string
+	userID     string
+	msgManager *global.MessageManager
+}
+
+func (m *conversationAnalyzerMessageSender) OnMessage(ctx context.Context, message *schema.Message) (context.Context, error) {
+	// 用不上，空实现
+	return ctx, nil
+}
+
+func (m *conversationAnalyzerMessageSender) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
+	messageID := uuid.NewString()
+	// 使用流式JSON解析器解析ReasoningOutput
+	matcher := utils.NewSimplePathMatcher()
+	// 使用增量模式避免重复内容
+	parser := utils.NewStreamingJsonParser(matcher, true, true)
+
+	var userIntent strings.Builder
+
+	// 注册路径匹配器来提取userIntent字段
+	matcher.On("user_intent", func(value interface{}, path []interface{}) {
+		// fmt.Print("thought:", value)
+		if str, ok := value.(string); ok {
+			global.GetBroker().Publish(m.mapID, sse.Event{
+				ID:   m.nodeID,
+				Type: dto.MessageTextEventType,
+				Data: dto.MessageTextEvent{
+					NodeID:    m.nodeID,
+					MessageID: messageID,
+					Message:   str,
+					Mode:      "append",
+				},
+			})
+			userIntent.WriteString(str)
+		}
+	})
+	defer func() {
+		sr.Close()
+		if len(userIntent.String()) == 0 {
+			return
+		}
+		// fmt.Println("fullMsg.Content", fullMsg.Content)
+		msgReq := dto.CreateMessageRequest{
+			ID:          messageID,
+			UserID:      m.userID,
+			MessageType: model.MsgTypeText,
+			Role:        schema.Assistant,
+			Content: model.MessageContent{
+				Text: userIntent.String(),
+			},
+		}
+		_, err2 := m.msgManager.SaveDecompositionMessage(ctx, m.nodeID, msgReq)
+		if err2 != nil {
+			logger.Error("create message failed", zap.Error(err2))
+			return
+		}
+	}()
+outer:
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("context done", ctx.Err())
+			return ctx, nil
+		default:
+			chunk, err2 := sr.Recv()
+			if err2 != nil {
+				if errors.Is(err2, io.EOF) {
+					fmt.Println()
+					break outer
+				}
+			}
+			fmt.Print(chunk.Content)
+			if err := parser.Write(chunk.Content); err != nil {
+				logger.Error("parse reasoning response failed", zap.Error(err))
+			}
+		}
+	}
+	return ctx, nil
+}
+
+// 普通消息发送器
+type messageSender struct {
+	mapID      string
+	nodeID     string
+	userID     string
+	msgManager *global.MessageManager
+}
+
+func (m *messageSender) OnMessage(ctx context.Context, message *schema.Message) (context.Context, error) {
+	return ctx, nil
+}
+
+func (m *messageSender) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
+	messageID := uuid.NewString()
+	fullMsgs := make([]*schema.Message, 0)
+	defer func() {
+		sr.Close()
+		fullMsg, err := schema.ConcatMessages(fullMsgs)
+		if err != nil {
+			logger.Warn("concat message failed", zap.Error(err))
+			return
+		}
+		fullMsg.Content = strings.ReplaceAll(fullMsg.Content, "&nbsp;", " ")
+		msgReq := dto.CreateMessageRequest{
+			ID:          messageID,
+			UserID:      m.userID,
+			MessageType: model.MsgTypeText,
+			Role:        schema.Assistant,
+			Content: model.MessageContent{
+				Text: fullMsg.Content,
+			},
+		}
+		_, err2 := m.msgManager.SaveDecompositionMessage(ctx, m.nodeID, msgReq)
+		if err2 != nil {
+			logger.Error("create message failed", zap.Error(err2))
+			return
+		}
+	}()
+outer:
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("context done", ctx.Err())
+			return ctx, nil
+		default:
+			chunk, err2 := sr.Recv()
+			if err2 != nil {
+				if errors.Is(err2, io.EOF) {
+					fmt.Println()
+					break outer
+				}
+			}
+			fmt.Print(chunk.Content)
+			// sse 事件
+			global.GetBroker().Publish(m.mapID, sse.Event{
+				ID:   m.nodeID,
+				Type: dto.MessageTextEventType,
+				Data: dto.MessageTextEvent{
+					NodeID:    m.nodeID,
+					MessageID: messageID,
+					Message:   chunk.Content,
+					Mode:      "append",
+				},
+			})
+			fullMsgs = append(fullMsgs, chunk)
+		}
+	}
+	return ctx, nil
 }
