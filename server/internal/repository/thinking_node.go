@@ -102,3 +102,10 @@ func (r *thinkingNodeRepository) UpdateStatus(ctx context.Context, id string, st
 		Where("id = ?", id).
 		Update("status", status).Error
 }
+
+func (r *thinkingNodeRepository) UpdateIsDecomposed(ctx context.Context, id string, isDecomposed bool) error {
+	// Update isDecomposed field in decomposition JSONB column
+	return r.db.WithContext(ctx).Model(&model.ThinkingNode{}).
+		Where("id = ?", id).
+		UpdateColumn("decomposition", gorm.Expr("jsonb_set(decomposition, '{isDecomposed}', ?)", isDecomposed)).Error
+}

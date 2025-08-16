@@ -108,7 +108,7 @@ const (
 )
 
 func (s *RedisSessionStore) AddClient(clientID string, client *Client) error {
-	data, err := json.Marshal(client)
+	data, err := json.Marshal(&client)
 	if err != nil {
 		return err
 	}

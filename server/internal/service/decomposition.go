@@ -85,6 +85,11 @@ func (s *DecompositionService) Decomposition(ctx *gin.Context, req dto.Decomposi
 // Analyze performs intent analysis for a given node
 func (s *DecompositionService) Analyze(ctx *gin.Context, contextInfo *ContextInfo, messages []*schema.Message) (err error) {
 	userID := ctx.GetString("user_id")
+	defer func() {
+		if err != nil {
+			logger.Error("Analyze failed", zap.Error(err))
+		}
+	}()
 
 	messageSender := &analyzeMessageSender{
 		mapID:      contextInfo.MapInfo.ID,
@@ -131,6 +136,8 @@ func (m *analyzeMessageSender) OnMessage(ctx context.Context, message *schema.Me
 func (m *analyzeMessageSender) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
 	// 生成新的messageID
 	messageID := uuid.NewString()
+	sseBroker := global.GetBroker()
+	clients := sseBroker.GetClients(m.mapID)
 	// 使用流式JSON解析器解析ReasoningOutput
 	matcher := utils.NewSimplePathMatcher()
 	// 使用增量模式避免重复内容
@@ -142,7 +149,7 @@ func (m *analyzeMessageSender) OnStreamMessage(ctx context.Context, sr *schema.S
 	matcher.On("thought", func(value interface{}, path []interface{}) {
 		// fmt.Print("thought:", value)
 		if str, ok := value.(string); ok {
-			global.GetBroker().Publish(m.mapID, sse.Event{
+			sseBroker.PublishToClients(clients, sse.Event{
 				ID:   m.nodeID,
 				Type: dto.MessageTextEventType,
 				Data: dto.MessageTextEvent{
@@ -158,7 +165,7 @@ func (m *analyzeMessageSender) OnStreamMessage(ctx context.Context, sr *schema.S
 
 	matcher.On("final_answer", func(value interface{}, path []interface{}) {
 		if str, ok := value.(string); ok {
-			global.GetBroker().Publish(m.mapID, sse.Event{
+			sseBroker.PublishToClients(clients, sse.Event{
 				ID:   m.nodeID,
 				Type: dto.MessageTextEventType,
 				Data: dto.MessageTextEvent{
@@ -218,6 +225,15 @@ outer:
 // Decompose 拆解节点
 func (s *DecompositionService) Decompose(ctx *gin.Context, contextInfo *ContextInfo, messages []*schema.Message) (err error) {
 	userID := ctx.GetString("user_id")
+	defer func() {
+		if err != nil {
+			logger.Error("Decompose failed", zap.Error(err))
+		}
+		if !contextInfo.NodeInfo.Decomposition.IsDecomposed {
+			// 更新拆解状态
+			s.nodeRepo.UpdateIsDecomposed(ctx, contextInfo.NodeInfo.ID, true)
+		}
+	}()
 
 	conversationAnalyzerMessageSender := &conversationAnalyzerMessageSender{
 		mapID:      contextInfo.MapInfo.ID,
@@ -274,6 +290,8 @@ func (m *conversationAnalyzerMessageSender) OnMessage(ctx context.Context, messa
 
 func (m *conversationAnalyzerMessageSender) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
 	messageID := uuid.NewString()
+	sseBroker := global.GetBroker()
+	clients := sseBroker.GetClients(m.mapID)
 	// 使用流式JSON解析器解析ReasoningOutput
 	matcher := utils.NewSimplePathMatcher()
 	// 使用增量模式避免重复内容
@@ -285,7 +303,7 @@ func (m *conversationAnalyzerMessageSender) OnStreamMessage(ctx context.Context,
 	matcher.On("user_intent", func(value interface{}, path []interface{}) {
 		// fmt.Print("thought:", value)
 		if str, ok := value.(string); ok {
-			global.GetBroker().Publish(m.mapID, sse.Event{
+			sseBroker.PublishToClients(clients, sse.Event{
 				ID:   m.nodeID,
 				Type: dto.MessageTextEventType,
 				Data: dto.MessageTextEvent{
@@ -356,6 +374,8 @@ func (m *messageSender) OnMessage(ctx context.Context, message *schema.Message) 
 
 func (m *messageSender) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
 	messageID := uuid.NewString()
+	sseBroker := global.GetBroker()
+	clients := sseBroker.GetClients(m.mapID)
 	fullMsgs := make([]*schema.Message, 0)
 	defer func() {
 		sr.Close()
@@ -396,7 +416,7 @@ outer:
 			}
 			fmt.Print(chunk.Content)
 			// sse 事件
-			global.GetBroker().Publish(m.mapID, sse.Event{
+			sseBroker.PublishToClients(clients, sse.Event{
 				ID:   m.nodeID,
 				Type: dto.MessageTextEventType,
 				Data: dto.MessageTextEvent{

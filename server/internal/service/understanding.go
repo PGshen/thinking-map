@@ -72,6 +72,7 @@ func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.Understan
 	// 4. 保存消息
 	// 4.2 保存用户消息
 	msgRequest := dto.CreateMessageRequest{
+		ID:          uuid.NewString(),
 		ParentID:    utils.Ternary(req.ParentMsgID == "", uuid.Nil.String(), req.ParentMsgID),
 		MessageType: comm.MessageTypeText,
 		Role:        schema.User,
@@ -91,6 +92,6 @@ func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.Understan
 	srs := sr.Copy(2)
 	sr = srs[0]
 	// 流式消息，提前确定消息ID
-	go msgManager.SaveStreamMessage(ctx, srs[1], req.MsgID, msgResp.ID)
+	go msgManager.SaveStreamMessage(ctx, srs[1], uuid.NewString(), msgResp.ID)
 	return
 }

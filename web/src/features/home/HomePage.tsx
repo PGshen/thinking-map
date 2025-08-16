@@ -171,7 +171,7 @@ export default function HomePage() {
             <Button
               onClick={handleUnderstanding}
               disabled={!problem.trim() || !problemType}
-              className="ml-2"
+              className="ml-2 cursor-pointer"
               size="sm"
             >
               提交问题
@@ -220,7 +220,7 @@ export default function HomePage() {
             <div className="max-h-[60vh] overflow-y-auto space-y-4 py-4">
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
+                  <Loader className="h-8 w-8 animate-spin text-primary" />
                   <span className="ml-2">正在分析问题...</span>
                 </div>
               ) : (

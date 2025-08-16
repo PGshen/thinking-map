@@ -29,7 +29,7 @@ func SendActionMsg(ctx context.Context, msg *dto.ActionChoice) (*dto.ActionMsgRe
 			msgAction = model.Action{
 				Name:   "开始拆解",
 				Method: "POST",
-				URL:    "/api/map/node/decompose",
+				URL:    "/v1/thinking/decomposition",
 				Param: map[string]any{
 					"mapID":  mapID,
 					"nodeID": nodeID,

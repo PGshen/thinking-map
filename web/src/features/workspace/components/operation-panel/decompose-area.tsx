@@ -5,15 +5,16 @@ import {
   ChatMessage,
 } from "@/components/ui/chat-message";
 import { ChatMessageArea } from "@/components/ui/chat-message-area";
-import { MessageResponse } from "@/types/message";
+import { Action, MessageResponse } from "@/types/message";
 import { Loader } from "lucide-react";
 
 interface DecomposeAreaProps {
   loading: boolean;
   messages: MessageResponse[];
+  clickAction: (action: Action) => void;
 }
 
-export function DecomposeArea({ loading, messages }: DecomposeAreaProps) {
+export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaProps) {
   return (
     <div className="h-full">
       <ChatMessageArea scrollButtonAlignment="center" className="px-2 py-2 space-y-4 text-sm">
@@ -202,8 +203,7 @@ export function DecomposeArea({ loading, messages }: DecomposeAreaProps) {
                         key={index}
                         className={`cursor-pointer px-3 py-2 ${theme.bg} ${theme.hover} ${theme.text} text-sm rounded-md border ${theme.border} transition-colors duration-200 text-left flex-shrink-0`}
                         onClick={() => {
-                          // TODO: 处理动作点击事件
-                          console.log('Action clicked:', action);
+                          clickAction(action);
                         }}
                       >
                         <div className="flex items-center gap-2">

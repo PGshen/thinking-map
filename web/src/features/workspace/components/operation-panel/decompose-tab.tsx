@@ -9,7 +9,7 @@
 import React, { useState, useEffect } from 'react';
 import { GitBranch } from 'lucide-react';
 import { DecomposeArea } from './decompose-area';
-import { MessageResponse } from '@/types/message';
+import { Action, MessageResponse } from '@/types/message';
 import { CustomNodeModel } from '@/types/node';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { toast } from 'sonner';
@@ -17,9 +17,6 @@ import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/c
 import { getMessages, decomposition } from '@/api/node';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
 import { MessageActionEvent, MessageTextEvent } from '@/types/sse';
-import { SseJsonStreamParser } from '@/lib/sse-parser';
-import API_ENDPOINTS from '@/api/endpoints';
-import { ApiResponse } from '@/types/response';
 
 interface DecomposeTabProps {
   nodeID: string;
@@ -215,14 +212,15 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
   }, []);
 
   // 提交
-  const handleSubmit = (inputValue: string) => {
+  const handleSubmit = (inputValue: string, newIsDecomposed?: boolean) => {
     if (loading) {
       return;
     }
 
     setLoading(true);
+    const currentIsDecomposed = newIsDecomposed ?? isDecomposed;
     try {
-      decomposition(nodeID, inputValue, isDecomposed).then(res => {
+      decomposition(nodeID, inputValue, currentIsDecomposed).then(res => {
         console.log("res", res);
         if (res.code !== 200) {
           toast.error(`加载失败: ${res.message}`);
@@ -263,10 +261,21 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
     setInputValue('');
   };
 
+  function clickAction(action: Action): void {
+    if (action.name == '开始拆解') {
+      setIsDecomposed(true);
+      handleSubmit('开始拆解', true);
+    } else if (action.name == '开始结论') {
+      handleSubmit('开始结论');
+    } else {
+      throw new Error('Function not implemented.');
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 min-h-0 overflow-hidden">
-        <DecomposeArea loading={loading} messages={messages} />
+        <DecomposeArea loading={loading} messages={messages} clickAction={clickAction} />
       </div>
 
       {/* 固定在底部的输入区域 */}

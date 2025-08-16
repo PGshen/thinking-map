@@ -41,13 +41,13 @@ func main() {
 	}
 
 	// 初始化日志
-	if err := logger.Init(&cfg.Log); err != nil {
+	if err = logger.Init(&cfg.Log); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 	defer logger.Sync()
 
 	// 注册验证器
-	if err := validator.RegisterValidators(); err != nil {
+	if err = validator.RegisterValidators(); err != nil {
 		logger.Fatal("Failed to register validators", zap.Error(err))
 	}
 
