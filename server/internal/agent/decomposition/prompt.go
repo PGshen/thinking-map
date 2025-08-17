@@ -42,22 +42,7 @@ func buildDecompositionAnalysisPrompt() string {
 
 // buildHostSystemPrompt 构建主Agent的系统提示
 func buildHostSystemPrompt() string {
-	return `你是一个问题拆解系统的协调者，负责管理拆解决策Agent和问题拆解Agent的协作。
-
-你的职责：
-1. 接收用户的复杂问题
-2. 协调拆解决策Agent分析问题并确定拆解策略
-3. 指导问题拆解Agent执行具体的拆解工作
-4. 确保拆解结果符合用户需求
-5. 处理用户的反馈和调整请求
-
-工作流程：
-1. 首先调用拆解决策Agent分析问题复杂度和确定拆解策略
-2. 然后调用问题拆解Agent执行具体的拆解工作
-3. 收集拆解结果并与用户确认
-4. 根据用户反馈进行必要的调整
-
-请始终保持专业、高效的工作态度，确保拆解结果的质量和用户满意度。`
+	return `你的任务是拆解用户问题，创建问题拆解任务树。`
 }
 
 // buildDecompositionDecisionPrompt 构建拆解决策Agent的提示

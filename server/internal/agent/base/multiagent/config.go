@@ -82,14 +82,6 @@ func (config *MultiAgentConfig) Validate() error {
 		return errors.New("host model is not configured")
 	}
 
-	// 增加一个通用的specialist, 用于处理通用任务
-	config.Specialists = append(config.Specialists, &Specialist{
-		Name:         generalSpecialistNodeKey,
-		IntendedUse:  "General tasks",
-		ChatModel:    config.Host.Model,
-		SystemPrompt: "You are a general specialist, you can handle any tasks.",
-	})
-
 	for i, specialist := range config.Specialists {
 		if len(specialist.Name) == 0 {
 			return fmt.Errorf("specialist %d has empty name", i)

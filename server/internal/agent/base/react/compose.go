@@ -73,9 +73,11 @@ func (a *ReactAgent) setupChatModel(ctx context.Context) (model.BaseChatModel, e
 	}
 
 	// Bind tools to chat model (required for tool calling capability)
-	chatModel, err = chatModel.WithTools(toolInfos)
-	if err != nil {
-		return nil, fmt.Errorf("failed to bind tools: %w", err)
+	if len(toolInfos) > 0 {
+		chatModel, err = chatModel.WithTools(toolInfos)
+		if err != nil {
+			return nil, fmt.Errorf("failed to bind tools: %w", err)
+		}
 	}
 	return chatModel, nil
 }

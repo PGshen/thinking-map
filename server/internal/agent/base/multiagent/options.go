@@ -18,7 +18,7 @@ type MessageHandler interface {
 }
 
 // createMessageHandlerOption 创建通用的消息处理器option
-func createMessageHandlerOption(handler MessageHandler, nodeKey string) base.AgentOption {
+func createMessageHandlerOption(handler MessageHandler, nodeKey ...string) base.AgentOption {
 	cmHandler := &ub.ModelCallbackHandler{
 		OnEnd: func(ctx context.Context, runInfo *callbacks.RunInfo, output *model.CallbackOutput) context.Context {
 			ctx, _ = handler.OnMessage(ctx, output.Message)
@@ -34,7 +34,7 @@ func createMessageHandlerOption(handler MessageHandler, nodeKey string) base.Age
 		},
 	}
 	cb := ub.NewHandlerHelper().ChatModel(cmHandler).Handler()
-	option := base.WithComposeOptions(compose.WithCallbacks(cb).DesignateNode(nodeKey))
+	option := base.WithComposeOptions(compose.WithCallbacks(cb).DesignateNodeWithPath(compose.NewNodePath(nodeKey...)))
 	return option
 }
 
@@ -70,5 +70,5 @@ func WithFinalAnswerHandler(handler MessageHandler) base.AgentOption {
 
 // WithSpecialistHandler 为指定专家节点添加消息处理器
 func WithSpecialistHandler(specialistName string, handler MessageHandler) base.AgentOption {
-	return createMessageHandlerOption(handler, specialistName)
+	return createMessageHandlerOption(handler, specialistName, "reasoning")
 }

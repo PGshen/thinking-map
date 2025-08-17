@@ -259,33 +259,24 @@ type MultiAgent struct {
 	Runnable         compose.Runnable[[]*schema.Message, *schema.Message]
 	Graph            *compose.Graph[[]*schema.Message, *schema.Message]
 	GraphAddNodeOpts []compose.GraphAddNodeOpt
+	AgentOptions     []base.AgentOption
 	Config           *MultiAgentConfig
 }
 
 // Generate executes the enhanced multi-agent system
 func (ema *MultiAgent) Generate(ctx context.Context, input []*schema.Message, opts ...base.AgentOption) (*schema.Message, error) {
-	composeOptions := base.GetComposeOptions(opts...)
+	options := base.GetComposeOptions(opts...)
+	options = append(options, base.GetComposeOptions(ema.AgentOptions...)...) // 合并option
 
-	// TODO: implement convertCallbacks function
-	// handler := convertCallbacks(opts...)
-	// if handler != nil {
-	//	composeOptions = append(composeOptions, compose.WithCallbacks(handler))
-	// }
-
-	return ema.Runnable.Invoke(ctx, input, composeOptions...)
+	return ema.Runnable.Invoke(ctx, input, options...)
 }
 
 // Stream executes the enhanced multi-agent system in streaming mode
 func (ema *MultiAgent) Stream(ctx context.Context, input []*schema.Message, opts ...base.AgentOption) (*schema.StreamReader[*schema.Message], error) {
-	composeOptions := base.GetComposeOptions(opts...)
+	options := base.GetComposeOptions(opts...)
+	options = append(options, base.GetComposeOptions(ema.AgentOptions...)...) // 合并option
 
-	// TODO: implement convertCallbacks function
-	// handler := convertCallbacks(opts...)
-	// if handler != nil {
-	//	composeOptions = append(composeOptions, compose.WithCallbacks(handler))
-	// }
-
-	return ema.Runnable.Stream(ctx, input, composeOptions...)
+	return ema.Runnable.Stream(ctx, input, options...)
 }
 
 // ExportGraph exports the underlying graph
