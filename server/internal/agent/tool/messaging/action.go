@@ -59,7 +59,7 @@ func SendActionMsg(ctx context.Context, msg *dto.ActionChoice) (*dto.ActionMsgRe
 			Actions:   msgActions,
 		},
 	}
-	global.GetBroker().Publish(ctx.Value("mapID").(string), event)
+	global.GetBroker().PublishToSession(ctx.Value("mapID").(string), event)
 	// 保存消息
 	global.GetMessageManager().SaveDecompositionMessage(ctx, nodeID, dto.CreateMessageRequest{
 		ID:          uuid.NewString(),

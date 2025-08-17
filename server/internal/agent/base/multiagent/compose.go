@@ -19,6 +19,7 @@ const (
 	planExecutionNodeKey        = "plan_execution"
 	toSpecialistBranchNodeKey   = "to_specialist_branch"
 	specialistBranchNodeKey     = "specialist_branch"
+	generalSpecialistNodeKey    = "general_specialist"
 	resultCollectorNodeKey      = "result_collector"
 	toFeedbackProcessorNodeKey  = "to_feedback_processor"
 	feedbackProcessorNodeKey    = "feedback_processor"
@@ -278,7 +279,11 @@ func NewMultiAgent(ctx context.Context, config *MultiAgentConfig) (*MultiAgent, 
 
 func addSpecialist(graph *compose.Graph[[]*schema.Message, *schema.Message], specialist *Specialist) error {
 	specialistHandler := NewSpecialistHandler(specialist)
-	if specialist.Invokable != nil || specialist.Streamable != nil {
+	if specialist.ReactAgent != nil {
+		if err := graph.AddGraphNode(specialist.Name, specialist.ReactAgent.Graph, compose.WithNodeName(specialist.Name)); err != nil {
+			return err
+		}
+	} else if specialist.Invokable != nil || specialist.Streamable != nil {
 		lambda, err := compose.AnyLambda(specialist.Invokable, specialist.Streamable, nil, nil, compose.WithLambdaType("Specialist"))
 		if err != nil {
 			return err

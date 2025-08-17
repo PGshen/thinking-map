@@ -20,9 +20,9 @@ var (
 )
 
 // InitBroker 初始化全局broker
-func InitBroker(store sse.SessionStore, pingInterval, clientTimeout time.Duration) {
+func InitBroker(eventBus sse.EventBus, connManager sse.ConnectionManager, serverID string, pingInterval, clientTimeout time.Duration) {
 	brokerOnce.Do(func() {
-		GlobalBroker = sse.NewBroker(store, pingInterval, clientTimeout)
+		GlobalBroker = sse.NewBroker(eventBus, connManager, serverID, pingInterval, clientTimeout)
 	})
 }
 

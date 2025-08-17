@@ -230,10 +230,10 @@ func TestNewAgent_Success(t *testing.T) {
 	require.NotNil(t, agent)
 
 	// Verify agent properties
-	assert.NotNil(t, agent.runnable)
-	assert.NotNil(t, agent.graph)
-	assert.Equal(t, config.MaxStep, agent.config.MaxStep)
-	assert.Equal(t, config.DebugMode, agent.config.DebugMode)
+	assert.NotNil(t, agent.Runnable)
+	assert.NotNil(t, agent.Graph)
+	assert.Equal(t, config.MaxStep, agent.Config.MaxStep)
+	assert.Equal(t, config.DebugMode, agent.Config.DebugMode)
 }
 
 // TestNewAgent_InvalidConfig tests agent creation with invalid config

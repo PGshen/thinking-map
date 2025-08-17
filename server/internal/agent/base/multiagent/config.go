@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/agent/base"
+	"github.com/PGshen/thinking-map/server/internal/agent/base/react"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
@@ -44,6 +45,7 @@ type Specialist struct {
 	SystemPrompt string `yaml:"system_prompt" json:"system_prompt"`
 	Invokable    compose.Invoke[[]*schema.Message, *schema.Message, base.AgentOption]
 	Streamable   compose.Stream[[]*schema.Message, *schema.Message, base.AgentOption]
+	ReactAgent   *react.ReactAgent
 }
 
 // SessionConfig represents session management configuration
@@ -80,9 +82,13 @@ func (config *MultiAgentConfig) Validate() error {
 		return errors.New("host model is not configured")
 	}
 
-	if len(config.Specialists) == 0 {
-		return errors.New("no specialists configured")
-	}
+	// 增加一个通用的specialist, 用于处理通用任务
+	config.Specialists = append(config.Specialists, &Specialist{
+		Name:         generalSpecialistNodeKey,
+		IntendedUse:  "General tasks",
+		ChatModel:    config.Host.Model,
+		SystemPrompt: "You are a general specialist, you can handle any tasks.",
+	})
 
 	for i, specialist := range config.Specialists {
 		if len(specialist.Name) == 0 {
@@ -93,8 +99,8 @@ func (config *MultiAgentConfig) Validate() error {
 			return fmt.Errorf("specialist %s has empty intended use", specialist.Name)
 		}
 
-		if specialist.ChatModel == nil && (specialist.Invokable == nil || specialist.Streamable == nil) {
-			return fmt.Errorf("specialist %s has no model configured", specialist.Name)
+		if specialist.ChatModel == nil && (specialist.Invokable == nil || specialist.Streamable == nil) && specialist.ReactAgent == nil {
+			return fmt.Errorf("specialist %s has no model, invokable, streamable, or react agent configured", specialist.Name)
 		}
 	}
 

@@ -405,19 +405,19 @@ func NewSpecialistBranchHandler(config *MultiAgentConfig) *SpecialistBranchHandl
 // Evaluate determines which specialist should handle the current step
 func (h *SpecialistBranchHandler) Evaluate(ctx context.Context, state *MultiAgentState) (string, error) {
 	if state.CurrentStep == "" {
-		return "result_collector", nil // No current step, go to result collection
+		return generalSpecialistNodeKey, nil // No current step, go to common specialist
 	}
 
 	// Find the current step by ID
 	currentStep := h.findStepByID(state.CurrentStep, state)
 	if currentStep == nil {
-		return "result_collector", nil // Step not found, go to result collection
+		return generalSpecialistNodeKey, nil // Step not found, go to common specialist
 	}
 
 	// Return the assigned specialist for the current step
 	assignedSpecialist := currentStep.AssignedSpecialist
 	if assignedSpecialist == "" {
-		return "result_collector", nil // No specialist assigned, go to result collection
+		return generalSpecialistNodeKey, nil // No specialist assigned, go to common specialist
 	}
 
 	// Verify the specialist exists in config
@@ -427,8 +427,8 @@ func (h *SpecialistBranchHandler) Evaluate(ctx context.Context, state *MultiAgen
 		}
 	}
 
-	// Specialist not found, go to result collection
-	return "result_collector", nil
+	// Specialist not found, go to common specialist
+	return generalSpecialistNodeKey, nil
 }
 
 // findStepByID finds a step by its ID in the current plan

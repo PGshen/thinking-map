@@ -87,8 +87,7 @@ func buildDecompositionDecisionAgent(ctx context.Context, option ...base.AgentOp
 		IntendedUse: "分析问题复杂度并决定拆解策略类型（顺序型、并行型、层次型、探索型）",
 		// ChatModel:    cm,
 		SystemPrompt: buildDecompositionDecisionPrompt(),
-		Invokable:    agent.Generate,
-		Streamable:   agent.Stream,
+		ReactAgent:   agent,
 	}, nil
 }
 
@@ -123,7 +122,6 @@ func buildProblemDecompositionAgent(ctx context.Context, option ...base.AgentOpt
 		IntendedUse: "基于拆解策略将复杂问题分解为可管理的子问题，创建子节点并设置依赖关系",
 		// ChatModel:    cm,
 		SystemPrompt: buildProblemDecompositionPrompt(),
-		Invokable:    agent.Generate,
-		Streamable:   agent.Stream,
+		ReactAgent:   agent,
 	}, nil
 }
