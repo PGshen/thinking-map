@@ -235,7 +235,7 @@ func (s *DecompositionService) Decompose(ctx *gin.Context, contextInfo *ContextI
 		}
 	}()
 
-	conversationAnalyzerMessageSender := &analyzerMessage{
+	analyzerMessageHandler := &analyzerMessageHandler{
 		mapID:      contextInfo.MapInfo.ID,
 		nodeID:     contextInfo.NodeInfo.ID,
 		userID:     userID,
@@ -267,7 +267,7 @@ func (s *DecompositionService) Decompose(ctx *gin.Context, contextInfo *ContextI
 
 	// 5. 执行意图识别
 	options := []base.AgentOption{
-		multiagent.WithConversationAnalyzer(conversationAnalyzerMessageSender),
+		multiagent.WithConversationAnalyzer(analyzerMessageHandler),
 		multiagent.WithDirectAnswerHandler(generalMessageHandler),
 		multiagent.WithFinalAnswerHandler(generalMessageHandler),
 		multiagent.WithPlanCreationHandler(planCreationMessageHandler),
@@ -295,19 +295,19 @@ func (s *DecompositionService) Decompose(ctx *gin.Context, contextInfo *ContextI
 	return
 }
 
-type analyzerMessage struct {
+type analyzerMessageHandler struct {
 	mapID      string
 	nodeID     string
 	userID     string
 	msgManager *global.MessageManager
 }
 
-func (m *analyzerMessage) OnMessage(ctx context.Context, message *schema.Message) (context.Context, error) {
+func (m *analyzerMessageHandler) OnMessage(ctx context.Context, message *schema.Message) (context.Context, error) {
 	// 用不上，空实现
 	return ctx, nil
 }
 
-func (m *analyzerMessage) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
+func (m *analyzerMessageHandler) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
 	messageID := uuid.NewString()
 	sseBroker := global.GetBroker()
 	// 使用流式JSON解析器解析ReasoningOutput
@@ -570,22 +570,56 @@ func (m *planCreationMessageHandler) OnStreamMessage(ctx context.Context, sr *sc
 	parser := utils.NewStreamingJsonParser(matcher, true, true)
 
 	var stepName strings.Builder
+	var currentStepIndex int = -1 // 跟踪当前步骤索引
+	var isFirstCharOfStep bool = true // 标记是否为步骤的第一个字符
 
 	// 注册路径匹配器来提取userIntent字段
 	matcher.On("steps[*].name", func(value interface{}, path []interface{}) {
 		// fmt.Print("thought:", value)
 		if str, ok := value.(string); ok {
+			// 从path中提取数组索引
+			var stepIndex int = -1
+			for _, segment := range path {
+				if idx, isInt := segment.(int); isInt {
+					stepIndex = idx
+					break
+				}
+			}
+
+			// 检查是否切换到新的步骤
+			if stepIndex != currentStepIndex {
+				currentStepIndex = stepIndex
+				isFirstCharOfStep = true
+			}
+
+			// 构建要发送的消息
+			var message string
+			if isFirstCharOfStep {
+				// 如果是步骤的第一个字符，添加markdown有序列表格式
+				if currentStepIndex > 0 {
+					// 不是第一个步骤，先换行
+					message = fmt.Sprintf("\n%d. %s", currentStepIndex+1, str)
+				} else {
+					// 第一个步骤
+					message = fmt.Sprintf("%d. %s", currentStepIndex+1, str)
+				}
+				isFirstCharOfStep = false
+			} else {
+				// 同一步骤的后续字符，直接追加
+				message = str
+			}
+
 			sseBroker.PublishToSession(m.mapID, sse.Event{
 				ID:   m.nodeID,
 				Type: dto.MessageTextEventType,
 				Data: dto.MessageTextEvent{
 					NodeID:    m.nodeID,
 					MessageID: messageID,
-					Message:   str,
+					Message:   message,
 					Mode:      "append",
 				},
 			})
-			stepName.WriteString(str)
+			stepName.WriteString(message)
 		}
 	})
 

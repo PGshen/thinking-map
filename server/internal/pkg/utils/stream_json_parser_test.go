@@ -449,7 +449,7 @@ func TestRealtimeIncrementalArrayBehaviorSummary(t *testing.T) {
 	matcher := NewSimplePathMatcher()
 
 	// 匹配数组中所有元素的value字段
-	matcher.On("items[*].name", func(value interface{}, path []interface{}) {
+	matcher.On("steps[*].name", func(value interface{}, path []interface{}) {
 		allResults = append(allResults, value)
 		pathStr := fmt.Sprintf("%v", path)
 		pathCounts[pathStr]++
@@ -460,12 +460,32 @@ func TestRealtimeIncrementalArrayBehaviorSummary(t *testing.T) {
 
 	// 包含多个数组元素的JSON
 	jsonData := `{
-		"items": [
-			{"name": "apple"},
-			{"name": "banana"},
-			{"name": "cherry"}
-		]
-	}`
+    "id": "plan_001",
+    "name": "Evaluation of AI in K-12 Education",
+    "description": "A structured approach to evaluate the effectiveness and impact of AI technology in K-12 education.",
+    "steps": [
+        {
+            "id": "step_1",
+            "name": "Determine Decomposition Strategy",
+            "description": "Analyze the complexity of the task and decide on the suitable decomposition strategy for the evaluation process.",
+            "assigned_specialist": "DecompositionDecisionAgent",
+            "priority": 1,
+            "dependencies": [],
+            "parameters": {}
+        },
+        {
+            "id": "step_2",
+            "name": "Decompose Evaluation Framework",
+            "description": "Based on the determined strategy, decompose the overall evaluation framework into manageable sub-problems and identify their dependencies.",
+            "assigned_specialist": "ProblemDecompositionAgent",
+            "priority": 2,
+            "dependencies": [
+                "step_1"
+            ],
+            "parameters": {}
+        }
+    ]
+}`
 
 	err := parser.Write(jsonData)
 	if err != nil {
@@ -481,12 +501,10 @@ func TestRealtimeIncrementalArrayBehaviorSummary(t *testing.T) {
 	uniqueIndices := make(map[int]bool)
 	for pathStr := range pathCounts {
 		// 从路径字符串中提取数组索引
-		if strings.Contains(pathStr, "items 0") {
+		if strings.Contains(pathStr, "steps 0") {
 			uniqueIndices[0] = true
-		} else if strings.Contains(pathStr, "items 1") {
+		} else if strings.Contains(pathStr, "steps 1") {
 			uniqueIndices[1] = true
-		} else if strings.Contains(pathStr, "items 2") {
-			uniqueIndices[2] = true
 		}
 	}
 
@@ -495,9 +513,9 @@ func TestRealtimeIncrementalArrayBehaviorSummary(t *testing.T) {
 	t.Logf("各路径匹配次数: %v", pathCounts)
 
 	// 验证核心问题的答案
-	if len(uniqueIndices) == 3 {
+	if len(uniqueIndices) == 2 {
 		t.Log("✅ 核心问题答案：实时增量模式下能够正常匹配数组结构中的所有值")
-		t.Logf("✅ 所有3个数组元素（索引0、1、2）都被成功匹配")
+		t.Logf("✅ 所有2个数组元素（索引0、1）都被成功匹配")
 		t.Log("✅ 数组结构解析正常，路径匹配正确")
 		t.Log("")
 		t.Log("📝 说明：")
@@ -506,12 +524,12 @@ func TestRealtimeIncrementalArrayBehaviorSummary(t *testing.T) {
 		t.Log("   - 但是数组结构的解析和路径匹配完全正常")
 		t.Log("   - 所有数组元素都能被正确识别和匹配")
 	} else {
-		t.Errorf("❌ 问题：只匹配到 %d 个数组元素，期望 3 个", len(uniqueIndices))
+		t.Errorf("❌ 问题：只匹配到 %d 个数组元素，期望 2 个", len(uniqueIndices))
 	}
 
 	// 额外验证：检查是否每个数组元素都有多次匹配（因为字符串被拆分）
-	for i := 0; i < 3; i++ {
-		pathPattern := fmt.Sprintf("items %d", i)
+	for i := 0; i < 2; i++ {
+		pathPattern := fmt.Sprintf("steps %d", i)
 		matchCount := 0
 		for pathStr, count := range pathCounts {
 			if strings.Contains(pathStr, pathPattern) {

@@ -220,7 +220,28 @@ func (p *StreamingJsonParser) processChar(char rune) error {
 	// 处理字符串中的转义
 	if p.isInString {
 		if p.isEscaped {
-			p.buffer += string(char)
+			// 处理转义字符
+			switch char {
+			case 'n':
+				p.buffer += "\n"
+			case 't':
+				p.buffer += "\t"
+			case 'r':
+				p.buffer += "\r"
+			case '\\':
+				p.buffer += "\\"
+			case '"':
+				p.buffer += "\""
+			case '/':
+				p.buffer += "/"
+			case 'b':
+				p.buffer += "\b"
+			case 'f':
+				p.buffer += "\f"
+			default:
+				// 对于不认识的转义字符，保持原样
+				p.buffer += "\\" + string(char)
+			}
 			p.isEscaped = false
 			return nil
 		}
@@ -601,9 +622,15 @@ func (p *StreamingJsonParser) endObject() {
 	if len(p.stack) > 0 {
 		p.stack = p.stack[:len(p.stack)-1]
 	}
-	// 移除当前键（如果有的话）
+	// 只有当当前路径的最后一个元素不是数组索引时，才移除路径元素
+	// 这样可以保持数组索引在路径中的正确位置
 	if len(p.path) > 1 {
-		p.path = p.path[:len(p.path)-1]
+		// 检查最后一个路径元素是否为数组索引（整数类型）
+		lastElement := p.path[len(p.path)-1]
+		if _, isInt := lastElement.(int); !isInt {
+			// 如果不是数组索引，则移除路径元素
+			p.path = p.path[:len(p.path)-1]
+		}
 	}
 	p.state = COMMA
 }
