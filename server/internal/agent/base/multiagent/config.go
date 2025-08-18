@@ -3,7 +3,6 @@ package multiagent
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/agent/base"
 	"github.com/PGshen/thinking-map/server/internal/agent/base/react"
@@ -14,18 +13,13 @@ import (
 
 // ThinkingConfig represents thinking configuration
 type ThinkingConfig struct {
-	MaxSteps           int           `yaml:"max_steps" json:"max_steps"`
-	Timeout            time.Duration `yaml:"timeout" json:"timeout"`
-	EnableDeepThink    bool          `yaml:"enable_deep_think" json:"enable_deep_think"`
-	ComplexityAnalysis bool          `yaml:"complexity_analysis" json:"complexity_analysis"`
+	MaxSteps       int    `yaml:"max_steps" json:"max_steps"`
+	ThinkingPrompt string `yaml:"thinking_prompt" json:"thinking_prompt"`
 }
 
 // PlanningConfig represents planning configuration
 type PlanningConfig struct {
-	MaxSteps           int           `yaml:"max_steps" json:"max_steps"`
-	Timeout            time.Duration `yaml:"timeout" json:"timeout"`
-	EnableDynamicPlan  bool          `yaml:"enable_dynamic_plan" json:"enable_dynamic_plan"`
-	DependencyAnalysis bool          `yaml:"dependency_analysis" json:"dependency_analysis"`
+	PlanningPrompt string `yaml:"planning_prompt" json:"planning_prompt"`
 }
 
 // Host represents the host agent configuration
@@ -108,17 +102,9 @@ func GetDefaultConfig(chatModel model.ToolCallingChatModel) *MultiAgentConfig {
 			Model:        chatModel,
 			SystemPrompt: "You are an intelligent host agent responsible for analyzing tasks and coordinating specialist agents.",
 			Thinking: ThinkingConfig{
-				MaxSteps:           5,
-				Timeout:            2 * time.Minute,
-				EnableDeepThink:    true,
-				ComplexityAnalysis: true,
+				MaxSteps: 5,
 			},
-			Planning: PlanningConfig{
-				MaxSteps:           10,
-				Timeout:            3 * time.Minute,
-				EnableDynamicPlan:  true,
-				DependencyAnalysis: true,
-			},
+			Planning: PlanningConfig{},
 		},
 		Specialists: []*Specialist{
 			{

@@ -37,8 +37,10 @@ func BuildDecompositionAgent(ctx context.Context, option ...base.AgentOption) (c
 		Name:        "DecompositionAgent",
 		Description: "负责问题拆解的多智能体系统",
 		Host: multiagent.Host{
-			Model:        cm,
-			SystemPrompt: buildHostSystemPrompt(),
+			Model: cm,
+			Planning: multiagent.PlanningConfig{
+				PlanningPrompt: buildPlanningPrompt(),
+			},
 		},
 		Specialists: []*multiagent.Specialist{
 			decompositionDecisionAgent,

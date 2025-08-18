@@ -168,7 +168,7 @@ func (h *PlanCreationHandler) PreHandler(ctx context.Context, input []*schema.Me
 	state.SetExecutionStatus(ExecutionStatusPlanning)
 	state.SetCurrentStep("planning")
 
-	prompt := buildPlanCreationPrompt(state, h.config.Specialists)
+	prompt := buildPlanCreationPrompt(state, h.config)
 	return []*schema.Message{prompt}, nil
 }
 

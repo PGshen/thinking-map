@@ -23,11 +23,13 @@ Please provide a clear, helpful response.`,
 	}
 }
 
-func buildPlanCreationPrompt(state *MultiAgentState, specialists []*Specialist) *schema.Message {
+func buildPlanCreationPrompt(state *MultiAgentState, config *MultiAgentConfig) *schema.Message {
 	specialistList := ""
-	for _, specialist := range specialists {
+	for _, specialist := range config.Specialists {
 		specialistList += fmt.Sprintf("- %s: %s\n", specialist.Name, specialist.IntendedUse)
 	}
+
+	planningPrompt := config.Host.Planning.PlanningPrompt
 
 	prompt := fmt.Sprintf(`Create a detailed execution plan for the following task.
 
@@ -72,7 +74,7 @@ Remember: Output ONLY the JSON object, no other text.`,
 
 	return &schema.Message{
 		Role:    schema.User,
-		Content: prompt,
+		Content: planningPrompt + "\n" + prompt,
 	}
 }
 
