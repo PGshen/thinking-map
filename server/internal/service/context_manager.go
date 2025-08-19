@@ -116,8 +116,10 @@ func (cm *ContextManager) GetNodeContextWithConversation(ctx context.Context, no
 	}
 
 	// 获取对话历史上下文
-	if conversationContext, err := cm.getConversationContext(ctx, nodeID, parentMsgID); err == nil {
-		contextInfo.ConversationContext = conversationContext
+	if parentMsgID != "" && parentMsgID != uuid.Nil.String() {
+		if conversationContext, err := cm.getConversationContext(ctx, parentMsgID); err == nil {
+			contextInfo.ConversationContext = conversationContext
+		}
 	}
 
 	return contextInfo, nil
@@ -214,13 +216,13 @@ func (cm *ContextManager) getChildrenContext(ctx context.Context, nodeID string)
 }
 
 // getConversationContext 获取节点的对话历史上下文
-func (cm *ContextManager) getConversationContext(ctx context.Context, nodeID string, parentMsgID string) ([]ConversationMessage, error) {
+func (cm *ContextManager) getConversationContext(ctx context.Context, parentMsgID string) ([]ConversationMessage, error) {
 	if cm.messageRepo == nil {
 		return nil, nil
 	}
 
 	// 获取最近的对话历史，用于问题拆解和结论生成的对话框交互
-	recentMessages, err := cm.getRecentNodeConversation(ctx, nodeID, parentMsgID, 10)
+	recentMessages, err := cm.getRecentNodeConversation(ctx, parentMsgID, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +231,7 @@ func (cm *ContextManager) getConversationContext(ctx context.Context, nodeID str
 }
 
 // getRecentNodeConversation 获取节点最近的对话记录
-func (cm *ContextManager) getRecentNodeConversation(ctx context.Context, nodeID string, parentMsgID string, limit int) ([]ConversationMessage, error) {
+func (cm *ContextManager) getRecentNodeConversation(ctx context.Context, parentMsgID string, limit int) ([]ConversationMessage, error) {
 	if parentMsgID == "" {
 		return nil, nil
 	}
@@ -252,11 +254,15 @@ func (cm *ContextManager) getRecentNodeConversation(ctx context.Context, nodeID 
 		if i >= limit {
 			break
 		}
+		content := msg.Content.String()
+		if content == "" {
+			continue
+		}
 		conversationMessages = append(conversationMessages, ConversationMessage{
 			MessageID: msg.ID,
 			ParentID:  msg.ParentID,
 			Role:      string(msg.Role),
-			Content:   msg.Content.String(),
+			Content:   content,
 			Timestamp: msg.CreatedAt,
 		})
 	}

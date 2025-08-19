@@ -29,8 +29,8 @@ func NewAgent(ctx context.Context, config ReactAgentConfig, opts ...base.AgentOp
 	}
 
 	agent := &ReactAgent{
-		config:       config,
-		agentOptions: opts,
+		Config:       config,
+		AgentOptions: opts,
 	}
 
 	// Setup chat model
@@ -45,7 +45,7 @@ func NewAgent(ctx context.Context, config ReactAgentConfig, opts ...base.AgentOp
 		return nil, fmt.Errorf("failed to build graph: %w", err)
 	}
 
-	agent.graph = graph
+	agent.Graph = graph
 
 	// Compile graph to runnable
 	runnable, err := graph.Compile(ctx, compose.WithMaxRunSteps(config.MaxStep))
@@ -53,7 +53,7 @@ func NewAgent(ctx context.Context, config ReactAgentConfig, opts ...base.AgentOp
 		return nil, fmt.Errorf("failed to compile graph: %w", err)
 	}
 
-	agent.runnable = runnable
+	agent.Runnable = runnable
 
 	return agent, nil
 }
@@ -62,20 +62,22 @@ func NewAgent(ctx context.Context, config ReactAgentConfig, opts ...base.AgentOp
 func (a *ReactAgent) setupChatModel(ctx context.Context) (model.BaseChatModel, error) {
 
 	// Use the tool calling model as the base chat model
-	chatModel := a.config.ToolCallingModel
+	chatModel := a.Config.ToolCallingModel
 	if chatModel == nil {
 		return nil, fmt.Errorf("ToolCallingModel cannot be nil")
 	}
 	// Generate tool infos for model binding
-	toolInfos, err := genToolInfos(ctx, a.config.ToolsConfig)
+	toolInfos, err := genToolInfos(ctx, a.Config.ToolsConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate tool infos: %w", err)
 	}
 
 	// Bind tools to chat model (required for tool calling capability)
-	chatModel, err = chatModel.WithTools(toolInfos)
-	if err != nil {
-		return nil, fmt.Errorf("failed to bind tools: %w", err)
+	if len(toolInfos) > 0 {
+		chatModel, err = chatModel.WithTools(toolInfos)
+		if err != nil {
+			return nil, fmt.Errorf("failed to bind tools: %w", err)
+		}
 	}
 	return chatModel, nil
 }
@@ -101,7 +103,7 @@ func (a *ReactAgent) buildGraph(ctx context.Context, chatModel model.BaseChatMod
 			Messages:                 make([]*schema.Message, 0),
 			ReasoningHistory:         make([]Reasoning, 0),
 			Iteration:                0,
-			MaxIterations:            a.config.MaxStep,
+			MaxIterations:            a.Config.MaxStep,
 			Completed:                false,
 			FinalAnswer:              "",
 			ReturnDirectlyToolCallID: "",
@@ -152,7 +154,7 @@ func (a *ReactAgent) buildGraph(ctx context.Context, chatModel model.BaseChatMod
 
 // addInitNode adds the initialization node to the graph
 func (a *ReactAgent) addInitNode(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
-	initHandler := NewInitHandler(a.config)
+	initHandler := NewInitHandler(a.Config)
 	return graph.AddLambdaNode(nodeKeyInit, compose.InvokableLambda(
 		func(ctx context.Context, input []*schema.Message) ([]*schema.Message, error) {
 			return input, nil
@@ -163,7 +165,7 @@ func (a *ReactAgent) addInitNode(graph *compose.Graph[[]*schema.Message, *schema
 
 // addReasoningNode adds the reasoning node to the graph
 func (a *ReactAgent) addReasoningNode(graph *compose.Graph[[]*schema.Message, *schema.Message], chatModel model.BaseChatModel) error {
-	reasoningHandler := NewReasoningHandler(a.config)
+	reasoningHandler := NewReasoningHandler(a.Config)
 	return graph.AddChatModelNode(nodeKeyReasoning, chatModel,
 		compose.WithStatePreHandler(reasoningHandler.PreHandler),
 		compose.WithStatePostHandler(reasoningHandler.PostHandler),
@@ -177,13 +179,13 @@ func (a *ReactAgent) addToReasoningNode(graph *compose.Graph[[]*schema.Message, 
 
 // addToolsNode adds the tools execution node to the graph
 func (a *ReactAgent) addToolsNode(ctx context.Context, graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
-	toolsNodeConfig := &a.config.ToolsConfig
+	toolsNodeConfig := &a.Config.ToolsConfig
 	toolsNode, err := compose.NewToolNode(ctx, toolsNodeConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create tools node: %w", err)
 	}
 
-	toolHandler := NewToolHandler(a.config)
+	toolHandler := NewToolHandler(a.Config)
 	return graph.AddToolsNode(nodeKeyTools, toolsNode,
 		compose.WithStatePostHandler(toolHandler.PostHandler),
 	)
@@ -234,7 +236,7 @@ func (a *ReactAgent) toolsCheckerNodeHandler(ctx context.Context, input []*schem
 
 // addCompleteNode adds the completion node to the graph
 func (a *ReactAgent) addCompleteNode(graph *compose.Graph[[]*schema.Message, *schema.Message]) error {
-	completeHandler := NewCompleteHandler(a.config)
+	completeHandler := NewCompleteHandler(a.Config)
 	return graph.AddLambdaNode(nodeKeyComplete, compose.InvokableLambda(
 		func(ctx context.Context, input *schema.Message) (*schema.Message, error) {
 			return input, nil
@@ -374,8 +376,8 @@ func (a *ReactAgent) Generate(ctx context.Context, messages []*schema.Message, o
 	}
 
 	options := base.GetComposeOptions(opts...)
-	options = append(options, base.GetComposeOptions(a.agentOptions...)...) // 合并option
-	result, err := a.runnable.Invoke(ctx, messages, options...)
+	options = append(options, base.GetComposeOptions(a.AgentOptions...)...) // 合并option
+	result, err := a.Runnable.Invoke(ctx, messages, options...)
 	if err != nil {
 		return nil, fmt.Errorf("agent execution failed: %w", err)
 	}
@@ -391,8 +393,8 @@ func (a *ReactAgent) Stream(ctx context.Context, messages []*schema.Message, opt
 
 	// Execute streaming with error handling
 	options := base.GetComposeOptions(opts...)
-	options = append(options, base.GetComposeOptions(a.agentOptions...)...) // 合并option
-	stream, err := a.runnable.Stream(ctx, messages, options...)
+	options = append(options, base.GetComposeOptions(a.AgentOptions...)...) // 合并option
+	stream, err := a.Runnable.Stream(ctx, messages, options...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start streaming: %w", err)
 	}

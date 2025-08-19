@@ -155,7 +155,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
               <div className="text-xs text-green-700 overflow-hidden leading-tight">
                 <MarkdownContent 
                   id={'conclusion' + data.id}
-                  content={data.conclusion} 
+                  content={data.conclusion.content} 
                   className="max-w-full overflow-hidden text-ellipsis line-clamp-5"
                 />
               </div>

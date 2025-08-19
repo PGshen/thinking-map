@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -299,4 +300,255 @@ func TestStreamingJsonParserRealtimeIncremental(t *testing.T) {
 	if len(incrementalResults) >= len(cumulativeResults) {
 		t.Errorf("Expected incremental mode to have fewer results than cumulative mode, got incremental: %d, cumulative: %d", len(incrementalResults), len(cumulativeResults))
 	}
+}
+
+// TestRealtimeIncrementalBugDemo 简化的测试，专门演示实时增量模式的问题
+func TestRealtimeIncrementalBugDemo(t *testing.T) {
+	var results []interface{}
+	matcher := NewSimplePathMatcher()
+
+	// 匹配第一个数组元素的value
+	matcher.On("items[0].value", func(value interface{}, path []interface{}) {
+		results = append(results, value)
+		t.Logf("Found value: %v at path: %v", value, path)
+	})
+
+	// 使用实时增量模式
+	parser := NewStreamingJsonParser(matcher, true, true)
+
+	// 简单的JSON数组
+	jsonData := `{"items":[{"value":"hello"}]}`
+
+	err := parser.Write(jsonData)
+	if err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	err = parser.End()
+	if err != nil {
+		t.Fatalf("Failed to end parsing: %v", err)
+	}
+
+	// 在实时增量模式下，"hello"会被拆分成5个字符发送
+	t.Logf("Total callbacks triggered: %d", len(results))
+	t.Logf("All results: %v", results)
+
+	if len(results) == 1 {
+		t.Logf("SUCCESS: Got complete string value: %v", results[0])
+	} else {
+		t.Logf("EXPECTED BEHAVIOR: In realtime incremental mode, got %d character increments: %v", len(results), results)
+	}
+}
+
+// TestArrayElementsMatchingInRealtimeIncremental 验证实时增量模式下是否能匹配到所有数组元素
+func TestArrayElementsMatchingInRealtimeIncremental(t *testing.T) {
+	var allMatches []struct {
+		value interface{}
+		path  []interface{}
+	}
+	matcher := NewSimplePathMatcher()
+
+	// 匹配数组中所有元素的value字段
+	matcher.On("data.items[*].value", func(value interface{}, path []interface{}) {
+		allMatches = append(allMatches, struct {
+			value interface{}
+			path  []interface{}
+		}{value: value, path: append([]interface{}{}, path...)})
+		t.Logf("Match: value='%v' at path=%v", value, path)
+	})
+
+	// 使用实时增量模式
+	parser := NewStreamingJsonParser(matcher, true, true)
+
+	// 包含3个数组元素的JSON
+	jsonData := `{
+		"data": {
+			"items": [
+				{"value": "first", "id": 1},
+				{"value": "second", "id": 2},
+				{"value": "third", "id": 3}
+			]
+		}
+	}`
+
+	err := parser.Write(jsonData)
+	if err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	err = parser.End()
+	if err != nil {
+		t.Fatalf("Failed to end parsing: %v", err)
+	}
+
+	// 分析匹配结果
+	uniqueArrayIndices := make(map[int]bool)
+	maxValuesByIndex := make(map[int]string)
+
+	for _, match := range allMatches {
+		if len(match.path) >= 3 {
+			if arrayIndex, ok := match.path[2].(int); ok {
+				uniqueArrayIndices[arrayIndex] = true
+				// 记录每个索引位置的最长值（最完整的值）
+				if str, ok := match.value.(string); ok {
+					if len(str) > len(maxValuesByIndex[arrayIndex]) {
+						maxValuesByIndex[arrayIndex] = str
+					}
+				}
+			}
+		}
+	}
+
+	t.Logf("Total matches: %d", len(allMatches))
+	t.Logf("Unique array indices matched: %v", getKeys(uniqueArrayIndices))
+	t.Logf("Max values by index: %v", maxValuesByIndex)
+
+	// 验证是否匹配到了所有3个数组元素
+	expectedIndices := []int{0, 1, 2}
+	for _, expectedIndex := range expectedIndices {
+		if !uniqueArrayIndices[expectedIndex] {
+			t.Errorf("Missing array index %d in matched paths", expectedIndex)
+		}
+	}
+
+	// 验证是否找到了预期的值（即使是增量形式）
+	expectedValues := map[int]string{0: "first", 1: "second", 2: "third"}
+	allFound := true
+	for index, expectedValue := range expectedValues {
+		if maxValue, exists := maxValuesByIndex[index]; exists {
+			if maxValue == expectedValue {
+				t.Logf("✅ Array index %d: found complete value '%s'", index, maxValue)
+			} else {
+				t.Logf("⚠️  Array index %d: found partial value '%s', expected '%s'", index, maxValue, expectedValue)
+				allFound = false
+			}
+		} else {
+			t.Errorf("❌ Array index %d: no value found", index)
+			allFound = false
+		}
+	}
+
+	if len(uniqueArrayIndices) == 3 {
+		t.Logf("✅ SUCCESS: All 3 array elements were matched in realtime incremental mode")
+		if allFound {
+			t.Logf("✅ All expected values were found (complete or partial)")
+		} else {
+			t.Logf("⚠️  Some values were only partially matched due to incremental nature")
+		}
+	} else {
+		t.Errorf("❌ Expected 3 array indices, got %d", len(uniqueArrayIndices))
+	}
+}
+
+// TestRealtimeIncrementalArrayBehaviorSummary 总结性测试：验证实时增量模式下数组解析的完整行为
+func TestRealtimeIncrementalArrayBehaviorSummary(t *testing.T) {
+	t.Log("=== 实时增量模式下JSON数组解析行为验证 ===")
+
+	var allResults []interface{}
+	var pathCounts map[string]int = make(map[string]int)
+	matcher := NewSimplePathMatcher()
+
+	// 匹配数组中所有元素的value字段
+	matcher.On("steps[*].name", func(value interface{}, path []interface{}) {
+		allResults = append(allResults, value)
+		pathStr := fmt.Sprintf("%v", path)
+		pathCounts[pathStr]++
+	})
+
+	// 使用实时增量模式
+	parser := NewStreamingJsonParser(matcher, true, true)
+
+	// 包含多个数组元素的JSON
+	jsonData := `{
+    "id": "plan_001",
+    "name": "Evaluation of AI in K-12 Education",
+    "description": "A structured approach to evaluate the effectiveness and impact of AI technology in K-12 education.",
+    "steps": [
+        {
+            "id": "step_1",
+            "name": "Determine Decomposition Strategy",
+            "description": "Analyze the complexity of the task and decide on the suitable decomposition strategy for the evaluation process.",
+            "assigned_specialist": "DecompositionDecisionAgent",
+            "priority": 1,
+            "dependencies": [],
+            "parameters": {}
+        },
+        {
+            "id": "step_2",
+            "name": "Decompose Evaluation Framework",
+            "description": "Based on the determined strategy, decompose the overall evaluation framework into manageable sub-problems and identify their dependencies.",
+            "assigned_specialist": "ProblemDecompositionAgent",
+            "priority": 2,
+            "dependencies": [
+                "step_1"
+            ],
+            "parameters": {}
+        }
+    ]
+}`
+
+	err := parser.Write(jsonData)
+	if err != nil {
+		t.Fatalf("解析失败: %v", err)
+	}
+
+	err = parser.End()
+	if err != nil {
+		t.Fatalf("结束解析失败: %v", err)
+	}
+
+	// 分析结果
+	uniqueIndices := make(map[int]bool)
+	for pathStr := range pathCounts {
+		// 从路径字符串中提取数组索引
+		if strings.Contains(pathStr, "steps 0") {
+			uniqueIndices[0] = true
+		} else if strings.Contains(pathStr, "steps 1") {
+			uniqueIndices[1] = true
+		}
+	}
+
+	t.Logf("总匹配次数: %d", len(allResults))
+	t.Logf("匹配到的数组索引: %v", getKeys(uniqueIndices))
+	t.Logf("各路径匹配次数: %v", pathCounts)
+
+	// 验证核心问题的答案
+	if len(uniqueIndices) == 2 {
+		t.Log("✅ 核心问题答案：实时增量模式下能够正常匹配数组结构中的所有值")
+		t.Logf("✅ 所有2个数组元素（索引0、1）都被成功匹配")
+		t.Log("✅ 数组结构解析正常，路径匹配正确")
+		t.Log("")
+		t.Log("📝 说明：")
+		t.Log("   - 实时增量模式的设计目的就是将字符串拆分成单个字符进行增量发送")
+		t.Log("   - 这种模式下，每个字符串值会触发多次回调（每个字符一次）")
+		t.Log("   - 但是数组结构的解析和路径匹配完全正常")
+		t.Log("   - 所有数组元素都能被正确识别和匹配")
+	} else {
+		t.Errorf("❌ 问题：只匹配到 %d 个数组元素，期望 2 个", len(uniqueIndices))
+	}
+
+	// 额外验证：检查是否每个数组元素都有多次匹配（因为字符串被拆分）
+	for i := 0; i < 2; i++ {
+		pathPattern := fmt.Sprintf("steps %d", i)
+		matchCount := 0
+		for pathStr, count := range pathCounts {
+			if strings.Contains(pathStr, pathPattern) {
+				matchCount += count
+			}
+		}
+		if matchCount > 1 {
+			t.Logf("✅ 数组元素 %d: 触发了 %d 次匹配（字符串被正确拆分）", i, matchCount)
+		} else {
+			t.Logf("⚠️  数组元素 %d: 只触发了 %d 次匹配", i, matchCount)
+		}
+	}
+}
+
+// getKeys 获取map的所有键
+func getKeys(m map[int]bool) []int {
+	keys := make([]int, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }

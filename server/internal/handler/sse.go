@@ -100,11 +100,11 @@ func (h *SSEHandler) SendEvent(c *gin.Context) {
 	if req.Delay > 0 {
 		go func() {
 			time.Sleep(time.Duration(req.Delay) * time.Millisecond)
-			h.broker.Publish(mapID, event)
+			h.broker.PublishToSession(mapID, event)
 		}()
 	} else {
 		// 立即发送
-		h.broker.Publish(mapID, event)
+		h.broker.PublishToSession(mapID, event)
 	}
 
 	// 返回响应

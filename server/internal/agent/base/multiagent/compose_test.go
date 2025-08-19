@@ -60,17 +60,9 @@ func createTestConfig() *MultiAgentConfig {
 			Model:        chatModel,
 			SystemPrompt: "You are a test assistant.",
 			Thinking: ThinkingConfig{
-				MaxSteps:           3,
-				Timeout:            30 * time.Second,
-				EnableDeepThink:    true,
-				ComplexityAnalysis: true,
+				MaxSteps: 3,
 			},
-			Planning: PlanningConfig{
-				MaxSteps:           5,
-				Timeout:            60 * time.Second,
-				EnableDynamicPlan:  true,
-				DependencyAnalysis: true,
-			},
+			Planning: PlanningConfig{},
 		},
 		// Temporarily disable specialists to test basic functionality
 		Specialists: []*Specialist{

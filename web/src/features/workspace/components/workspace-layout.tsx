@@ -23,6 +23,7 @@ export function WorkspaceLayout({ mapID }: WorkspaceLayoutProps) {
 
   return (
     <SidebarProvider
+      defaultOpen={false}
       style={
         {
           "--sidebar-width": "350px",

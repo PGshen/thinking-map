@@ -46,6 +46,7 @@ type ThinkingNode interface {
 	FindByParentID(ctx context.Context, parentID string) ([]*model.ThinkingNode, error)
 	UpdatePosition(ctx context.Context, id string, position model.JSONB) error
 	UpdateStatus(ctx context.Context, id string, status int) error
+	UpdateIsDecomposed(ctx context.Context, id string, isDecomposed bool) error
 }
 
 // Message 消息仓储接口

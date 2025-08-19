@@ -10,6 +10,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/cloudwego/eino-ext/devops"
@@ -28,11 +30,13 @@ import (
 )
 
 func main() {
-	// Init eino devops server
-	err := devops.Init(context.Background())
-	if err != nil {
-		log.Fatalf("[eino dev] init failed, err=%v", err)
-		return
+	// Init eino devops server (only if not disabled)
+	if os.Getenv("EINO_DEVOPS_DISABLE") != "true" {
+		err := devops.Init(context.Background())
+		if err != nil {
+			log.Fatalf("[eino dev] init failed, err=%v", err)
+			return
+		}
 	}
 	// 加载配置
 	cfg, err := config.LoadConfig("configs/config.yaml")
@@ -41,14 +45,21 @@ func main() {
 	}
 
 	// 初始化日志
-	if err := logger.Init(&cfg.Log); err != nil {
+	if err = logger.Init(&cfg.Log); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 	defer logger.Sync()
 
 	// 注册验证器
-	if err := validator.RegisterValidators(); err != nil {
+	if err = validator.RegisterValidators(); err != nil {
 		logger.Fatal("Failed to register validators", zap.Error(err))
+	}
+
+	// 检查PORT环境变量，如果存在则覆盖配置文件中的端口
+	if portEnv := os.Getenv("PORT"); portEnv != "" {
+		if port, err := strconv.Atoi(portEnv); err == nil {
+			cfg.Server.Port = port
+		}
 	}
 
 	// 启动服务器
@@ -68,12 +79,24 @@ func main() {
 	}
 	redisClient := redisClientRaw
 
-	// 初始化全局SSE broker
-	store := sse.NewMemorySessionStore()
-	global.InitBroker(store, 10*time.Second, 60*time.Second)
+	// 初始化分布式SSE组件
+	// 生成服务器ID
+	serverID := fmt.Sprintf("server-%d", time.Now().Unix())
+
+	// 创建Redis连接管理器
+	connManager := sse.NewRedisConnectionManager(redisClient, serverID)
+
+	// 创建Redis事件总线（支持本地优化）
+	eventBus := sse.NewRedisEventBus(redisClient, connManager, serverID)
+
+	// 初始化全局SSE broker（支持分布式）
+	global.InitBroker(eventBus, connManager, serverID, 10*time.Second, 60*time.Second)
 
 	// 初始化全局消息管理器
 	global.InitMessageManager(repository.NewMessageRepository(db), repository.NewThinkingNodeRepository(db))
+
+	// 初始化全局节点操作器
+	global.InitNodeOperator(repository.NewThinkingNodeRepository(db), repository.NewThinkingMapRepository(db))
 
 	// 解析 JWT 配置
 	expireDuration, err := time.ParseDuration(cfg.JWT.Expire)

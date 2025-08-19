@@ -1,7 +1,6 @@
 package dto
 
 type UnderstandingRequest struct {
-	MsgID         string `json:"msgID"`
 	ParentMsgID   string `json:"parentMsgID"`
 	Problem       string `json:"problem"`
 	ProblemType   string `json:"problemType"`

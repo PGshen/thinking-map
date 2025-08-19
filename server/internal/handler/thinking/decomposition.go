@@ -34,7 +34,6 @@ func (h *DecompositionHandler) Handle(c *gin.Context) {
 		})
 		return
 	}
-	// 生成msgID
 	h.decompositionService.Decomposition(c, req)
 	// 响应
 	c.JSON(http.StatusOK, dto.Response{
@@ -42,6 +41,6 @@ func (h *DecompositionHandler) Handle(c *gin.Context) {
 		Message:   "success",
 		Data:      nil,
 		Timestamp: time.Now(),
-		RequestID: req.MsgID,
+		RequestID: uuid.NewString(),
 	})
 }

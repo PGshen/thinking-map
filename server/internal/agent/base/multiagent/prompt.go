@@ -12,7 +12,11 @@ func buildDirectAnswerPrompt(state *MultiAgentState) *schema.Message {
 User Intent: %s
 Context: %s
 
-Please provide a clear, helpful response.`,
+Please provide a clear, helpful response.
+
+## Important Principles
+- Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
+`,
 		state.ConversationContext.UserIntent,
 		state.ConversationContext.ContextSummary,
 	)
@@ -23,11 +27,13 @@ Please provide a clear, helpful response.`,
 	}
 }
 
-func buildPlanCreationPrompt(state *MultiAgentState, specialists []*Specialist) *schema.Message {
+func buildPlanCreationPrompt(state *MultiAgentState, config *MultiAgentConfig) *schema.Message {
 	specialistList := ""
-	for _, specialist := range specialists {
+	for _, specialist := range config.Specialists {
 		specialistList += fmt.Sprintf("- %s: %s\n", specialist.Name, specialist.IntendedUse)
 	}
+
+	planningPrompt := config.Host.Planning.PlanningPrompt
 
 	prompt := fmt.Sprintf(`Create a detailed execution plan for the following task.
 
@@ -62,8 +68,8 @@ Create a plan with the following JSON structure:
 Notice:
 - The plan must be executable.
 - Each step must be assigned to a specialist, and the specialist must be available.
-
-Remember: Output ONLY the JSON object, no other text.`,
+- Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
+- Must strictly follow JSON format for replies, do not add any extra text`,
 		state.ConversationContext.UserIntent,
 		state.ConversationContext.Complexity.String(),
 		state.ConversationContext.KeyTopics,
@@ -72,7 +78,7 @@ Remember: Output ONLY the JSON object, no other text.`,
 
 	return &schema.Message{
 		Role:    schema.User,
-		Content: prompt,
+		Content: planningPrompt + "\n" + prompt,
 	}
 }
 
@@ -153,7 +159,12 @@ Decision criteria:
 - plan_needs_update: true if the current plan needs modification to better achieve the goal
 - If execution_completed=false and plan_needs_update=false, continue with current plan
 
-Remember: Output ONLY the JSON object, no other text.`, len(state.ExecutionHistory), state.RoundNumber, state.MaxRounds)
+Notice:
+- The plan must be executable.
+- Each step must be assigned to a specialist, and the specialist must be available.
+- Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
+- Must strictly follow JSON format for replies, do not add any extra text
+`, len(state.ExecutionHistory), state.RoundNumber, state.MaxRounds)
 
 	return []*schema.Message{{
 		Role:    schema.User,
@@ -265,7 +276,10 @@ Guidelines:
 - Consider the current execution state when making changes
 - Be conservative - only make necessary changes
 
-Remember: Output ONLY the JSON object, no other text.`, state.RoundNumber, state.MaxRounds)
+Notice:
+- Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
+- Must strictly follow JSON format for replies, do not add any extra text
+`, state.RoundNumber, state.MaxRounds)
 
 	return []*schema.Message{{
 		Role:    schema.User,

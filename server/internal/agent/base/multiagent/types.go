@@ -256,44 +256,35 @@ type TaskPlan struct {
 
 // MultiAgent represents the enhanced multi-agent system
 type MultiAgent struct {
-	runnable         compose.Runnable[[]*schema.Message, *schema.Message]
-	graph            *compose.Graph[[]*schema.Message, *schema.Message]
-	graphAddNodeOpts []compose.GraphAddNodeOpt
-	config           *MultiAgentConfig
+	Runnable         compose.Runnable[[]*schema.Message, *schema.Message]
+	Graph            *compose.Graph[[]*schema.Message, *schema.Message]
+	GraphAddNodeOpts []compose.GraphAddNodeOpt
+	AgentOptions     []base.AgentOption
+	Config           *MultiAgentConfig
 }
 
 // Generate executes the enhanced multi-agent system
 func (ema *MultiAgent) Generate(ctx context.Context, input []*schema.Message, opts ...base.AgentOption) (*schema.Message, error) {
-	composeOptions := base.GetComposeOptions(opts...)
+	options := base.GetComposeOptions(opts...)
+	options = append(options, base.GetComposeOptions(ema.AgentOptions...)...) // 合并option
 
-	// TODO: implement convertCallbacks function
-	// handler := convertCallbacks(opts...)
-	// if handler != nil {
-	//	composeOptions = append(composeOptions, compose.WithCallbacks(handler))
-	// }
-
-	return ema.runnable.Invoke(ctx, input, composeOptions...)
+	return ema.Runnable.Invoke(ctx, input, options...)
 }
 
 // Stream executes the enhanced multi-agent system in streaming mode
 func (ema *MultiAgent) Stream(ctx context.Context, input []*schema.Message, opts ...base.AgentOption) (*schema.StreamReader[*schema.Message], error) {
-	composeOptions := base.GetComposeOptions(opts...)
+	options := base.GetComposeOptions(opts...)
+	options = append(options, base.GetComposeOptions(ema.AgentOptions...)...) // 合并option
 
-	// TODO: implement convertCallbacks function
-	// handler := convertCallbacks(opts...)
-	// if handler != nil {
-	//	composeOptions = append(composeOptions, compose.WithCallbacks(handler))
-	// }
-
-	return ema.runnable.Stream(ctx, input, composeOptions...)
+	return ema.Runnable.Stream(ctx, input, options...)
 }
 
 // ExportGraph exports the underlying graph
 func (ema *MultiAgent) ExportGraph() (compose.AnyGraph, []compose.GraphAddNodeOpt) {
-	return ema.graph, ema.graphAddNodeOpts
+	return ema.Graph, ema.GraphAddNodeOpts
 }
 
 // GetConfig returns the configuration
 func (ema *MultiAgent) GetConfig() *MultiAgentConfig {
-	return ema.config
+	return ema.Config
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/agent/base"
+	"github.com/PGshen/thinking-map/server/internal/agent/base/react"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
 )
@@ -19,6 +21,7 @@ const (
 	planExecutionNodeKey        = "plan_execution"
 	toSpecialistBranchNodeKey   = "to_specialist_branch"
 	specialistBranchNodeKey     = "specialist_branch"
+	generalSpecialistNodeKey    = "general_specialist"
 	resultCollectorNodeKey      = "result_collector"
 	toFeedbackProcessorNodeKey  = "to_feedback_processor"
 	feedbackProcessorNodeKey    = "feedback_processor"
@@ -30,9 +33,13 @@ const (
 )
 
 // NewMultiAgent creates a new multi-agent system
-func NewMultiAgent(ctx context.Context, config *MultiAgentConfig) (*MultiAgent, error) {
+func NewMultiAgent(ctx context.Context, config *MultiAgentConfig, agentOptions ...base.AgentOption) (*MultiAgent, error) {
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
+	}
+	err := addDefaultSpecialist(ctx, config, agentOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add default specialist: %w", err)
 	}
 
 	// Create the graph with state
@@ -51,7 +58,7 @@ func NewMultiAgent(ctx context.Context, config *MultiAgentConfig) (*MultiAgent, 
 
 	// Add conversation analyzer node
 	conversationAnalyzer := NewConversationAnalyzerHandler(config)
-	err := graph.AddChatModelNode(conversationAnalyzerNodeKey, config.Host.Model,
+	err = graph.AddChatModelNode(conversationAnalyzerNodeKey, config.Host.Model,
 		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 			return conversationAnalyzer.PreHandler(ctx, input, state)
 		}),
@@ -269,16 +276,46 @@ func NewMultiAgent(ctx context.Context, config *MultiAgentConfig) (*MultiAgent, 
 	}
 
 	return &MultiAgent{
-		runnable:         runnable,
-		graph:            graph,
-		graphAddNodeOpts: []compose.GraphAddNodeOpt{},
-		config:           config,
+		Runnable:         runnable,
+		Graph:            graph,
+		GraphAddNodeOpts: []compose.GraphAddNodeOpt{},
+		AgentOptions:     agentOptions,
+		Config:           config,
 	}, nil
+}
+
+// 增加一个通用的specialist, 用于处理通用任务
+func addDefaultSpecialist(ctx context.Context, config *MultiAgentConfig, agentOptions ...base.AgentOption) error {
+	reactAgent, err := react.NewAgent(ctx, react.ReactAgentConfig{
+		ToolCallingModel: config.Host.Model,
+		// todo 添加搜索工具？
+	}, agentOptions...)
+	if err != nil {
+		return fmt.Errorf("failed to create react agent: %w", err)
+	}
+	config.Specialists = append(config.Specialists, &Specialist{
+		Name:         generalSpecialistNodeKey,
+		IntendedUse:  "General tasks",
+		ReactAgent:   reactAgent,
+		SystemPrompt: "You are a general specialist, you can handle any tasks.",
+	})
+	return nil
 }
 
 func addSpecialist(graph *compose.Graph[[]*schema.Message, *schema.Message], specialist *Specialist) error {
 	specialistHandler := NewSpecialistHandler(specialist)
-	if specialist.Invokable != nil || specialist.Streamable != nil {
+	if specialist.ReactAgent != nil {
+		if err := graph.AddGraphNode(specialist.Name, specialist.ReactAgent.Graph,
+			compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
+				return specialistHandler.PreHandler(ctx, input, state)
+			}),
+			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
+				return specialistHandler.PostHandler(ctx, output, state)
+			}),
+			compose.WithNodeName(specialist.Name)); err != nil {
+			return err
+		}
+	} else if specialist.Invokable != nil || specialist.Streamable != nil {
 		lambda, err := compose.AnyLambda(specialist.Invokable, specialist.Streamable, nil, nil, compose.WithLambdaType("Specialist"))
 		if err != nil {
 			return err

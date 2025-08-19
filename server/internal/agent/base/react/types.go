@@ -11,11 +11,11 @@ type MessageModifier func([]*schema.Message) []*schema.Message
 
 // ReactAgent represents the ReAct agent
 type ReactAgent struct {
-	runnable         compose.Runnable[[]*schema.Message, *schema.Message]
-	graph            *compose.Graph[[]*schema.Message, *schema.Message]
-	graphAddNodeOpts []compose.GraphAddNodeOpt
-	agentOptions     []base.AgentOption
-	config           ReactAgentConfig
+	Runnable         compose.Runnable[[]*schema.Message, *schema.Message]
+	Graph            *compose.Graph[[]*schema.Message, *schema.Message]
+	GraphAddNodeOpts []compose.GraphAddNodeOpt
+	AgentOptions     []base.AgentOption
+	Config           ReactAgentConfig
 }
 
 // ReasoningOutput represents the output of reasoning process

@@ -5,7 +5,6 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/service"
 	"github.com/cloudwego/eino/schema"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 // 问题理解
@@ -24,9 +23,6 @@ func (h *UnderstandingHandler) Handle(c *gin.Context) (msgID string, event strin
 	if err = c.ShouldBindJSON(&req); err != nil {
 		return
 	}
-	// 生产msgID
-	msgID = uuid.NewString()
-	req.MsgID = msgID
 	event, sr, err = h.understandingService.Understanding(c, req)
 	return
 }

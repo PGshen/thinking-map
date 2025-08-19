@@ -3,28 +3,23 @@ package multiagent
 import (
 	"errors"
 	"fmt"
-	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/agent/base"
+	"github.com/PGshen/thinking-map/server/internal/agent/base/react"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/compose"
-	"github.com/cloudwego/eino/flow/agent"
 	"github.com/cloudwego/eino/schema"
 )
 
 // ThinkingConfig represents thinking configuration
 type ThinkingConfig struct {
-	MaxSteps           int           `yaml:"max_steps" json:"max_steps"`
-	Timeout            time.Duration `yaml:"timeout" json:"timeout"`
-	EnableDeepThink    bool          `yaml:"enable_deep_think" json:"enable_deep_think"`
-	ComplexityAnalysis bool          `yaml:"complexity_analysis" json:"complexity_analysis"`
+	MaxSteps       int    `yaml:"max_steps" json:"max_steps"`
+	ThinkingPrompt string `yaml:"thinking_prompt" json:"thinking_prompt"`
 }
 
 // PlanningConfig represents planning configuration
 type PlanningConfig struct {
-	MaxSteps           int           `yaml:"max_steps" json:"max_steps"`
-	Timeout            time.Duration `yaml:"timeout" json:"timeout"`
-	EnableDynamicPlan  bool          `yaml:"enable_dynamic_plan" json:"enable_dynamic_plan"`
-	DependencyAnalysis bool          `yaml:"dependency_analysis" json:"dependency_analysis"`
+	PlanningPrompt string `yaml:"planning_prompt" json:"planning_prompt"`
 }
 
 // Host represents the host agent configuration
@@ -42,8 +37,9 @@ type Specialist struct {
 	IntendedUse  string `yaml:"intended_use" json:"intended_use"`
 	ChatModel    model.BaseChatModel
 	SystemPrompt string `yaml:"system_prompt" json:"system_prompt"`
-	Invokable    compose.Invoke[[]*schema.Message, *schema.Message, agent.AgentOption]
-	Streamable   compose.Stream[[]*schema.Message, *schema.Message, agent.AgentOption]
+	Invokable    compose.Invoke[[]*schema.Message, *schema.Message, base.AgentOption]
+	Streamable   compose.Stream[[]*schema.Message, *schema.Message, base.AgentOption]
+	ReactAgent   *react.ReactAgent
 }
 
 // SessionConfig represents session management configuration
@@ -80,10 +76,6 @@ func (config *MultiAgentConfig) Validate() error {
 		return errors.New("host model is not configured")
 	}
 
-	if len(config.Specialists) == 0 {
-		return errors.New("no specialists configured")
-	}
-
 	for i, specialist := range config.Specialists {
 		if len(specialist.Name) == 0 {
 			return fmt.Errorf("specialist %d has empty name", i)
@@ -93,8 +85,8 @@ func (config *MultiAgentConfig) Validate() error {
 			return fmt.Errorf("specialist %s has empty intended use", specialist.Name)
 		}
 
-		if specialist.ChatModel == nil && (specialist.Invokable == nil || specialist.Streamable == nil) {
-			return fmt.Errorf("specialist %s has no model configured", specialist.Name)
+		if specialist.ChatModel == nil && (specialist.Invokable == nil || specialist.Streamable == nil) && specialist.ReactAgent == nil {
+			return fmt.Errorf("specialist %s has no model, invokable, streamable, or react agent configured", specialist.Name)
 		}
 	}
 
@@ -110,17 +102,9 @@ func GetDefaultConfig(chatModel model.ToolCallingChatModel) *MultiAgentConfig {
 			Model:        chatModel,
 			SystemPrompt: "You are an intelligent host agent responsible for analyzing tasks and coordinating specialist agents.",
 			Thinking: ThinkingConfig{
-				MaxSteps:           5,
-				Timeout:            2 * time.Minute,
-				EnableDeepThink:    true,
-				ComplexityAnalysis: true,
+				MaxSteps: 5,
 			},
-			Planning: PlanningConfig{
-				MaxSteps:           10,
-				Timeout:            3 * time.Minute,
-				EnableDynamicPlan:  true,
-				DependencyAnalysis: true,
-			},
+			Planning: PlanningConfig{},
 		},
 		Specialists: []*Specialist{
 			{

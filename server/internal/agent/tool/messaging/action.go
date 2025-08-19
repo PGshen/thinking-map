@@ -29,7 +29,7 @@ func SendActionMsg(ctx context.Context, msg *dto.ActionChoice) (*dto.ActionMsgRe
 			msgAction = model.Action{
 				Name:   "开始拆解",
 				Method: "POST",
-				URL:    "/api/map/node/decompose",
+				URL:    "/v1/thinking/decomposition",
 				Param: map[string]any{
 					"mapID":  mapID,
 					"nodeID": nodeID,
@@ -59,7 +59,7 @@ func SendActionMsg(ctx context.Context, msg *dto.ActionChoice) (*dto.ActionMsgRe
 			Actions:   msgActions,
 		},
 	}
-	global.GetBroker().Publish(ctx.Value("mapID").(string), event)
+	global.GetBroker().PublishToSession(ctx.Value("mapID").(string), event)
 	// 保存消息
 	global.GetMessageManager().SaveDecompositionMessage(ctx, nodeID, dto.CreateMessageRequest{
 		ID:          uuid.NewString(),

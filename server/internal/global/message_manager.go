@@ -59,6 +59,9 @@ func GetMessageManager() *MessageManager {
 
 // CreateMessage 创建消息
 func (s *MessageManager) CreateMessage(ctx context.Context, userID string, req dto.CreateMessageRequest) (*dto.MessageResponse, error) {
+	if req.ID == "" {
+		return nil, errors.New("message ID is empty")
+	}
 	// 获取conversationID
 	var conversationID string
 	if req.ParentID == "" {
