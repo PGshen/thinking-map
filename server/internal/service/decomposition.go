@@ -151,8 +151,8 @@ func (m *analyzeMessageSender) OnStreamMessage(ctx context.Context, sr *schema.S
 		if str, ok := value.(string); ok {
 			sseBroker.PublishToSession(m.mapID, sse.Event{
 				ID:   m.nodeID,
-				Type: dto.MessageTextEventType,
-				Data: dto.MessageTextEvent{
+				Type: dto.MessageThoughtEventType,
+				Data: dto.MessageThoughtEvent{
 					NodeID:    m.nodeID,
 					MessageID: messageID,
 					Message:   str,
@@ -180,23 +180,37 @@ func (m *analyzeMessageSender) OnStreamMessage(ctx context.Context, sr *schema.S
 	})
 	defer func() {
 		sr.Close()
-		if len(thought.String()) == 0 && len(finalAnswer.String()) == 0 {
-			return
+		if len(thought.String()) > 0 {
+			msgReq := dto.CreateMessageRequest{
+				ID:          messageID,
+				UserID:      m.userID,
+				MessageType: model.MsgTypeThought,
+				Role:        schema.Assistant,
+				Content: model.MessageContent{
+					Thought: thought.String(),
+				},
+			}
+			_, err2 := m.msgManager.SaveDecompositionMessage(ctx, m.nodeID, msgReq)
+			if err2 != nil {
+				logger.Error("create message failed", zap.Error(err2))
+				return
+			}
 		}
-		// fmt.Println("fullMsg.Content", fullMsg.Content)
-		msgReq := dto.CreateMessageRequest{
-			ID:          messageID,
-			UserID:      m.userID,
-			MessageType: model.MsgTypeText,
-			Role:        schema.Assistant,
-			Content: model.MessageContent{
-				Text: thought.String() + finalAnswer.String(),
-			},
-		}
-		_, err2 := m.msgManager.SaveDecompositionMessage(ctx, m.nodeID, msgReq)
-		if err2 != nil {
-			logger.Error("create message failed", zap.Error(err2))
-			return
+		if len(finalAnswer.String()) > 0 {
+			msgReq := dto.CreateMessageRequest{
+				ID:          messageID,
+				UserID:      m.userID,
+				MessageType: model.MsgTypeText,
+				Role:        schema.Assistant,
+				Content: model.MessageContent{
+					Text: finalAnswer.String(),
+				},
+			}
+			_, err2 := m.msgManager.SaveDecompositionMessage(ctx, m.nodeID, msgReq)
+			if err2 != nil {
+				logger.Error("create message failed", zap.Error(err2))
+				return
+			}
 		}
 	}()
 outer:
@@ -326,8 +340,8 @@ func (m *analyzerMessageHandler) OnStreamMessage(ctx context.Context, sr *schema
 		if str, ok := value.(string); ok {
 			sseBroker.PublishToSession(m.mapID, sse.Event{
 				ID:   m.nodeID,
-				Type: dto.MessageTextEventType,
-				Data: dto.MessageTextEvent{
+				Type: dto.MessageThoughtEventType,
+				Data: dto.MessageThoughtEvent{
 					NodeID:    m.nodeID,
 					MessageID: messageID,
 					Message:   str,

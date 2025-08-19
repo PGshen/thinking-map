@@ -5,8 +5,10 @@ import {
   ChatMessage,
 } from "@/components/ui/chat-message";
 import { ChatMessageArea } from "@/components/ui/chat-message-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Action, MessageResponse } from "@/types/message";
-import { Loader } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader, Brain } from "lucide-react";
+import { useState } from "react";
 
 interface DecomposeAreaProps {
   loading: boolean;
@@ -15,6 +17,17 @@ interface DecomposeAreaProps {
 }
 
 export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaProps) {
+  // 用于管理每个思考消息的折叠状态
+  const [collapsedStates, setCollapsedStates] = useState<Record<string, boolean>>({});
+
+  // 切换指定消息的折叠状态
+  const toggleCollapse = (messageId: string) => {
+    setCollapsedStates(prev => ({
+      ...prev,
+      [messageId]: !prev[messageId]
+    }));
+  };
+
   return (
     <div className="h-full">
       <ChatMessageArea scrollButtonAlignment="center" className="px-2 py-2 space-y-4 text-sm">
@@ -47,6 +60,38 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                 </ChatMessage>
               );
             }
+          }
+          // 思考消息
+          if (message.messageType === 'thought') {
+            const isCollapsed = collapsedStates[message.id] || false;
+            
+            return (
+              <ChatMessage
+                key={message.id}
+                id={message.id}
+                type="incoming"
+              >
+                <ChatMessageAvatar />
+                <div className="flex-1">
+                  <Collapsible open={!isCollapsed} onOpenChange={() => toggleCollapse(message.id)}>
+                    <CollapsibleTrigger className="flex items-center gap-2 w-full text-left p-2 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200">
+                      <Brain className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      <span className="text-sm font-medium text-blue-800 flex-1">思考过程</span>
+                      {isCollapsed ? (
+                        <ChevronRight className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      )}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2">
+                      <div className="pl-2 border-l-2 border-blue-200">
+                        <ChatMessageContent content={message.content.thought!} />
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              </ChatMessage>
+            );
           }
           if (message.messageType === 'notice') {
             // 根据通知类型获取颜色主题

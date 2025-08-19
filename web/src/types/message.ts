@@ -3,7 +3,7 @@ import type { ApiResponse } from './response';
 // 与后端 dto/message.go 对齐的消息类型定义
 export type RoleType = 'system' | 'assistant' | 'user';
 
-export type MessageType = 'text' | 'notice' | 'rag' | 'action';
+export type MessageType = 'text' | 'notice' | 'rag' | 'action' | 'thought' | 'plan';
 
 // 通知信息
 export interface Notice {
@@ -23,6 +23,7 @@ export interface Action {
 // 消息内容 - 与后端 model.MessageContent 对齐
 export interface MessageContent {
   text?: string;
+  thought?: string;
   rag?: string[];
   notice?: Notice[];
   action?: Action[];

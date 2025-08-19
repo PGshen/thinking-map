@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
 import { getMessages, decomposition } from '@/api/node';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
-import { MessageActionEvent, MessageTextEvent } from '@/types/sse';
+import { MessageActionEvent, MessageTextEvent, MessageThoughtEvent } from '@/types/sse';
 
 interface DecomposeTabProps {
   nodeID: string;
@@ -77,7 +77,7 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
   };
 
   // 处理消息文本事件
-  const handleMessageTextEvent = (data: MessageTextEvent) => {
+  const handleMessageTextOrThoughtEvent = (data: MessageTextEvent|MessageThoughtEvent, messageType: 'text' | 'thought') => {
     setMessages(prevMessages => {
       const existingMessageIndex = prevMessages.findIndex(msg => msg.id === data.messageID);
       let updatedMessages: MessageResponse[];
@@ -113,7 +113,7 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
         // 消息不存在，创建新消息
         const newMessage: MessageResponse = {
           id: data.messageID,
-          messageType: 'text',
+          messageType: messageType,
           role: 'assistant',
           content: {
             text: data.message
@@ -144,9 +144,20 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
         callback: (event: any) => {
           try {
             const data = JSON.parse(event.data) as MessageTextEvent;
-            handleMessageTextEvent(data);
+            handleMessageTextOrThoughtEvent(data, 'text');
           } catch (error) {
             console.error('解析messageText事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'messageThought' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as MessageThoughtEvent;
+            handleMessageTextOrThoughtEvent(data, 'thought');
+          } catch (error) {
+            console.error('解析messageThought事件失败:', error, event.data);
           }
         }
       },

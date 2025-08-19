@@ -42,6 +42,14 @@ export interface MessageTextEvent {
   timestamp: string;
 }
 
+export interface MessageThoughtEvent {
+  nodeID: string;
+  messageID: string;
+  message: string;
+  mode: 'append' | 'replace';
+  timestamp: string;
+}
+
 export interface ErrorEvent {
   nodeID: string;
   errorCode: string;

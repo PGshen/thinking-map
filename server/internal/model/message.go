@@ -49,10 +49,12 @@ func (Message) TableName() string {
 type MsgType string
 
 const (
-	MsgTypeText   MsgType = "text"
-	MsgTypeRAG    MsgType = "rag"
-	MsgTypeNotice MsgType = "notice"
-	MsgTypeAction MsgType = "action"
+	MsgTypeText    MsgType = "text"
+	MsgTypeRAG     MsgType = "rag"
+	MsgTypeNotice  MsgType = "notice"
+	MsgTypeAction  MsgType = "action"
+	MsgTypeThought MsgType = "thought"
+	MsgTypePlan    MsgType = "plan"
 )
 
 // Notice 通知信息
@@ -71,10 +73,11 @@ type Action struct {
 
 // MessageContent 消息内容
 type MessageContent struct {
-	Text   string   `json:"text,omitempty"`
-	RAG    []string `json:"rag,omitempty"`
-	Notice []Notice `json:"notice,omitempty"`
-	Action []Action `json:"action,omitempty"`
+	Text    string   `json:"text,omitempty"`
+	Thought string   `json:"thought,omitempty"`
+	RAG     []string `json:"rag,omitempty"`
+	Notice  []Notice `json:"notice,omitempty"`
+	Action  []Action `json:"action,omitempty"`
 }
 
 // MessageContent 实现 Scanner 接口

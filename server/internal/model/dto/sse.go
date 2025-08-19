@@ -19,8 +19,10 @@ const (
 	NodeUpdatedEventType           = "nodeUpdated"
 	ThinkingProgressEventType      = "thinkingProgress"
 	MessageTextEventType           = "messageText"
+	MessageThoughtEventType        = "messageThought"
 	MessageNoticeEventType         = "messageNotice"
 	MessageActionEventType         = "messageAction"
+	MessagePlanEventType           = "messagePlan"
 	MessageRagEventType            = "messageRag"
 	ErrorEventType                 = "error"
 	CustomEventType                = "custom"
@@ -65,6 +67,14 @@ type MessageActionEvent struct {
 
 // MsgTextEvent represents the text event
 type MessageTextEvent struct {
+	NodeID    string `json:"nodeID"`
+	MessageID string `json:"messageID"`
+	Message   string `json:"message"`
+	Mode      string `json:"mode"`
+}
+
+// MsgThoughtEvent represents the thought event
+type MessageThoughtEvent struct {
 	NodeID    string `json:"nodeID"`
 	MessageID string `json:"messageID"`
 	Message   string `json:"message"`
