@@ -13,8 +13,7 @@ import (
 
 // CreateNodeRequest 创建节点请求参数
 type CreateNodeRequest struct {
-	MapID    string  `json:"mapID"`
-	ParentID string  `json:"parentID"`
+	NodeID   string  `json:"nodeID"`
 	NodeType string  `json:"nodeType"`
 	Question string  `json:"question"`
 	Target   string  `json:"target"`
@@ -45,9 +44,11 @@ type DeleteNodeResponse struct {
 // CreateNodeFunc 创建节点函数
 func CreateNodeFunc(ctx context.Context, req *CreateNodeRequest) (*dto.NodeResponse, error) {
 	// 构建DTO请求
+	mapID := ctx.Value("mapID").(string)
+	parentID := ctx.Value("nodeID").(string)
 	createReq := dto.CreateNodeRequest{
-		MapID:    req.MapID,
-		ParentID: req.ParentID,
+		MapID:    mapID,
+		ParentID: parentID,
 		NodeType: req.NodeType,
 		Question: req.Question,
 		Target:   req.Target,
@@ -113,18 +114,14 @@ func CreateNodeTool() (tool.InvokableTool, error) {
 		Desc: "创建新的思维导图节点",
 		ParamsOneOf: schema.NewParamsOneOfByParams(
 			map[string]*schema.ParameterInfo{
-				"mapID": {
+				"nodeID": {
 					Type:     schema.String,
-					Desc:     "思维导图ID",
+					Desc:     "节点ID: uuid格式，如954b9be3-cae8-43bf-9ac6-b423bb62f8f4",
 					Required: true,
-				},
-				"parentID": {
-					Type: schema.String,
-					Desc: "父节点ID，根节点可为空",
 				},
 				"nodeType": {
 					Type:     schema.String,
-					Desc:     "节点类型，如root、analysis、conclusion等",
+					Desc:     "节点类型，如problem、information、analysis、generation、evaluation等",
 					Required: true,
 				},
 				"question": {
@@ -137,14 +134,12 @@ func CreateNodeTool() (tool.InvokableTool, error) {
 					Desc: "节点目标描述",
 				},
 				"x": {
-					Type:     schema.Number,
-					Desc:     "节点X坐标位置",
-					Required: true,
+					Type: schema.Number,
+					Desc: "节点X坐标位置",
 				},
 				"y": {
-					Type:     schema.Number,
-					Desc:     "节点Y坐标位置",
-					Required: true,
+					Type: schema.Number,
+					Desc: "节点Y坐标位置",
 				},
 			},
 		),

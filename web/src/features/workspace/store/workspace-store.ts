@@ -406,7 +406,15 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
         // 边操作
         setEdges: (edges: Edge[]) => {
           set(
-            (state) => ({ edges: [...state.edges, ...edges] }),
+            (state) => {
+              // 过滤掉已存在的边，根据source和target组合判断是否重复
+              const newEdges = edges.filter(edge => 
+                !state.edges.some(existingEdge => 
+                  existingEdge.source === edge.source && existingEdge.target === edge.target
+                )
+              );
+              return { edges: [...state.edges, ...newEdges] };
+            },
             false,
             'setEdges'
           );
@@ -414,9 +422,18 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
         
         addEdge: (edge: Edge) => {
           set(
-            (state) => ({
-              edges: [...state.edges, edge],
-            }),
+            (state) => {
+              // 检查边的source和target组合是否已存在，避免重复添加
+              const existingEdge = state.edges.find(e => 
+                e.source === edge.source && e.target === edge.target
+              );
+              if (existingEdge) {
+                return state; // 边已存在，不添加
+              }
+              return {
+                edges: [...state.edges, edge],
+              };
+            },
             false,
             'addEdge'
           );

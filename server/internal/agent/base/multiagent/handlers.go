@@ -34,8 +34,6 @@ func (h *ConversationAnalyzerHandler) PreHandler(ctx context.Context, input []*s
 
 	// Set analysis state
 	state.SetExecutionStatus(ExecutionStatusAnalyzing)
-	state.SetCurrentStep("context_analysis")
-
 	// Build conversation analysis prompt
 	prompt := h.buildConversationAnalysisPrompt(input)
 	return []*schema.Message{prompt}, nil
@@ -166,7 +164,6 @@ func NewPlanCreationHandler(config *MultiAgentConfig) *PlanCreationHandler {
 func (h *PlanCreationHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 	// Set planning state
 	state.SetExecutionStatus(ExecutionStatusPlanning)
-	state.SetCurrentStep("planning")
 
 	prompt := buildPlanCreationPrompt(state, h.config)
 	return []*schema.Message{prompt}, nil
@@ -183,7 +180,6 @@ func (h *PlanCreationHandler) PostHandler(ctx context.Context, output *schema.Me
 	// Update state using unified methods
 	state.SetCurrentPlan(plan)
 	state.SetExecutionStatus(ExecutionStatusExecuting)
-	state.SetCurrentStep("execution")
 	return output, nil
 }
 
@@ -301,7 +297,7 @@ func (h *SpecialistHandler) findCurrentStep(state *MultiAgentState) *PlanStep {
 	}
 
 	for _, step := range state.CurrentPlan.Steps {
-		if step.AssignedSpecialist == h.specialist.Name && step.Status == StepStatusPending {
+		if step.AssignedSpecialist == h.specialist.Name && step.Status == StepStatusRunning {
 			return step
 		}
 	}
@@ -329,7 +325,6 @@ func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Messag
 
 	// Set execution state
 	state.SetExecutionStatus(ExecutionStatusExecuting)
-	state.SetCurrentStep("execution")
 	state.ClearSpecialistResults() // Clear previous round results
 
 	// Find the next step to execute
@@ -473,7 +468,6 @@ func NewResultCollectorHandler(config *MultiAgentConfig) *ResultCollectorHandler
 func (h *ResultCollectorHandler) ResultCollector(ctx context.Context, input []*schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	// Set collecting state
 	state.SetExecutionStatus(ExecutionStatusCollecting)
-	state.SetCurrentStep("collecting")
 
 	if len(state.SpecialistResults) == 0 {
 		return &schema.Message{

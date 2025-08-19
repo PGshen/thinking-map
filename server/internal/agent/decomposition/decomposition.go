@@ -76,8 +76,8 @@ func buildDecompositionDecisionAgent(ctx context.Context, option ...base.AgentOp
 
 	agent, err := react.NewAgent(ctx, react.ReactAgentConfig{
 		ToolCallingModel: cm,
-		ToolsConfig: compose.ToolsNodeConfig{
-			Tools: allTools,
+		ToolsConfig:      compose.ToolsNodeConfig{
+			// Tools: allTools,
 		},
 	}, option...)
 	if err != nil {

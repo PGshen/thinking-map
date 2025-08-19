@@ -259,6 +259,9 @@ func (s *DecompositionService) Decompose(ctx *gin.Context, contextInfo *ContextI
 		userID:     userID,
 		msgManager: s.msgManager,
 	}
+	// 将mapID, nodeID保存至ctx, 工具调用时会用到
+	ctx.Set("mapID", contextInfo.MapInfo.ID)
+	ctx.Set("nodeID", contextInfo.NodeInfo.ID)
 	// 4. 调用分析Agent
 	agent, err := decomposition.BuildDecompositionAgent(ctx)
 	if err != nil {
@@ -570,7 +573,7 @@ func (m *planCreationMessageHandler) OnStreamMessage(ctx context.Context, sr *sc
 	parser := utils.NewStreamingJsonParser(matcher, true, true)
 
 	var stepName strings.Builder
-	var currentStepIndex int = -1 // 跟踪当前步骤索引
+	var currentStepIndex int = -1     // 跟踪当前步骤索引
 	var isFirstCharOfStep bool = true // 标记是否为步骤的第一个字符
 
 	// 注册路径匹配器来提取userIntent字段

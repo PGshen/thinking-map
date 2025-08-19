@@ -305,7 +305,14 @@ func addDefaultSpecialist(ctx context.Context, config *MultiAgentConfig, agentOp
 func addSpecialist(graph *compose.Graph[[]*schema.Message, *schema.Message], specialist *Specialist) error {
 	specialistHandler := NewSpecialistHandler(specialist)
 	if specialist.ReactAgent != nil {
-		if err := graph.AddGraphNode(specialist.Name, specialist.ReactAgent.Graph, compose.WithNodeName(specialist.Name)); err != nil {
+		if err := graph.AddGraphNode(specialist.Name, specialist.ReactAgent.Graph,
+			compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
+				return specialistHandler.PreHandler(ctx, input, state)
+			}),
+			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
+				return specialistHandler.PostHandler(ctx, output, state)
+			}),
+			compose.WithNodeName(specialist.Name)); err != nil {
 			return err
 		}
 	} else if specialist.Invokable != nil || specialist.Streamable != nil {

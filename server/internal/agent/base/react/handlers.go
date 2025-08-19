@@ -60,6 +60,11 @@ func (h *ReasoningHandler) PostHandler(ctx context.Context, output *schema.Messa
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse reasoning response: %w", err)
 	}
+	if len(reasoning.ToolCalls) > 0 {
+		for _, toolCall := range reasoning.ToolCalls {
+			fmt.Printf("ReasoningHandler: tool call %s %s\n", toolCall.Function.Name, toolCall.Function.Arguments)
+		}
+	}
 
 	// Add to reasoning history
 	state.ReasoningHistory = append(state.ReasoningHistory, *reasoning)
