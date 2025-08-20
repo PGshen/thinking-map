@@ -71,13 +71,21 @@ type Action struct {
 	Param  map[string]any `json:"param,omitempty"`
 }
 
+// PlanStep 计划步骤
+type PlanStep struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Status      string `json:"status"`
+}
+
 // MessageContent 消息内容
 type MessageContent struct {
-	Text    string   `json:"text,omitempty"`
-	Thought string   `json:"thought,omitempty"`
-	RAG     []string `json:"rag,omitempty"`
-	Notice  []Notice `json:"notice,omitempty"`
-	Action  []Action `json:"action,omitempty"`
+	Text    string     `json:"text,omitempty"`
+	Thought string     `json:"thought,omitempty"`
+	RAG     []string   `json:"rag,omitempty"`
+	Notice  []Notice   `json:"notice,omitempty"`
+	Action  []Action   `json:"action,omitempty"`
+	Plan    []PlanStep `json:"plan,omitempty"`
 }
 
 // MessageContent 实现 Scanner 接口

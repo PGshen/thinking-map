@@ -14,7 +14,7 @@ Context: %s
 
 Please provide a clear, helpful response.
 
-## Important Principles
+Notice:
 - Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
 `,
 		state.ConversationContext.UserIntent,
@@ -102,7 +102,11 @@ Context:
 
 Parameters: %v
 
-Please complete this step and provide your result.`,
+Please complete this step and provide your result.
+
+Notice:
+- Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
+`,
 		specialist.Name,
 		specialist.IntendedUse,
 		step.Name,
@@ -314,7 +318,11 @@ func buildFinalAnswerPrompt(state *MultiAgentState) *schema.Message {
 		content += "\n"
 	}
 
-	content += "Please synthesize all the above information into a clear, comprehensive, and well-structured final answer."
+	content += `Please synthesize all the above information into a clear, comprehensive, and well-structured final answer.
+
+Notice:
+- Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
+`
 
 	return &schema.Message{
 		Role:    schema.User,

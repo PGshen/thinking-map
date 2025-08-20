@@ -20,6 +20,12 @@ export interface Action {
   param?: Record<string, any>;
 }
 
+export interface PlanStep {
+  name: string;
+  description: string;
+  status: string;
+}
+
 // 消息内容 - 与后端 model.MessageContent 对齐
 export interface MessageContent {
   text?: string;
@@ -27,6 +33,7 @@ export interface MessageContent {
   rag?: string[];
   notice?: Notice[];
   action?: Action[];
+  plan?: PlanStep[];
 }
 
 export interface MessageResponse {

@@ -646,20 +646,20 @@ func (m *planCreationMessageHandler) OnStreamMessage(ctx context.Context, sr *sc
 			return
 		}
 		// fmt.Println("fullMsg.Content", fullMsg.Content)
-		msgReq := dto.CreateMessageRequest{
-			ID:          messageID,
-			UserID:      m.userID,
-			MessageType: model.MsgTypeText,
-			Role:        schema.Assistant,
-			Content: model.MessageContent{
-				Text: stepName.String(),
-			},
-		}
-		_, err2 := m.msgManager.SaveDecompositionMessage(ctx, m.nodeID, msgReq)
-		if err2 != nil {
-			logger.Error("create message failed", zap.Error(err2))
-			return
-		}
+		// msgReq := dto.CreateMessageRequest{
+		// 	ID:          messageID,
+		// 	UserID:      m.userID,
+		// 	MessageType: model.MsgTypeText,
+		// 	Role:        schema.Assistant,
+		// 	Content: model.MessageContent{
+		// 		Text: stepName.String(),
+		// 	},
+		// }
+		// _, err2 := m.msgManager.SaveDecompositionMessage(ctx, m.nodeID, msgReq)
+		// if err2 != nil {
+		// 	logger.Error("create message failed", zap.Error(err2))
+		// 	return
+		// }
 	}()
 outer:
 	for {

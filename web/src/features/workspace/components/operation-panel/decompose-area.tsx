@@ -7,7 +7,7 @@ import {
 import { ChatMessageArea } from "@/components/ui/chat-message-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Action, MessageResponse } from "@/types/message";
-import { ChevronDown, ChevronRight, Loader, Brain } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader, Brain, Check, Clock, Pause, X, FileText } from "lucide-react";
 import { useState } from "react";
 
 interface DecomposeAreaProps {
@@ -74,7 +74,7 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                 <ChatMessageAvatar />
                 <div className="flex-1">
                   <Collapsible open={!isCollapsed} onOpenChange={() => toggleCollapse(message.id)}>
-                    <CollapsibleTrigger className="flex items-center gap-2 w-full text-left p-2 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200">
+                    <CollapsibleTrigger className="cursor-pointer flex items-center gap-2 text-left p-1 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200">
                       <Brain className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       <span className="text-sm font-medium text-blue-800 flex-1">思考过程</span>
                       {isCollapsed ? (
@@ -263,6 +263,130 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                           </div>
                         )}
                       </button>
+                    );
+                  })}
+                </div>
+              </ChatMessage>
+            );
+          }
+          // 计划步骤
+          if (message.messageType === 'plan') {
+            return (
+              <ChatMessage
+                key={message.id}
+                id={message.id}
+                type="incoming"
+              >
+                <ChatMessageAvatar />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Brain className="h-4 w-4 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-800">执行计划</span>
+                  </div>
+                  {message.content.plan?.map((plan, index) => {
+                    // 根据状态设置不同的样式主题
+                    const getPlanTheme = (status: string) => {
+                      switch (status?.toLowerCase()) {
+                        case 'completed':
+                        case '已完成':
+                        case 'done':
+                          return {
+                            bg: 'bg-green-50',
+                            border: 'border-green-200',
+                            tagBg: 'bg-green-100',
+                            tagText: 'text-green-800',
+                            nameText: 'text-green-900',
+                            contentText: 'text-green-700',
+                            iconColor: 'text-green-600',
+                            IconComponent: Check
+                          };
+                        case 'in_progress':
+                        case '进行中':
+                        case 'running':
+                          return {
+                            bg: 'bg-blue-50',
+                            border: 'border-blue-200',
+                            tagBg: 'bg-blue-100',
+                            tagText: 'text-blue-800',
+                            nameText: 'text-blue-900',
+                            contentText: 'text-blue-700',
+                            iconColor: 'text-blue-600',
+                            IconComponent: Clock
+                          };
+                        case 'pending':
+                        case '待执行':
+                        case 'waiting':
+                          return {
+                            bg: 'bg-yellow-50',
+                            border: 'border-yellow-200',
+                            tagBg: 'bg-yellow-100',
+                            tagText: 'text-yellow-800',
+                            nameText: 'text-yellow-900',
+                            contentText: 'text-yellow-700',
+                            iconColor: 'text-yellow-600',
+                            IconComponent: Pause
+                          };
+                        case 'failed':
+                        case '失败':
+                        case 'error':
+                          return {
+                            bg: 'bg-red-50',
+                            border: 'border-red-200',
+                            tagBg: 'bg-red-100',
+                            tagText: 'text-red-800',
+                            nameText: 'text-red-900',
+                            contentText: 'text-red-700',
+                            iconColor: 'text-red-600',
+                            IconComponent: X
+                          };
+                        default:
+                          return {
+                            bg: 'bg-gray-50',
+                            border: 'border-gray-200',
+                            tagBg: 'bg-gray-100',
+                            tagText: 'text-gray-800',
+                            nameText: 'text-gray-900',
+                            contentText: 'text-gray-700',
+                            iconColor: 'text-gray-600',
+                            IconComponent: FileText
+                          };
+                      }
+                    };
+
+                    const theme = getPlanTheme(plan.status);
+                    
+                    return (
+                      <div key={index} className={`relative p-4 ${theme.bg} border ${theme.border} rounded-lg transition-all duration-200 hover:shadow-sm`}>
+                        {/* 步骤序号 */}
+                        <div className="absolute -left-2 -top-2 w-6 h-6 bg-white border-2 border-purple-200 rounded-full flex items-center justify-center text-xs font-bold text-purple-600">
+                          {index + 1}
+                        </div>
+                        
+                        <div className="flex items-start gap-3">
+                          {/* 状态图标 */}
+                          <div className="flex-shrink-0 mt-0.5">
+                            <theme.IconComponent className={`h-4 w-4 ${theme.iconColor}`} />
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            {/* 标题和状态 */}
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`font-semibold ${theme.nameText} text-base`}>{plan.name}</span>
+                              <span className={`px-2 py-1 ${theme.tagBg} ${theme.tagText} text-xs rounded-full font-medium`}>
+                                {plan.status}
+                              </span>
+                            </div>
+                            
+                            {/* 描述 */}
+                            <p className={`${theme.contentText} text-sm leading-relaxed`}>{plan.description}</p>
+                          </div>
+                        </div>
+                        
+                        {/* 连接线（除了最后一个步骤） */}
+                        {index < (message.content.plan?.length || 0) - 1 && (
+                          <div className="absolute left-4 bottom-0 w-0.5 h-4 bg-purple-200 transform translate-y-full"></div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
