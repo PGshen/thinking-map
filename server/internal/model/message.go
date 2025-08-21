@@ -57,11 +57,21 @@ const (
 	MsgTypePlan    MsgType = "plan"
 )
 
+// NoticeType 通知类型
+type NoticeType string
+
+const (
+	NoticeTypeError   NoticeType = "error"
+	NoticeTypeWarning NoticeType = "warning"
+	NoticeTypeSuccess NoticeType = "success"
+	NoticeTypeInfo    NoticeType = "info"
+)
+
 // Notice 通知信息
 type Notice struct {
-	Type    string `json:"type"`
-	Name    string `json:"name"`
-	Content string `json:"content"`
+	Type    NoticeType `json:"type"`
+	Name    string     `json:"name"`
+	Content string     `json:"content"`
 }
 
 type Action struct {
@@ -69,6 +79,10 @@ type Action struct {
 	URL    string         `json:"url"`
 	Method string         `json:"method"`
 	Param  map[string]any `json:"param,omitempty"`
+}
+
+type Plan struct {
+	Steps []PlanStep `json:"steps"`
 }
 
 // PlanStep 计划步骤
@@ -82,12 +96,12 @@ type PlanStep struct {
 
 // MessageContent 消息内容
 type MessageContent struct {
-	Text    string     `json:"text,omitempty"`
-	Thought string     `json:"thought,omitempty"`
-	RAG     []string   `json:"rag,omitempty"`
-	Notice  []Notice   `json:"notice,omitempty"`
-	Action  []Action   `json:"action,omitempty"`
-	Plan    []PlanStep `json:"plan,omitempty"`
+	Text    string   `json:"text,omitempty"`
+	Thought string   `json:"thought,omitempty"`
+	RAG     []string `json:"rag,omitempty"`
+	Notice  Notice   `json:"notice,omitempty"`
+	Action  []Action `json:"action,omitempty"`
+	Plan    Plan     `json:"plan,omitempty"`
 }
 
 // MessageContent 实现 Scanner 接口
@@ -112,13 +126,6 @@ func (m MessageContent) Value() (driver.Value, error) {
 func (m MessageContent) String() string {
 	if m.Text != "" {
 		return m.Text
-	}
-	if len(m.Notice) > 0 {
-		noticeStr := ""
-		for _, notice := range m.Notice {
-			noticeStr += fmt.Sprintf("%s: %s\n", notice.Type, notice.Content)
-		}
-		return noticeStr
 	}
 	return ""
 }

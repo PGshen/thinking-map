@@ -60,6 +60,12 @@ type ThinkingProgressEvent struct {
 	Message  string `json:"message"`
 }
 
+type MessageNoticeEvent struct {
+	NodeID    string       `json:"nodeID"`
+	MessageID string       `json:"messageID"`
+	Notice    model.Notice `json:"notice"`
+}
+
 type MessageActionEvent struct {
 	NodeID    string         `json:"nodeID"`
 	MessageID string         `json:"messageID"`

@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
 import { getMessages, decomposition } from '@/api/node';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
-import { MessageActionEvent, MessagePlanEvent, MessageTextEvent, MessageThoughtEvent } from '@/types/sse';
+import { MessageActionEvent, MessageNoticeEvent, MessagePlanEvent, MessageTextEvent, MessageThoughtEvent } from '@/types/sse';
 
 interface DecomposeTabProps {
   nodeID: string;
@@ -40,6 +40,45 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
       });
     }
   }, [messages, nodeID, actions]);
+
+  // 处理消息通知事件
+  const handleMessageNoticeEvent = (data: MessageNoticeEvent) => {
+    setMessages(prevMessages => {
+      const existingMessageIndex = prevMessages.findIndex(msg => msg.id === data.messageID);
+      let updatedMessages: MessageResponse[];
+
+      if (existingMessageIndex !== -1) {
+        // 消息已存在，更新通知内容
+        updatedMessages = [...prevMessages];
+        const existingMessage = updatedMessages[existingMessageIndex];
+
+        updatedMessages[existingMessageIndex] = {
+          ...existingMessage,
+          content: {
+            ...existingMessage.content,
+            notice: data.notice
+          },
+          updatedAt: data.timestamp
+        };
+      } else {
+        // 消息不存在，创建新的通知消息
+        const newMessage: MessageResponse = {
+          id: data.messageID,
+          messageType: 'notice',
+          role: 'assistant',
+          content: {
+            notice: data.notice
+          },
+          createdAt: data.timestamp,
+          updatedAt: data.timestamp
+        };
+
+        updatedMessages = [...prevMessages, newMessage];
+      }
+
+      return updatedMessages;
+    });
+  };
 
   // 处理消息操作事件
   const handleMessageActionEvent = (data: MessageActionEvent) => {
@@ -196,6 +235,28 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
             handleMessageTextOrThoughtEvent(data, 'thought');
           } catch (error) {
             console.error('解析messageThought事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'messageNotice' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as MessageNoticeEvent;
+            handleMessageNoticeEvent(data);
+          } catch (error) {
+            console.error('解析messageNotice事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'messageAction' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as MessageActionEvent;
+            handleMessageActionEvent(data);
+          } catch (error) {
+            console.error('解析messageAction事件失败:', error, event.data);
           }
         }
       },

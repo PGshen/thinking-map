@@ -7,9 +7,11 @@ export type MessageType = 'text' | 'notice' | 'rag' | 'action' | 'thought' | 'pl
 
 export type PlanStepStatus = 'pending' | 'running' | 'completed' | 'skipped' | 'failed';
 
+export type NoticeType =  'error' | 'warning' | 'success' | 'info';
+
 // 通知信息
 export interface Notice {
-  type: string;
+  type: NoticeType;
   name: string;
   content: string;
 }
@@ -39,7 +41,7 @@ export interface MessageContent {
   text?: string;
   thought?: string;
   rag?: string[];
-  notice?: Notice[];
+  notice?: Notice;
   action?: Action[];
   plan?: Plan;
 }

@@ -6,9 +6,11 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
+	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"
 	"github.com/cloudwego/eino/schema"
+	"github.com/google/uuid"
 )
 
 // CreateNodeRequest 创建节点请求参数
@@ -63,6 +65,46 @@ func CreateNodeFunc(ctx context.Context, req *CreateNodeRequest) (*dto.NodeRespo
 	if err != nil {
 		return nil, err
 	}
+	// 发送节点创建事件
+	global.GetBroker().PublishToSession(mapID, sse.Event{
+		ID:   uuid.NewString(),
+		Type: dto.NodeCreatedEventType,
+		Data: dto.NodeCreatedEvent{
+			NodeID:   resp.ID,
+			ParentID: parentID,
+			NodeType: resp.NodeType,
+			Question: resp.Question,
+			Target:   resp.Target,
+			Position: resp.Position,
+		},
+	})
+	// 发送节点创建消息
+	global.GetBroker().PublishToSession(mapID, sse.Event{
+		ID:   uuid.NewString(),
+		Type: dto.MessageNoticeEventType,
+		Data: dto.MessageNoticeEvent{
+			NodeID:    resp.ID,
+			MessageID: uuid.NewString(),
+			Notice: model.Notice{
+				Type:    model.NoticeTypeSuccess,
+				Name:    "节点创建",
+				Content: resp.Question,
+			},
+		},
+	})
+	// 保存消息到数据库
+	global.GetMessageManager().SaveDecompositionMessage(ctx, parentID, dto.CreateMessageRequest{
+		ID:          uuid.NewString(),
+		MessageType: model.MsgTypeNotice,
+		Role:        schema.Tool,
+		Content: model.MessageContent{
+			Notice: model.Notice{
+				Type:    model.NoticeTypeSuccess,
+				Name:    "节点创建",
+				Content: resp.Question,
+			},
+		},
+	})
 
 	return resp, nil
 }

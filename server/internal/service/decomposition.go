@@ -613,12 +613,16 @@ func (p *planMessageHandler) OnPlanStepEnd(ctx context.Context, plan *multiagent
 		MessageType: model.MsgTypePlan,
 		Role:        schema.Assistant,
 		Content: model.MessageContent{
-			Plan: planSteps,
+			Plan: model.Plan{
+				Steps: planSteps,
+			},
 		},
 	})
 	if err != nil {
 		logger.Error("save plan message failed", zap.Error(err))
 	}
+	//  本次消息结束，更新messageID
+	p.messageID = uuid.NewString()
 	return ctx, nil
 }
 
