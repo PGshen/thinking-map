@@ -97,18 +97,18 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
             ...existingMessage,
             content: {
               ...existingMessage.content,
-              text: data.message
+              [messageType]: data.message
             },
             updatedAt: data.timestamp
           };
         } else if (data.mode === 'append') {
           // 追加模式：在现有文本后追加
-          const currentText = existingMessage.content.text || '';
+          const currentText = existingMessage.content[messageType] || '';
           updatedMessages[existingMessageIndex] = {
             ...existingMessage,
             content: {
               ...existingMessage.content,
-              text: currentText + data.message
+              [messageType]: currentText + data.message
             },
             updatedAt: data.timestamp
           };
@@ -120,7 +120,7 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
           messageType: messageType,
           role: 'assistant',
           content: {
-            text: data.message
+            [messageType]: data.message
           },
           createdAt: data.timestamp,
           updatedAt: data.timestamp

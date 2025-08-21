@@ -129,6 +129,9 @@ func (bus *RedisEventBus) PublishToSession(ctx context.Context, sessionID string
 	localDelivered := 0
 	if localProvider != nil {
 		localClients := localProvider.GetLocalSessionClients(sessionID)
+		if len(localClients) == 0 {
+			log.Printf("会话 %s 没有本地客户端", sessionID)
+		}
 		for _, localClient := range localClients {
 			select {
 			case localClient.EventChan <- event:
