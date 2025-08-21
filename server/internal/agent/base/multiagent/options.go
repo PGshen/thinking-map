@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/agent/base"
 	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
@@ -80,23 +81,27 @@ func WithSpecialistHandler(specialistName string, handler MessageHandler) base.A
 }
 
 type PlanHandler interface {
-	OnPlan(ctx context.Context, plan *TaskPlan) (context.Context, error)
-	OnPlanStepCreate(ctx context.Context, step *PlanStep) (context.Context, error)
-	OnPlanStepUpdate(ctx context.Context, step *PlanStep) (context.Context, error)
-	OnPlanStepStatusUpdate(ctx context.Context, step *PlanStep) (context.Context, error)
-	OnPlanStepDelete(ctx context.Context, step *PlanStep) (context.Context, error)
+	OnPlanStepCreate(ctx context.Context, plan *TaskPlan, step *PlanStep) (context.Context, error)
+	OnPlanStepUpdate(ctx context.Context, plan *TaskPlan, step *PlanStep) (context.Context, error)
+	OnPlanStepStatusUpdate(ctx context.Context, plan *TaskPlan, step *PlanStep) (context.Context, error)
+	OnPlanStepDelete(ctx context.Context, plan *TaskPlan, step *PlanStep) (context.Context, error)
+	OnPlanStepEnd(ctx context.Context, plan *TaskPlan) (context.Context, error)
 }
 
 func WithPlanHandler(handler PlanHandler) base.AgentOption {
+	// 创建一个基本的 TaskPlan 实例用于流式解析
+	plan := &TaskPlan{
+		ID:          "temp_plan",
+		Version:     1,
+		Name:        "Streaming Plan",
+		Description: "Plan being parsed from stream",
+		Status:      ExecutionStatusPlanning,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		Steps:       make([]*PlanStep, 0),
+	}
 	// planCreation节点
 	cmHandler := &ub.ModelCallbackHandler{
-		OnEnd: func(ctx context.Context, runInfo *callbacks.RunInfo, output *model.CallbackOutput) context.Context {
-			compose.ProcessState(ctx, func(ctx context.Context, state *MultiAgentState) error {
-				ctx, err := handler.OnPlan(ctx, state.CurrentPlan)
-				return err
-			})
-			return ctx
-		},
 		OnEndWithStreamOutput: func(ctx context.Context, runInfo *callbacks.RunInfo, output *schema.StreamReader[*model.CallbackOutput]) context.Context {
 			// 实时解析流，转换为PlanStep
 			c := func(output *model.CallbackOutput) (*schema.Message, error) {
@@ -105,28 +110,65 @@ func WithPlanHandler(handler PlanHandler) base.AgentOption {
 			s := schema.StreamReaderWithConvert(output, c)
 
 			// 实现流式JSON解析，提取计划步骤
-			go func() {
-				ctx := processPlanStepsStream(ctx, s, handler)
-				_ = ctx
-			}()
+			ctx = processPlanStepsStream(ctx, s, handler, plan)
 
 			return ctx
 		},
 	}
+	// planExecution节点
+	peHandler := callbacks.NewHandlerBuilder().OnEndFn(func(ctx context.Context, info *callbacks.RunInfo, output callbacks.CallbackOutput) context.Context {
+		// 计划执行结束
+		compose.ProcessState(ctx, func(ctx context.Context, state *MultiAgentState) error {
+			var currentStep *PlanStep
+			for _, step := range state.CurrentPlan.Steps {
+				if step.ID == state.CurrentStep {
+					currentStep = step
+					break
+				}
+			}
+			if currentStep == nil {
+				return errors.New("current step not found")
+			}
+			ctx, _ = handler.OnPlanStepStatusUpdate(ctx, state.CurrentPlan, currentStep)
+			return nil
+		})
+		return ctx
+	}).Build()
+	// planUpdate节点
+	puHandler := callbacks.NewHandlerBuilder().OnEndFn(func(ctx context.Context, info *callbacks.RunInfo, output callbacks.CallbackOutput) context.Context {
+		// 计划更新结束
+		compose.ProcessState(ctx, func(ctx context.Context, state *MultiAgentState) error {
+			var currentStep *PlanStep
+			for _, step := range state.CurrentPlan.Steps {
+				if step.ID == state.CurrentStep {
+					currentStep = step
+					break
+				}
+			}
+			if currentStep == nil {
+				return errors.New("current step not found")
+			}
+			ctx, _ = handler.OnPlanStepUpdate(ctx, state.CurrentPlan, currentStep)
+			return nil
+		})
+		return ctx
+	}).Build()
 
 	cb := ub.NewHandlerHelper().ChatModel(cmHandler).Handler()
-	option := base.WithComposeOptions(compose.WithCallbacks(cb).DesignateNodeWithPath(compose.NewNodePath(planCreationNodeKey)))
+	option := base.WithComposeOptions(compose.WithCallbacks(cb).DesignateNodeWithPath(compose.NewNodePath(planCreationNodeKey)),
+		compose.WithCallbacks(peHandler).DesignateNodeWithPath(compose.NewNodePath(planExecutionNodeKey)),
+		compose.WithCallbacks(puHandler).DesignateNodeWithPath(compose.NewNodePath(planUpdateNodeKey)),
+	)
 	return option
 }
 
 // processPlanStepsStream 处理计划步骤的流式解析
-func processPlanStepsStream(ctx context.Context, sr *schema.StreamReader[*schema.Message], handler PlanHandler) context.Context {
+func processPlanStepsStream(ctx context.Context, sr *schema.StreamReader[*schema.Message], handler PlanHandler, plan *TaskPlan) context.Context {
 	// 使用流式JSON解析器解析计划步骤
 	matcher := utils.NewSimplePathMatcher()
 	// 使用非实时非增量模式
 	parser := utils.NewStreamingJsonParser(matcher, false, false)
 
-	var steps []*PlanStep // 使用切片结构存储步骤
 	var createdSteps map[int]bool = make(map[int]bool) // 记录已创建的步骤
 
 	// 封装通过path提取索引的方法
@@ -141,27 +183,38 @@ func processPlanStepsStream(ctx context.Context, sr *schema.StreamReader[*schema
 
 	// 封装获取或创建步骤的方法
 	ensureStep := func(stepIndex int) *PlanStep {
-		// 扩展切片以容纳新索引
-		for len(steps) <= stepIndex {
-			steps = append(steps, &PlanStep{
-				ID:     fmt.Sprintf("step_%d", len(steps)+1),
+		// 扩展 plan.Steps 切片以容纳新索引
+		for len(plan.Steps) <= stepIndex {
+			plan.Steps = append(plan.Steps, &PlanStep{
+				ID:     fmt.Sprintf("step_%d", len(plan.Steps)+1),
 				Status: StepStatusPending,
 			})
 		}
-		return steps[stepIndex]
+		return plan.Steps[stepIndex]
 	}
 
 	// 封装处理步骤创建或更新的方法
-	handleStepOperation := func(stepIndex int, step *PlanStep) {
+	handleStepOperation := func(stepIndex int, step *PlanStep, plan *TaskPlan) {
 		if !createdSteps[stepIndex] {
 			// 第一次遇到这个步骤，执行创建操作
-			handler.OnPlanStepCreate(ctx, step)
+			handler.OnPlanStepCreate(ctx, plan, step)
 			createdSteps[stepIndex] = true
 		} else {
 			// 已存在的步骤，执行更新操作
-			handler.OnPlanStepUpdate(ctx, step)
+			handler.OnPlanStepUpdate(ctx, plan, step)
 		}
 	}
+	// 注册路径匹配器来提取步骤名称字段
+	matcher.On("steps[*].id", func(value interface{}, path []interface{}) {
+		if str, ok := value.(string); ok {
+			stepIndex := extractStepIndex(path)
+			if stepIndex >= 0 {
+				step := ensureStep(stepIndex)
+				step.ID = str
+				handleStepOperation(stepIndex, step, plan)
+			}
+		}
+	})
 
 	// 注册路径匹配器来提取步骤名称字段
 	matcher.On("steps[*].name", func(value interface{}, path []interface{}) {
@@ -170,7 +223,7 @@ func processPlanStepsStream(ctx context.Context, sr *schema.StreamReader[*schema
 			if stepIndex >= 0 {
 				step := ensureStep(stepIndex)
 				step.Name = str
-				handleStepOperation(stepIndex, step)
+				handleStepOperation(stepIndex, step, plan)
 			}
 		}
 	})
@@ -182,41 +235,37 @@ func processPlanStepsStream(ctx context.Context, sr *schema.StreamReader[*schema
 			if stepIndex >= 0 {
 				step := ensureStep(stepIndex)
 				step.Description = str
-				handleStepOperation(stepIndex, step)
+				handleStepOperation(stepIndex, step, plan)
 			}
 		}
 	})
 
-	matcher.On("steps[*].assigned_specialist", func(value interface{}, path []interface{}) {
+	matcher.On("steps[*].assignedSpecialist", func(value interface{}, path []interface{}) {
 		if str, ok := value.(string); ok {
 			stepIndex := extractStepIndex(path)
 			if stepIndex >= 0 {
 				step := ensureStep(stepIndex)
 				step.AssignedSpecialist = str
-				handleStepOperation(stepIndex, step)
+				handleStepOperation(stepIndex, step, plan)
 			}
 		}
 	})
 
-	matcher.On("steps[*].priority", func(value interface{}, path []interface{}) {
-		if priority, ok := value.(float64); ok {
+	matcher.On("steps[*].status", func(value interface{}, path []interface{}) {
+		if status, ok := value.(StepStatus); ok {
 			stepIndex := extractStepIndex(path)
 			if stepIndex >= 0 {
 				step := ensureStep(stepIndex)
-				step.Priority = int(priority)
-				handleStepOperation(stepIndex, step)
+				step.Status = status
+				handleStepOperation(stepIndex, step, plan)
 			}
 		}
 	})
 
 	defer func() {
 		sr.Close()
-		// 处理所有未创建的步骤
-		for i, step := range steps {
-			if !createdSteps[i] && step != nil {
-				handler.OnPlanStepCreate(ctx, step)
-			}
-		}
+		// 通知本轮解析结束
+		handler.OnPlanStepEnd(ctx, plan)
 	}()
 
 	// 处理流式数据

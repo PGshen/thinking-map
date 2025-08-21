@@ -1,4 +1,4 @@
-import { Action } from './message';
+import { Action, Plan } from './message';
 import { Position } from './node';
 
 // 与后端 dto/sse.go 对齐的 SSE 事件类型定义
@@ -47,6 +47,14 @@ export interface MessageThoughtEvent {
   messageID: string;
   message: string;
   mode: 'append' | 'replace';
+  timestamp: string;
+}
+
+export interface MessagePlanEvent {
+  nodeID: string;
+  messageID: string;
+  plan: Plan;
+  isEnd: boolean;
   timestamp: string;
 }
 

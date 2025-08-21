@@ -73,9 +73,11 @@ type Action struct {
 
 // PlanStep 计划步骤
 type PlanStep struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Status      string `json:"status"`
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	Description        string `json:"description"`
+	AssignedSpecialist string `json:"assignedSpecialist"`
+	Status             string `json:"status"`
 }
 
 // MessageContent 消息内容

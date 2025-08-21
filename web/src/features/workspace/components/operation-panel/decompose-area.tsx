@@ -32,6 +32,9 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
     <div className="h-full">
       <ChatMessageArea scrollButtonAlignment="center" className="px-2 py-2 space-y-4 text-sm">
         {messages.map((message) => {
+          if (message.content === undefined) {
+            return
+          }
           // 文本消息
           if (message.messageType === 'text') {
             if (message.content.text === undefined) {
@@ -63,6 +66,9 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
           }
           // 思考消息
           if (message.messageType === 'thought') {
+            if (message.content.thought === undefined) {
+              return
+            }
             const isCollapsed = collapsedStates[message.id] || false;
             
             return (
@@ -94,6 +100,9 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
             );
           }
           if (message.messageType === 'notice') {
+            if (message.content.notice === undefined) {
+              return
+            }
             // 根据通知类型获取颜色主题
             const getNoticeTheme = (type: string) => {
               switch (type.toLowerCase()) {
@@ -172,6 +181,9 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
             );
           }
           if (message.messageType === 'action') {
+            if (message.content.action === undefined) {
+              return
+            }
             return (
               <ChatMessage
                 key={message.id}
@@ -271,6 +283,9 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
           }
           // 计划步骤
           if (message.messageType === 'plan') {
+            if (message.content.plan === undefined) {
+              return
+            }
             return (
               <ChatMessage
                 key={message.id}
@@ -283,7 +298,7 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                     <Brain className="h-4 w-4 text-purple-600" />
                     <span className="text-sm font-medium text-purple-800">执行计划</span>
                   </div>
-                  {message.content.plan?.map((plan, index) => {
+                  {message.content.plan?.steps?.map((step, index) => {
                     // 根据状态设置不同的样式主题
                     const getPlanTheme = (status: string) => {
                       switch (status?.toLowerCase()) {
@@ -300,9 +315,9 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                             iconColor: 'text-green-600',
                             IconComponent: Check
                           };
+                        case 'running':
                         case 'in_progress':
                         case '进行中':
-                        case 'running':
                           return {
                             bg: 'bg-blue-50',
                             border: 'border-blue-200',
@@ -327,6 +342,7 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                             IconComponent: Pause
                           };
                         case 'failed':
+                        case 'skipped':
                         case '失败':
                         case 'error':
                           return {
@@ -353,7 +369,7 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                       }
                     };
 
-                    const theme = getPlanTheme(plan.status);
+                    const theme = getPlanTheme(step.status);
                     
                     return (
                       <div key={index} className={`relative p-4 ${theme.bg} border ${theme.border} rounded-lg transition-all duration-200 hover:shadow-sm`}>
@@ -371,19 +387,19 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                           <div className="flex-1 min-w-0">
                             {/* 标题和状态 */}
                             <div className="flex items-center gap-2 mb-2">
-                              <span className={`font-semibold ${theme.nameText} text-base`}>{plan.name}</span>
+                              <span className={`font-semibold ${theme.nameText} text-base`}>{step.name}</span>
                               <span className={`px-2 py-1 ${theme.tagBg} ${theme.tagText} text-xs rounded-full font-medium`}>
-                                {plan.status}
+                                {step.status}
                               </span>
                             </div>
                             
                             {/* 描述 */}
-                            <p className={`${theme.contentText} text-sm leading-relaxed`}>{plan.description}</p>
+                            <p className={`${theme.contentText} text-sm leading-relaxed`}>{step.description}</p>
                           </div>
                         </div>
                         
                         {/* 连接线（除了最后一个步骤） */}
-                        {index < (message.content.plan?.length || 0) - 1 && (
+                        {index < (message.content.plan?.steps?.length || 0) - 1 && (
                           <div className="absolute left-4 bottom-0 w-0.5 h-4 bg-purple-200 transform translate-y-full"></div>
                         )}
                       </div>

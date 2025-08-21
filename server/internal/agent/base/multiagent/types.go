@@ -10,195 +10,92 @@ import (
 )
 
 // TaskComplexity represents the complexity level of a task
-type TaskComplexity int
+type TaskComplexity string
 
 const (
-	TaskComplexityUnknown TaskComplexity = iota
-	TaskComplexitySimple
-	TaskComplexityModerate
-	TaskComplexityComplex
-	TaskComplexityVeryComplex
+	TaskComplexityUnknown     TaskComplexity = "unknown"
+	TaskComplexitySimple      TaskComplexity = "simple"
+	TaskComplexityModerate    TaskComplexity = "moderate"
+	TaskComplexityComplex     TaskComplexity = "complex"
+	TaskComplexityVeryComplex TaskComplexity = "very_complex"
 )
-
-func (tc TaskComplexity) String() string {
-	switch tc {
-	case TaskComplexitySimple:
-		return "simple"
-	case TaskComplexityModerate:
-		return "moderate"
-	case TaskComplexityComplex:
-		return "complex"
-	case TaskComplexityVeryComplex:
-		return "very_complex"
-	default:
-		return "unknown"
-	}
-}
 
 // ActionType represents the type of action an agent can take
-type ActionType int
+type ActionType string
 
 const (
-	ActionTypeUnknown ActionType = iota
-	ActionTypeThink
-	ActionTypePlan
-	ActionTypeExecute
-	ActionTypeReflect
-	ActionTypeAnswer
+	ActionTypeUnknown ActionType = "unknown"
+	ActionTypeThink   ActionType = "think"
+	ActionTypePlan    ActionType = "plan"
+	ActionTypeExecute ActionType = "execute"
+	ActionTypeReflect ActionType = "reflect"
+	ActionTypeAnswer  ActionType = "answer"
 )
-
-func (at ActionType) String() string {
-	switch at {
-	case ActionTypeThink:
-		return "think"
-	case ActionTypePlan:
-		return "plan"
-	case ActionTypeExecute:
-		return "execute"
-	case ActionTypeReflect:
-		return "reflect"
-	case ActionTypeAnswer:
-		return "answer"
-	default:
-		return "unknown"
-	}
-}
 
 // StepStatus represents the status of a plan step
-type StepStatus int
+type StepStatus string
 
 const (
-	StepStatusUnknown StepStatus = iota
-	StepStatusPending
-	StepStatusRunning
-	StepStatusCompleted
-	StepStatusFailed
-	StepStatusSkipped
+	StepStatusUnknown   StepStatus = "unknown"
+	StepStatusPending   StepStatus = "pending"
+	StepStatusRunning   StepStatus = "running"
+	StepStatusCompleted StepStatus = "completed"
+	StepStatusFailed    StepStatus = "failed"
+	StepStatusSkipped   StepStatus = "skipped"
 )
-
-func (ss StepStatus) String() string {
-	switch ss {
-	case StepStatusPending:
-		return "pending"
-	case StepStatusRunning:
-		return "running"
-	case StepStatusCompleted:
-		return "completed"
-	case StepStatusFailed:
-		return "failed"
-	case StepStatusSkipped:
-		return "skipped"
-	default:
-		return "unknown"
-	}
-}
 
 // ExecutionStatus represents the overall execution status
-type ExecutionStatus int
+type ExecutionStatus string
 
 const (
-	ExecutionStatusUnknown ExecutionStatus = iota
-	ExecutionStatusPending
-	ExecutionStatusAnalyzing
-	ExecutionStatusPlanning
-	ExecutionStatusStarted
-	ExecutionStatusRunning
-	ExecutionStatusExecuting
-	ExecutionStatusCollecting
-	ExecutionStatusCompleted
-	ExecutionStatusSuccess
-	ExecutionStatusFailed
-	ExecutionStatusTimeout
-	ExecutionStatusCancelled
+	ExecutionStatusUnknown    ExecutionStatus = "unknown"
+	ExecutionStatusPending    ExecutionStatus = "pending"
+	ExecutionStatusAnalyzing  ExecutionStatus = "analyzing"
+	ExecutionStatusPlanning   ExecutionStatus = "planning"
+	ExecutionStatusStarted    ExecutionStatus = "started"
+	ExecutionStatusRunning    ExecutionStatus = "running"
+	ExecutionStatusExecuting  ExecutionStatus = "executing"
+	ExecutionStatusCollecting ExecutionStatus = "collecting"
+	ExecutionStatusCompleted  ExecutionStatus = "completed"
+	ExecutionStatusSuccess    ExecutionStatus = "success"
+	ExecutionStatusFailed     ExecutionStatus = "failed"
+	ExecutionStatusTimeout    ExecutionStatus = "timeout"
+	ExecutionStatusCancelled  ExecutionStatus = "cancelled"
 )
-
-func (es ExecutionStatus) String() string {
-	switch es {
-	case ExecutionStatusPending:
-		return "pending"
-	case ExecutionStatusAnalyzing:
-		return "analyzing"
-	case ExecutionStatusPlanning:
-		return "planning"
-	case ExecutionStatusStarted:
-		return "started"
-	case ExecutionStatusRunning:
-		return "running"
-	case ExecutionStatusExecuting:
-		return "executing"
-	case ExecutionStatusCollecting:
-		return "collecting"
-	case ExecutionStatusCompleted:
-		return "completed"
-	case ExecutionStatusSuccess:
-		return "success"
-	case ExecutionStatusFailed:
-		return "failed"
-	case ExecutionStatusTimeout:
-		return "timeout"
-	case ExecutionStatusCancelled:
-		return "cancelled"
-	default:
-		return "unknown"
-	}
-}
 
 // PlanUpdateType represents the type of plan update
-type PlanUpdateType int
+type PlanUpdateType string
 
 const (
-	PlanUpdateTypeUnknown PlanUpdateType = iota
-	PlanUpdateTypeStepAdd
-	PlanUpdateTypeStepModify
-	PlanUpdateTypeStepRemove
-	PlanUpdateTypeStepReorder
-	PlanUpdateTypePriorityChange
-	PlanUpdateTypeDependencyChange
-	PlanUpdateTypeResourceChange
-	PlanUpdateTypeStrategyChange
+	PlanUpdateTypeUnknown          PlanUpdateType = "unknown"
+	PlanUpdateTypeStepAdd          PlanUpdateType = "step_add"
+	PlanUpdateTypeStepModify       PlanUpdateType = "step_modify"
+	PlanUpdateTypeStepRemove       PlanUpdateType = "step_remove"
+	PlanUpdateTypeStepReorder      PlanUpdateType = "step_reorder"
+	PlanUpdateTypePriorityChange   PlanUpdateType = "priority_change"
+	PlanUpdateTypeDependencyChange PlanUpdateType = "dependency_change"
+	PlanUpdateTypeResourceChange   PlanUpdateType = "resource_change"
+	PlanUpdateTypeStrategyChange   PlanUpdateType = "strategy_change"
 )
-
-func (put PlanUpdateType) String() string {
-	switch put {
-	case PlanUpdateTypeStepAdd:
-		return "step_add"
-	case PlanUpdateTypeStepModify:
-		return "step_modify"
-	case PlanUpdateTypeStepRemove:
-		return "step_remove"
-	case PlanUpdateTypeStepReorder:
-		return "step_reorder"
-	case PlanUpdateTypePriorityChange:
-		return "priority_change"
-	case PlanUpdateTypeDependencyChange:
-		return "dependency_change"
-	case PlanUpdateTypeResourceChange:
-		return "resource_change"
-	case PlanUpdateTypeStrategyChange:
-		return "strategy_change"
-	default:
-		return "unknown"
-	}
-}
 
 // ConversationContext contains conversation analysis results
 type ConversationContext struct {
-	UserIntent      string            `json:"user_intent"`
-	RelevantHistory []*schema.Message `json:"relevant_history"`
-	KeyTopics       []string          `json:"key_topics"`
-	ContextSummary  string            `json:"context_summary"`
+	UserIntent      string            `json:"userIntent"`
+	RelevantHistory []*schema.Message `json:"relevantHistory"`
+	KeyTopics       []string          `json:"keyTopics"`
+	ContextSummary  string            `json:"contextSummary"`
 	Complexity      TaskComplexity    `json:"complexity"`
 	Metadata        map[string]any    `json:"metadata,omitempty"`
 }
 
 // ExecutionRecord represents a single execution step record
 type ExecutionRecord struct {
-	StepID    string            `json:"step_id"`
+	StepID    string            `json:"stepID"`
 	Action    ActionType        `json:"action"`
 	Input     []*schema.Message `json:"input"`
 	Output    *schema.Message   `json:"output"`
-	StartTime time.Time         `json:"start_time"`
-	EndTime   time.Time         `json:"end_time"`
+	StartTime time.Time         `json:"startTime"`
+	EndTime   time.Time         `json:"endTime"`
 	Duration  time.Duration     `json:"duration"`
 	Status    ExecutionStatus   `json:"status"`
 	Error     string            `json:"error,omitempty"`
@@ -211,7 +108,7 @@ type StepResult struct {
 	Output       *schema.Message `json:"output"`
 	Error        string          `json:"error,omitempty"`
 	Confidence   float64         `json:"confidence"`
-	QualityScore float64         `json:"quality_score"`
+	QualityScore float64         `json:"qualityScore"`
 	Metadata     map[string]any  `json:"metadata,omitempty"`
 }
 
@@ -220,7 +117,7 @@ type PlanStep struct {
 	ID                 string         `json:"id"`
 	Name               string         `json:"name"`
 	Description        string         `json:"description"`
-	AssignedSpecialist string         `json:"assigned_specialist"`
+	AssignedSpecialist string         `json:"assignedSpecialist"`
 	Priority           int            `json:"priority"`
 	Status             StepStatus     `json:"status"`
 	Dependencies       []string       `json:"dependencies,omitempty"`
@@ -232,8 +129,8 @@ type PlanStep struct {
 // PlanUpdate represents an update to a task plan
 type PlanUpdate struct {
 	ID          string         `json:"id"`
-	PlanVersion int            `json:"plan_version"`
-	UpdateType  PlanUpdateType `json:"update_type"`
+	PlanVersion int            `json:"planVersion"`
+	UpdateType  PlanUpdateType `json:"updateType"`
 	Description string         `json:"description"`
 	Reason      string         `json:"reason"`
 	Timestamp   time.Time      `json:"timestamp"`
@@ -250,7 +147,7 @@ type TaskPlan struct {
 	CreatedAt     time.Time       `json:"created_at"`
 	UpdatedAt     time.Time       `json:"updated_at"`
 	Steps         []*PlanStep     `json:"steps"`
-	UpdateHistory []*PlanUpdate   `json:"update_history,omitempty"`
+	UpdateHistory []*PlanUpdate   `json:"updateHistory,omitempty"`
 	Metadata      map[string]any  `json:"metadata,omitempty"`
 }
 

@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
 import { getMessages, decomposition } from '@/api/node';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
-import { MessageActionEvent, MessageTextEvent, MessageThoughtEvent } from '@/types/sse';
+import { MessageActionEvent, MessagePlanEvent, MessageTextEvent, MessageThoughtEvent } from '@/types/sse';
 
 interface DecomposeTabProps {
   nodeID: string;
@@ -31,6 +31,15 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
   const [inputValue, setInputValue] = useState("");
 
   const { actions } = useWorkspaceStore();
+
+  // 使用useEffect来同步messages到workspace store，避免在渲染期间更新状态
+  useEffect(() => {
+    if (messages.length > 0) {
+      actions.updateNodeDecomposition(nodeID, {
+        messages: messages,
+      });
+    }
+  }, [messages, nodeID, actions]);
 
   // 处理消息操作事件
   const handleMessageActionEvent = (data: MessageActionEvent) => {
@@ -66,11 +75,6 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
 
         updatedMessages = [...prevMessages, newMessage];
       }
-
-      // 同步更新到workspace store
-      actions.updateNodeDecomposition(nodeID, {
-        messages: updatedMessages,
-      });
 
       return updatedMessages;
     });
@@ -125,14 +129,48 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
         updatedMessages = [...prevMessages, newMessage];
       }
 
-      // 同步更新到workspace store
-      actions.updateNodeDecomposition(nodeID, {
-        messages: updatedMessages,
-      });
-
       return updatedMessages;
     });
   };
+
+  // 处理规划消息
+  const handleMessagePlanEvent = (data: MessagePlanEvent) => {
+    setMessages(prevMessages => {
+      const existingMessageIndex = prevMessages.findIndex(msg => msg.id === data.messageID);
+      let updatedMessages: MessageResponse[];
+
+      if (existingMessageIndex !== -1) {
+        // 消息已存在，直接覆盖更新 plan 内容
+        updatedMessages = [...prevMessages];
+        const existingMessage = updatedMessages[existingMessageIndex];
+        
+        updatedMessages[existingMessageIndex] = {
+          ...existingMessage,
+          content: {
+            ...existingMessage.content,
+            plan: data.plan
+          },
+          updatedAt: data.timestamp
+        };
+      } else {
+        // 消息不存在，创建新的规划消息
+        const newMessage: MessageResponse = {
+          id: data.messageID,
+          messageType: 'plan',
+          role: 'assistant',
+          content: {
+            plan: data.plan
+          },
+          createdAt: data.timestamp,
+          updatedAt: data.timestamp
+        };
+
+        updatedMessages = [...prevMessages, newMessage];
+      }
+
+      return updatedMessages;
+    });
+  }
 
   // SSE连接处理 - 将useSSEConnection移到组件顶层
   const sseCallbacks = React.useMemo(() => {
@@ -169,6 +207,17 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
             handleMessageActionEvent(data);
           } catch (error) {
             console.error('解析messageAction事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'messagePlan' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as MessagePlanEvent;
+            handleMessagePlanEvent(data);
+          } catch (error) {
+            console.error('解析messagePlan事件失败:', error, event.data);
           }
         }
       }
@@ -265,9 +314,6 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
     };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
-    actions.updateNodeDecomposition(nodeID, {
-      messages: newMessages,
-    });
     handleSubmit(inputValue);
     setInputValue('');
   };

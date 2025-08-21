@@ -57,7 +57,7 @@ Create a plan with the following JSON structure:
       "id": "step_1",
       "name": "Step Name",
       "description": "Step Description",
-      "assigned_specialist": "specialist_name",
+      "assignedSpecialist": "specialist_name",
       "priority": 1,
       "dependencies": [],
       "parameters": {}
@@ -67,11 +67,12 @@ Create a plan with the following JSON structure:
 
 Notice:
 - The plan must be executable.
+- Control the number of steps in the plan.
 - Each step must be assigned to a specialist, and the specialist must be available.
 - Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
 - Must strictly follow JSON format for replies, do not add any extra text`,
 		state.ConversationContext.UserIntent,
-		state.ConversationContext.Complexity.String(),
+		state.ConversationContext.Complexity,
 		state.ConversationContext.KeyTopics,
 		specialistList,
 	)
@@ -133,7 +134,7 @@ Current Plan:
 	if state.CurrentPlan != nil {
 		prompt += fmt.Sprintf("Plan: %s\nDescription: %s\n", state.CurrentPlan.Name, state.CurrentPlan.Description)
 		for _, step := range state.CurrentPlan.Steps {
-			prompt += fmt.Sprintf("- Step %s: %s (Status: %s)\n", step.ID, step.Name, step.Status.String())
+			prompt += fmt.Sprintf("- Step %s: %s (Status: %s)\n", step.ID, step.Name, step.Status)
 		}
 	}
 
@@ -186,7 +187,7 @@ Current Plan:
 	if state.CurrentPlan != nil {
 		prompt += fmt.Sprintf("Plan: %s\nDescription: %s\n", state.CurrentPlan.Name, state.CurrentPlan.Description)
 		for _, step := range state.CurrentPlan.Steps {
-			prompt += fmt.Sprintf("- Step %s: %s (Status: %s, Priority: %d)\n", step.ID, step.Name, step.Status.String(), step.Priority)
+			prompt += fmt.Sprintf("- Step %s: %s (Status: %s, Priority: %d)\n", step.ID, step.Name, step.Status, step.Priority)
 			if step.AssignedSpecialist != "" {
 				prompt += fmt.Sprintf("  Assigned Specialist: %s\n", step.AssignedSpecialist)
 			}
@@ -212,7 +213,7 @@ Current Plan:
 	if len(state.ExecutionHistory) > 0 {
 		prompt += "\nExecution History:\n"
 		for _, record := range state.ExecutionHistory {
-			prompt += fmt.Sprintf("- Step %s: %s (Status: %s)\n", record.StepID, record.Action.String(), record.Status.String())
+			prompt += fmt.Sprintf("- Step %s: %s (Status: %s)\n", record.StepID, record.Action, record.Status)
 		}
 		prompt += "\n"
 	}
@@ -242,14 +243,14 @@ Provide incremental plan updates in JSON format:
   "operations": [
     {
       "type": "add|modify|remove|reorder",
-      "step_id": "target_step_id",
+      "stepID": "target_stepID",
       "step_data": {
-        "id": "new_step_id",
+        "id": "new_stepID",
         "name": "Step name",
         "description": "Detailed step description",
-        "assigned_specialist": "specialist_name",
+        "assignedSpecialist": "specialist_name",
         "priority": 1,
-        "dependencies": ["prerequisite_step_ids"],
+        "dependencies": ["prerequisite_stepIDs"],
         "parameters": {"key": "value"}
       },
       "position": "before|after|index_number",
@@ -264,13 +265,13 @@ Provide incremental plan updates in JSON format:
 
 Operation Types:
 - "add": Add a new step. Use step_data and position fields.
-- "modify": Modify an existing step. Use step_id and step_data fields. Can not modify completed steps.
-- "remove": Remove a step. Use step_id field only.
-- "reorder": Change step order. Use step_id and position fields.
+- "modify": Modify an existing step. Use stepID and step_data fields. Can not modify completed steps.
+- "remove": Remove a step. Use stepID field only.
+- "reorder": Change step order. Use stepID and position fields.
 
 Position Values:
-- "before": Insert before the specified step_id
-- "after": Insert after the specified step_id  
+- "before": Insert before the specified stepID
+- "after": Insert after the specified stepID  
 - number: Insert at specific index (0-based)
 
 Guidelines:

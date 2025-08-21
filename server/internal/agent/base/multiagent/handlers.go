@@ -67,9 +67,9 @@ IMPORTANT: You MUST respond with ONLY a valid JSON object. Do not include any ex
 
 Please analyze and provide the following information in JSON format:
 {
-  "user_intent": "Brief description of what the user wants to achieve",
-  "key_topics": ["topic1", "topic2", "topic3"],
-  "context_summary": "Summary of the conversation context",
+  "userIntent": "Brief description of what the user wants to achieve",
+  "keyTopics": ["topic1", "topic2", "topic3"],
+  "contextSummary": "Summary of the conversation context",
   "complexity": "simple|moderate|complex|very_complex",
   "metadata": {}
 }
@@ -84,9 +84,9 @@ Remember: Output ONLY the JSON object, no other text.`
 
 func (h *ConversationAnalyzerHandler) parseConversationContext(content string) (*ConversationContext, error) {
 	var result struct {
-		UserIntent     string         `json:"user_intent"`
-		KeyTopics      []string       `json:"key_topics"`
-		ContextSummary string         `json:"context_summary"`
+		UserIntent     string         `json:"userIntent"`
+		KeyTopics      []string       `json:"keyTopics"`
+		ContextSummary string         `json:"contextSummary"`
 		Complexity     string         `json:"complexity"`
 		Metadata       map[string]any `json:"metadata"`
 	}
@@ -192,7 +192,7 @@ func (h *PlanCreationHandler) parseTaskPlan(content string) (*TaskPlan, error) {
 			ID                 string         `json:"id"`
 			Name               string         `json:"name"`
 			Description        string         `json:"description"`
-			AssignedSpecialist string         `json:"assigned_specialist"`
+			AssignedSpecialist string         `json:"assignedSpecialist"`
 			Priority           int            `json:"priority"`
 			Dependencies       []string       `json:"dependencies"`
 			Parameters         map[string]any `json:"parameters"`
@@ -680,7 +680,7 @@ func (h *PlanUpdateHandler) processPlanUpdate(output *schema.Message, state *Mul
 		UpdateReason string `json:"update_reason"`
 		Operations   []struct {
 			Type     string    `json:"type"`
-			StepID   string    `json:"step_id"`
+			StepID   string    `json:"stepID"`
 			StepData *StepData `json:"step_data,omitempty"`
 			Position string    `json:"position,omitempty"`
 			Reason   string    `json:"reason,omitempty"`
@@ -821,7 +821,7 @@ func (h *PlanUpdateHandler) clonePlan(plan *TaskPlan) *TaskPlan {
 // OperationData defines the structure for plan update operations
 type OperationData struct {
 	Type     string    `json:"type"`
-	StepID   string    `json:"step_id"`
+	StepID   string    `json:"stepID"`
 	StepData *StepData `json:"step_data,omitempty"`
 	Position string    `json:"position,omitempty"`
 	Reason   string    `json:"reason,omitempty"`
@@ -831,7 +831,7 @@ type StepData struct {
 	ID                 string         `json:"id"`
 	Name               string         `json:"name"`
 	Description        string         `json:"description"`
-	AssignedSpecialist string         `json:"assigned_specialist"`
+	AssignedSpecialist string         `json:"assignedSpecialist"`
 	Priority           int            `json:"priority"`
 	Dependencies       []string       `json:"dependencies,omitempty"`
 	Parameters         map[string]any `json:"parameters,omitempty"`

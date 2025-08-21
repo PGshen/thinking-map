@@ -4,7 +4,7 @@ import { getToken } from '@/lib/auth';
 import API_ENDPOINTS from '@/api/endpoints';
 
 // SSE事件类型定义
-type SSEEventType = 'nodeCreated' | 'nodeUpdated' | 'connection_established' | 'messageText' | 'messageThought' | 'messageAction' | 'error' | 'ping' | 'message';
+type SSEEventType = 'nodeCreated' | 'nodeUpdated' | 'connection_established' | 'messageText' | 'messageThought' | 'messageAction' | 'messagePlan' | 'error' | 'ping' | 'message';
 
 // SSE事件数据结构
 interface SSEEventData {

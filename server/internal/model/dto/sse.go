@@ -9,6 +9,7 @@ package dto
 import (
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/agent/base/multiagent"
 	"github.com/PGshen/thinking-map/server/internal/model"
 )
 
@@ -79,6 +80,13 @@ type MessageThoughtEvent struct {
 	MessageID string `json:"messageID"`
 	Message   string `json:"message"`
 	Mode      string `json:"mode"`
+}
+
+type MessagePlanEvent struct {
+	NodeID    string              `json:"nodeID"`
+	MessageID string              `json:"messageID"`
+	Plan      multiagent.TaskPlan `json:"plan"`
+	IsEnd     bool                `json:"isEnd"`
 }
 
 // ErrorEvent represents the error event

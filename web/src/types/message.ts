@@ -5,6 +5,8 @@ export type RoleType = 'system' | 'assistant' | 'user';
 
 export type MessageType = 'text' | 'notice' | 'rag' | 'action' | 'thought' | 'plan';
 
+export type PlanStepStatus = 'pending' | 'running' | 'completed' | 'skipped' | 'failed';
+
 // 通知信息
 export interface Notice {
   type: string;
@@ -20,10 +22,16 @@ export interface Action {
   param?: Record<string, any>;
 }
 
+export interface Plan {
+  steps: PlanStep[];
+}
+
 export interface PlanStep {
+  id: string;
   name: string;
   description: string;
-  status: string;
+  status: PlanStepStatus;
+  assignedSpecialist?: string;
 }
 
 // 消息内容 - 与后端 model.MessageContent 对齐
@@ -33,7 +41,7 @@ export interface MessageContent {
   rag?: string[];
   notice?: Notice[];
   action?: Action[];
-  plan?: PlanStep[];
+  plan?: Plan;
 }
 
 export interface MessageResponse {
