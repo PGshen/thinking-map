@@ -9,7 +9,7 @@
 import React, { useState, useEffect } from 'react';
 import { GitBranch } from 'lucide-react';
 import { DecomposeArea } from './decompose-area';
-import { Action, MessageResponse } from '@/types/message';
+import { Action, MessageResponse, MessageType, MessageContent } from '@/types/message';
 import { CustomNodeModel } from '@/types/node';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { toast } from 'sonner';
@@ -41,165 +41,40 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
     }
   }, [messages, nodeID, actions]);
 
-  // 处理消息通知事件
-  const handleMessageNoticeEvent = (data: MessageNoticeEvent) => {
+  // 通用消息处理函数
+  const handleMessageEvent = <T extends { messageID: string; timestamp: string }>(
+    data: T,
+    messageType: MessageType,
+    contentUpdater: (data: T, existingContent?: MessageContent, mode?: string) => Partial<MessageContent>
+  ) => {
     setMessages(prevMessages => {
       const existingMessageIndex = prevMessages.findIndex(msg => msg.id === data.messageID);
       let updatedMessages: MessageResponse[];
 
       if (existingMessageIndex !== -1) {
-        // 消息已存在，更新通知内容
+        // 消息已存在，更新内容
         updatedMessages = [...prevMessages];
         const existingMessage = updatedMessages[existingMessageIndex];
-
-        updatedMessages[existingMessageIndex] = {
-          ...existingMessage,
-          content: {
-            ...existingMessage.content,
-            notice: data.notice
-          },
-          updatedAt: data.timestamp
-        };
-      } else {
-        // 消息不存在，创建新的通知消息
-        const newMessage: MessageResponse = {
-          id: data.messageID,
-          messageType: 'notice',
-          role: 'assistant',
-          content: {
-            notice: data.notice
-          },
-          createdAt: data.timestamp,
-          updatedAt: data.timestamp
-        };
-
-        updatedMessages = [...prevMessages, newMessage];
-      }
-
-      return updatedMessages;
-    });
-  };
-
-  // 处理消息操作事件
-  const handleMessageActionEvent = (data: MessageActionEvent) => {
-    setMessages(prevMessages => {
-      const existingMessageIndex = prevMessages.findIndex(msg => msg.id === data.messageID);
-      let updatedMessages: MessageResponse[];
-
-      if (existingMessageIndex !== -1) {
-        // 消息已存在，更新操作内容
-        updatedMessages = [...prevMessages];
-        const existingMessage = updatedMessages[existingMessageIndex];
-
-        updatedMessages[existingMessageIndex] = {
-          ...existingMessage,
-          content: {
-            ...existingMessage.content,
-            action: data.actions
-          },
-          updatedAt: data.timestamp
-        };
-      } else {
-        // 消息不存在，创建新的操作消息
-        const newMessage: MessageResponse = {
-          id: data.messageID,
-          messageType: 'action',
-          role: 'assistant',
-          content: {
-            action: data.actions
-          },
-          createdAt: data.timestamp,
-          updatedAt: data.timestamp
-        };
-
-        updatedMessages = [...prevMessages, newMessage];
-      }
-
-      return updatedMessages;
-    });
-  };
-
-  // 处理消息文本事件
-  const handleMessageTextOrThoughtEvent = (data: MessageTextEvent|MessageThoughtEvent, messageType: 'text' | 'thought') => {
-    setMessages(prevMessages => {
-      const existingMessageIndex = prevMessages.findIndex(msg => msg.id === data.messageID);
-      let updatedMessages: MessageResponse[];
-
-      if (existingMessageIndex !== -1) {
-        // 消息已存在，根据mode更新
-        updatedMessages = [...prevMessages];
-        const existingMessage = updatedMessages[existingMessageIndex];
-
-        if (data.mode === 'replace') {
-          // 替换模式：直接替换文本内容
-          updatedMessages[existingMessageIndex] = {
-            ...existingMessage,
-            content: {
-              ...existingMessage.content,
-              [messageType]: data.message
-            },
-            updatedAt: data.timestamp
-          };
-        } else if (data.mode === 'append') {
-          // 追加模式：在现有文本后追加
-          const currentText = existingMessage.content[messageType] || '';
-          updatedMessages[existingMessageIndex] = {
-            ...existingMessage,
-            content: {
-              ...existingMessage.content,
-              [messageType]: currentText + data.message
-            },
-            updatedAt: data.timestamp
-          };
-        }
-      } else {
-        // 消息不存在，创建新消息
-        const newMessage: MessageResponse = {
-          id: data.messageID,
-          messageType: messageType,
-          role: 'assistant',
-          content: {
-            [messageType]: data.message
-          },
-          createdAt: data.timestamp,
-          updatedAt: data.timestamp
-        };
-
-        updatedMessages = [...prevMessages, newMessage];
-      }
-
-      return updatedMessages;
-    });
-  };
-
-  // 处理规划消息
-  const handleMessagePlanEvent = (data: MessagePlanEvent) => {
-    setMessages(prevMessages => {
-      const existingMessageIndex = prevMessages.findIndex(msg => msg.id === data.messageID);
-      let updatedMessages: MessageResponse[];
-
-      if (existingMessageIndex !== -1) {
-        // 消息已存在，直接覆盖更新 plan 内容
-        updatedMessages = [...prevMessages];
-        const existingMessage = updatedMessages[existingMessageIndex];
+        const mode = 'mode' in data ? (data as any).mode : undefined;
+        
+        const updatedContent = contentUpdater(data, existingMessage.content, mode);
         
         updatedMessages[existingMessageIndex] = {
           ...existingMessage,
           content: {
             ...existingMessage.content,
-            plan: data.plan
+            ...updatedContent
           },
           updatedAt: data.timestamp
         };
       } else {
-        // 消息不存在，创建新的规划消息
+        // 消息不存在，创建新消息
+        const newContent = contentUpdater(data);
         const newMessage: MessageResponse = {
           id: data.messageID,
-          messageType: 'plan',
+          messageType,
           role: 'assistant',
-          content: {
-            plan: data.plan
-          },
+          content: newContent,
           createdAt: data.timestamp,
           updatedAt: data.timestamp
         };
@@ -209,7 +84,54 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
 
       return updatedMessages;
     });
-  }
+  };
+
+  // 处理消息通知事件
+  const handleMessageNoticeEvent = (data: MessageNoticeEvent) => {
+    handleMessageEvent(data, 'notice', (eventData) => ({
+      notice: eventData.notice
+    }));
+  };
+
+  // 处理消息操作事件
+  const handleMessageActionEvent = (data: MessageActionEvent) => {
+    handleMessageEvent(data, 'action', (eventData) => ({
+      action: eventData.actions
+    }));
+  };
+
+  // 处理消息文本或思考事件
+  const handleMessageTextOrThoughtEvent = (
+    data: MessageTextEvent | MessageThoughtEvent, 
+    messageType: 'text' | 'thought'
+  ) => {
+    handleMessageEvent(data, messageType, (eventData, existingContent, mode) => {
+      if (mode === 'replace') {
+        // 替换模式：直接替换文本内容
+        return {
+          [messageType]: eventData.message
+        };
+      } else if (mode === 'append') {
+        // 追加模式：在现有文本后追加
+        const currentText = existingContent?.[messageType] || '';
+        return {
+          [messageType]: currentText + eventData.message
+        };
+      } else {
+        // 默认为替换模式
+        return {
+          [messageType]: eventData.message
+        };
+      }
+    });
+  };
+
+  // 处理规划消息事件
+  const handleMessagePlanEvent = (data: MessagePlanEvent) => {
+    handleMessageEvent(data, 'plan', (eventData) => ({
+      plan: eventData.plan
+    }));
+  };
 
   // SSE连接处理 - 将useSSEConnection移到组件顶层
   const sseCallbacks = React.useMemo(() => {
