@@ -18,6 +18,8 @@ const (
 	ConnectionEstablishedEventType = "connectionEstablished"
 	NodeCreatedEventType           = "nodeCreated"
 	NodeUpdatedEventType           = "nodeUpdated"
+	NodeDeletedEventType           = "nodeDeleted"
+	NodeDependenciesUpdatedEventType = "nodeDependenciesUpdated"
 	ThinkingProgressEventType      = "thinkingProgress"
 	MessageTextEventType           = "messageText"
 	MessageThoughtEventType        = "messageThought"
@@ -50,6 +52,18 @@ type NodeUpdatedEvent struct {
 	NodeID  string                 `json:"nodeID"`
 	Mode    string                 `json:"mode"` // 更新模式：repeace/append
 	Updates map[string]interface{} `json:"updates"`
+}
+
+// NodeDeletedEvent represents the node deletion event
+type NodeDeletedEvent struct {
+	NodeID   string `json:"nodeID"`
+	Question string `json:"question"`
+}
+
+// NodeDependenciesUpdatedEvent represents the node dependencies update event
+type NodeDependenciesUpdatedEvent struct {
+	NodeID       string   `json:"nodeID"`
+	Dependencies []string `json:"dependencies"`
 }
 
 // ThinkingProgressEvent represents the thinking progress event

@@ -37,14 +37,25 @@ func TestDeleteNodeTool(t *testing.T) {
 	}
 }
 
+// TestSetNodeDependenciesTool 测试设置节点依赖关系工具
+func TestSetNodeDependenciesTool(t *testing.T) {
+	tool, err := SetNodeDependenciesTool()
+	if err != nil {
+		t.Fatalf("SetNodeDependenciesTool() error = %v", err)
+	}
+	if tool == nil {
+		t.Fatal("SetNodeDependenciesTool() returned nil tool")
+	}
+}
+
 // TestGetAllNodeTools 测试获取所有节点工具
 func TestGetAllNodeTools(t *testing.T) {
 	tools, err := GetAllNodeTools()
 	if err != nil {
 		t.Fatalf("GetAllNodeTools() error = %v", err)
 	}
-	if len(tools) != 3 {
-		t.Fatalf("GetAllNodeTools() expected 3 tools, got %d", len(tools))
+	if len(tools) != 4 {
+		t.Fatalf("GetAllNodeTools() expected 4 tools, got %d", len(tools))
 	}
 	for i, tool := range tools {
 		if tool == nil {
