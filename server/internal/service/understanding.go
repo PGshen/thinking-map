@@ -29,7 +29,8 @@ func NewUnderstandingService(messageRepo repository.Message, nodeRepo repository
 	}
 }
 
-func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.UnderstandingRequest) (event string, sr *schema.StreamReader[*schema.Message], err error) {
+func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.UnderstandingRequest) (lastMsgID, event string, sr *schema.StreamReader[*schema.Message], err error) {
+	lastMsgID = uuid.NewString()
 	event = comm.EventJson
 	userID := ctx.GetString("user_id")
 	// 1. 构建理解agent
@@ -53,11 +54,11 @@ func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.Understan
 		// 先获取父消息以得到conversationID
 		parentMsg, err2 := msgManager.GetMessageByID(ctx, req.ParentMsgID)
 		if err2 != nil {
-			return "", nil, err2
+			return "", "", nil, err2
 		}
 		msgs, err = msgManager.GetMessageChain(ctx, req.ParentMsgID, parentMsg.ConversationID)
 		if err != nil {
-			return "", nil, err
+			return "", "", nil, err
 		}
 	} else {
 		// 没有父消息，使用空的消息链
@@ -92,6 +93,6 @@ func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.Understan
 	srs := sr.Copy(2)
 	sr = srs[0]
 	// 流式消息，提前确定消息ID
-	go msgManager.SaveStreamMessage(ctx, srs[1], uuid.NewString(), msgResp.ID)
+	go msgManager.SaveStreamMessage(ctx, srs[1], lastMsgID, msgResp.ID)
 	return
 }

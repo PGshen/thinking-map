@@ -93,7 +93,7 @@ func main() {
 	global.InitBroker(eventBus, connManager, serverID, 10*time.Second, 60*time.Second)
 
 	// 初始化全局消息管理器
-	global.InitMessageManager(repository.NewMessageRepository(db), repository.NewThinkingNodeRepository(db))
+	global.InitMessageManager(repository.NewMessageRepository(db), repository.NewThinkingNodeRepository(db), db)
 
 	// 初始化全局节点操作器
 	global.InitNodeOperator(repository.NewThinkingNodeRepository(db), repository.NewThinkingMapRepository(db))

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/model"
+	"gorm.io/gorm"
 )
 
 const whereID = "id = ?"
@@ -41,17 +42,20 @@ type ThinkingNode interface {
 	Update(ctx context.Context, node *model.ThinkingNode) error
 	Delete(ctx context.Context, id string) error
 	FindByID(ctx context.Context, id string) (*model.ThinkingNode, error)
+	FindByIDForUpdate(ctx context.Context, tx *gorm.DB, id string) (*model.ThinkingNode, error)
 	FindByIDs(ctx context.Context, ids []string) ([]*model.ThinkingNode, error)
 	FindByMapID(ctx context.Context, mapID string) ([]*model.ThinkingNode, error)
 	FindByParentID(ctx context.Context, parentID string) ([]*model.ThinkingNode, error)
 	UpdatePosition(ctx context.Context, id string, position model.JSONB) error
 	UpdateStatus(ctx context.Context, id string, status int) error
 	UpdateIsDecomposed(ctx context.Context, id string, isDecomposed bool) error
+	UpdateInTx(ctx context.Context, tx *gorm.DB, node *model.ThinkingNode) error
 }
 
 // Message 消息仓储接口
 type Message interface {
 	Create(ctx context.Context, message *model.Message) error
+	CreateInTx(ctx context.Context, tx *gorm.DB, message *model.Message) error
 	Update(ctx context.Context, message *model.Message) error
 	Delete(ctx context.Context, id string) error
 	FindByID(ctx context.Context, id string) (*model.Message, error)

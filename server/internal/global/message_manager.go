@@ -37,14 +37,16 @@ var (
 type MessageManager struct {
 	messageRepo repository.Message
 	nodeRepo    repository.ThinkingNode
+	db          *gorm.DB
 }
 
 // InitMessageManager 初始化全局消息管理器
-func InitMessageManager(messageRepo repository.Message, nodeRepo repository.ThinkingNode) {
+func InitMessageManager(messageRepo repository.Message, nodeRepo repository.ThinkingNode, db *gorm.DB) {
 	messageManagerOnce.Do(func() {
 		GlobalMessageManager = &MessageManager{
 			messageRepo: messageRepo,
 			nodeRepo:    nodeRepo,
+			db:          db,
 		}
 	})
 }
@@ -101,24 +103,93 @@ func (s *MessageManager) CreateMessage(ctx context.Context, userID string, req d
 	return &resp, nil
 }
 
-// SaveDecompositionMessage 保存分解消息
+// CreateMessageInTx 在事务中创建消息
+func (s *MessageManager) CreateMessageInTx(ctx context.Context, tx *gorm.DB, userID string, req dto.CreateMessageRequest) (*dto.MessageResponse, error) {
+	if req.ID == "" {
+		return nil, errors.New("message ID is empty")
+	}
+	// 获取conversationID
+	var conversationID string
+	if req.ParentID == "" {
+		conversationID = uuid.NewString()
+	} else {
+		// 通过parentID获取
+		if parentMsg, err := s.messageRepo.FindByID(ctx, req.ParentID); err == nil {
+			conversationID = parentMsg.ConversationID
+			if userID == "" { // 没有传userID,则继承父消息的
+				userID = parentMsg.UserID
+			}
+		} else {
+			conversationID = uuid.NewString()
+		}
+	}
+	// 处理空ParentID
+	parentID := req.ParentID
+	if parentID == "" {
+		parentID = uuid.Nil.String()
+	}
+
+	msg := &model.Message{
+		ID:             req.ID,
+		ParentID:       parentID,
+		ConversationID: conversationID,
+		UserID:         userID,
+		MessageType:    req.MessageType,
+		Role:           req.Role,
+		Content:        req.Content,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	if err := s.messageRepo.CreateInTx(ctx, tx, msg); err != nil {
+		return nil, err
+	}
+	resp := dto.ToMessageResponse(msg)
+	return &resp, nil
+}
+
+// SaveDecompositionMessage 保存分解消息（使用事务和行级锁解决并发问题）
 func (s *MessageManager) SaveDecompositionMessage(ctx context.Context, nodeID string, req dto.CreateMessageRequest) (*dto.MessageResponse, error) {
-	// 0. 找到节点
-	node, err := s.nodeRepo.FindByID(ctx, nodeID)
-	if err != nil {
-		return nil, err
+	// 使用数据库事务确保操作的原子性
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", tx.Error)
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
+	// 1. 使用行级锁获取节点，防止并发修改
+	node, err := s.nodeRepo.FindByIDForUpdate(ctx, tx, nodeID)
+	if err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to get node with lock: %w", err)
+	}
+
+	// 2. 获取当前节点的最后消息ID作为新消息的父ID
 	lastMessageID := node.Decomposition.LastMessageID
-	// 1. 保存消息
 	req.ParentID = lastMessageID
-	msg, err := s.CreateMessage(ctx, req.UserID, req)
+
+	// 3. 在事务中创建新消息
+	msg, err := s.CreateMessageInTx(ctx, tx, req.UserID, req)
 	if err != nil {
-		return nil, err
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to create message in transaction: %w", err)
 	}
-	// 2. 更新节点的最后消息ID
-	if err := s.LinkMessageToNode(ctx, nodeID, msg.ID, msg.ConversationID, dto.ConversationTypeDecomposition); err != nil {
-		return nil, err
+
+	// 4. 在事务中更新节点的最后消息ID
+	if err := s.LinkMessageToNodeInTx(ctx, tx, nodeID, msg.ID, msg.ConversationID, dto.ConversationTypeDecomposition); err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to link message to node in transaction: %w", err)
 	}
+
+	// 5. 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	return msg, nil
 }
 
@@ -400,6 +471,40 @@ func (s *MessageManager) LinkMessageToNode(ctx context.Context, nodeID string, m
 
 	if err := s.nodeRepo.Update(ctx, node); err != nil {
 		return fmt.Errorf("failed to update node: %w", err)
+	}
+
+	return nil
+}
+
+// LinkMessageToNodeInTx 在事务中将消息关联到节点
+func (s *MessageManager) LinkMessageToNodeInTx(ctx context.Context, tx *gorm.DB, nodeID string, messageID, conversationID string, conversationType string) error {
+	node, err := s.nodeRepo.FindByIDForUpdate(ctx, tx, nodeID)
+	if err != nil {
+		return fmt.Errorf("failed to get node with lock: %w", err)
+	}
+
+	// 根据对话类型更新节点的相应字段
+	switch conversationType {
+	case dto.ConversationTypeDecomposition:
+		decomposition := node.Decomposition
+		decomposition.LastMessageID = messageID
+		if conversationID != "" {
+			decomposition.ConversationID = conversationID
+		}
+		node.Decomposition = decomposition
+	case dto.ConversationTypeConclusion:
+		conclusion := node.Conclusion
+		conclusion.LastMessageID = messageID
+		if conversationID != "" {
+			conclusion.ConversationID = conversationID
+		}
+		node.Conclusion = conclusion
+	default:
+		return fmt.Errorf("unsupported message type: %s", conversationType)
+	}
+
+	if err := s.nodeRepo.UpdateInTx(ctx, tx, node); err != nil {
+		return fmt.Errorf("failed to update node in transaction: %w", err)
 	}
 
 	return nil
