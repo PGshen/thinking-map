@@ -344,7 +344,12 @@ func (b *Broker) updateClientActivity(clientID string) {
 // ping 发送心跳
 func (b *Broker) ping(client *LocalClient) {
 	ticker := time.NewTicker(b.pingInterval)
-	defer ticker.Stop()
+	defer func() {
+		ticker.Stop()
+		if err := recover(); err != nil {
+			log.Printf("ping goroutine recovered from panic: %v", err)
+		}
+	}()
 	for {
 		select {
 		case <-ticker.C:
