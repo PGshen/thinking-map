@@ -3,11 +3,15 @@ import type { ApiResponse } from './response';
 // 与后端 dto/message.go 对齐的消息类型定义
 export type RoleType = 'system' | 'assistant' | 'user';
 
-export type MessageType = 'text' | 'notice' | 'rag' | 'action';
+export type MessageType = 'text' | 'notice' | 'rag' | 'action' | 'thought' | 'plan';
+
+export type PlanStepStatus = 'pending' | 'running' | 'completed' | 'skipped' | 'failed';
+
+export type NoticeType =  'error' | 'warning' | 'success' | 'info';
 
 // 通知信息
 export interface Notice {
-  type: string;
+  type: NoticeType;
   name: string;
   content: string;
 }
@@ -20,12 +24,26 @@ export interface Action {
   param?: Record<string, any>;
 }
 
+export interface Plan {
+  steps: PlanStep[];
+}
+
+export interface PlanStep {
+  id: string;
+  name: string;
+  description: string;
+  status: PlanStepStatus;
+  assignedSpecialist?: string;
+}
+
 // 消息内容 - 与后端 model.MessageContent 对齐
 export interface MessageContent {
   text?: string;
+  thought?: string;
   rag?: string[];
-  notice?: Notice[];
+  notice?: Notice;
   action?: Action[];
+  plan?: Plan;
 }
 
 export interface MessageResponse {

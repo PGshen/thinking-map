@@ -9,6 +9,7 @@ package dto
 import (
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/agent/base/multiagent"
 	"github.com/PGshen/thinking-map/server/internal/model"
 )
 
@@ -17,10 +18,14 @@ const (
 	ConnectionEstablishedEventType = "connectionEstablished"
 	NodeCreatedEventType           = "nodeCreated"
 	NodeUpdatedEventType           = "nodeUpdated"
+	NodeDeletedEventType           = "nodeDeleted"
+	NodeDependenciesUpdatedEventType = "nodeDependenciesUpdated"
 	ThinkingProgressEventType      = "thinkingProgress"
 	MessageTextEventType           = "messageText"
+	MessageThoughtEventType        = "messageThought"
 	MessageNoticeEventType         = "messageNotice"
 	MessageActionEventType         = "messageAction"
+	MessagePlanEventType           = "messagePlan"
 	MessageRagEventType            = "messageRag"
 	ErrorEventType                 = "error"
 	CustomEventType                = "custom"
@@ -49,12 +54,30 @@ type NodeUpdatedEvent struct {
 	Updates map[string]interface{} `json:"updates"`
 }
 
+// NodeDeletedEvent represents the node deletion event
+type NodeDeletedEvent struct {
+	NodeID   string `json:"nodeID"`
+	Question string `json:"question"`
+}
+
+// NodeDependenciesUpdatedEvent represents the node dependencies update event
+type NodeDependenciesUpdatedEvent struct {
+	NodeID       string   `json:"nodeID"`
+	Dependencies []string `json:"dependencies"`
+}
+
 // ThinkingProgressEvent represents the thinking progress event
 type ThinkingProgressEvent struct {
 	NodeID   string `json:"nodeID"`
 	Stage    string `json:"stage"`
 	Progress int    `json:"progress"`
 	Message  string `json:"message"`
+}
+
+type MessageNoticeEvent struct {
+	NodeID    string       `json:"nodeID"`
+	MessageID string       `json:"messageID"`
+	Notice    model.Notice `json:"notice"`
 }
 
 type MessageActionEvent struct {
@@ -69,6 +92,21 @@ type MessageTextEvent struct {
 	MessageID string `json:"messageID"`
 	Message   string `json:"message"`
 	Mode      string `json:"mode"`
+}
+
+// MsgThoughtEvent represents the thought event
+type MessageThoughtEvent struct {
+	NodeID    string `json:"nodeID"`
+	MessageID string `json:"messageID"`
+	Message   string `json:"message"`
+	Mode      string `json:"mode"`
+}
+
+type MessagePlanEvent struct {
+	NodeID    string              `json:"nodeID"`
+	MessageID string              `json:"messageID"`
+	Plan      multiagent.TaskPlan `json:"plan"`
+	IsEnd     bool                `json:"isEnd"`
 }
 
 // ErrorEvent represents the error event

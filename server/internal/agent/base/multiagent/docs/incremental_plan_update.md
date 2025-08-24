@@ -37,7 +37,7 @@
       "step_data": {
         "name": "新步骤名称",
         "description": "步骤描述",
-        "assigned_specialist": "specialist_name",
+        "assignedSpecialist": "specialist_name",
         "priority": 1,
         "dependencies": ["step1"],
         "parameters": {"key": "value"}
@@ -46,7 +46,7 @@
     },
     {
       "type": "modify",
-      "step_id": "existing_step_id",
+      "stepID": "existing_stepID",
       "step_data": {
         "name": "修改后的步骤名称",
         "description": "修改后的描述"
@@ -55,12 +55,12 @@
     },
     {
       "type": "remove",
-      "step_id": "step_to_remove",
+      "stepID": "step_to_remove",
       "reason": "删除此步骤的原因"
     },
     {
       "type": "reorder",
-      "step_id": "step_to_move",
+      "stepID": "step_to_move",
       "position": 1,
       "reason": "重排序的原因"
     }
@@ -76,17 +76,17 @@
 - 会自动生成新的步骤ID
 
 ### 修改操作 (modify)
-- `step_id`: 要修改的步骤ID
+- `stepID`: 要修改的步骤ID
 - `step_data`: 只需包含要修改的字段
 - 不能修改已完成的步骤
 
 ### 删除操作 (remove)
-- `step_id`: 要删除的步骤ID
+- `stepID`: 要删除的步骤ID
 - 不能删除已完成的步骤
 - 会自动清除相关的专家执行结果
 
 ### 重排序操作 (reorder)
-- `step_id`: 要移动的步骤ID
+- `stepID`: 要移动的步骤ID
 - `position`: 目标位置（从0开始）
 - 不影响步骤的其他属性
 

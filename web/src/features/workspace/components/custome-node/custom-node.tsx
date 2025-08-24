@@ -5,7 +5,7 @@
  * @LastEditTime: 2025-07-07 23:52:59
  * @FilePath: /thinking-map/web/src/features/map/components/CustomNode.tsx
  */
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { HelpCircle, Search, Brain, Lightbulb, Scale } from 'lucide-react';
 import type { CustomNodeModel } from '@/types/node';
 import { NodeStatusIcon } from './node-status-icon';
@@ -17,16 +17,29 @@ import { Button } from '@/components/ui/button';
 import { useWorkspaceStoreData } from '../../store/workspace-store';
 
 interface CustomNodeProps {
-  data: CustomNodeModel
+  data: CustomNodeModel & {
+    isAnimating?: boolean;
+    animationDuration?: number;
+    animationEasing?: string;
+  }
 }
 
 export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
   const { mapID } = useWorkspaceStoreData()
+  const nodeRef = useRef<HTMLDivElement>(null);
   const [editForm, setEditForm] = useState({
     question: data.question,
     target: data.target,
     nodeType: data.nodeType
   });
+
+  // 测量节点实际尺寸并通知布局系统
+  useEffect(() => {
+    if (nodeRef.current && data.onSizeChange) {
+      const { clientWidth, clientHeight } = nodeRef.current;
+      data.onSizeChange(data.id, { width: clientWidth, height: clientHeight });
+    }
+  }, [data.question, data.target, data.conclusion, data.isEditing, data.onSizeChange, data.id]);
 
   const handleEdit = () => {
     data.onEdit?.(mapID, data.id, { isEditing: true });
@@ -69,9 +82,16 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
     data.onDelete?.(mapID, data.id);
   }
 
+  // 动画样式
+  const animationStyle = data.isAnimating ? {
+    transition: `all ${data.animationDuration || 500}ms ${data.animationEasing || 'cubic-bezier(0.4, 0, 0.2, 1)'}`
+  } : {};
+
   return (
     <div
-      className={`rounded-lg shadow-lg bg-white border ${data.status === 'initial' ? 'border-dashed' : ''} px-3 py-2.5 min-w-[280px] max-w-[360px] select-none transition-all duration-200 hover:shadow-xl ${data.selected ? 'ring-1 ring-blue-400' : ''}`}
+      ref={nodeRef}
+      className={`rounded-lg shadow-lg bg-white border ${data.status === 'initial' ? 'border-dashed' : ''} px-3 py-2.5 min-w-[280px] max-w-[360px] select-none ${data.isAnimating ? '' : 'transition-all duration-200'} hover:shadow-xl ${data.selected ? 'ring-1 ring-blue-400' : ''}`}
+      style={animationStyle}
       onClick={() => data.onSelect?.(data.id)}
       onDoubleClick={() => data.onDoubleClick?.(data.id)}
       onContextMenu={e => { e.preventDefault(); data.onContextMenu?.(data.id, e); }}

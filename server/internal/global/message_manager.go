@@ -474,5 +474,5 @@ func (s *MessageManager) GetMessageStatus(ctx context.Context, messageID string)
 
 // isZeroMessageContent 判断 MessageContent 是否为零值
 func isZeroMessageContent(mc model.MessageContent) bool {
-	return mc.Text == "" && len(mc.RAG) == 0 && len(mc.Notice) == 0
+	return mc.Text == "" && len(mc.RAG) == 0
 }

@@ -6,7 +6,7 @@
  */
 'use client';
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   Background,
@@ -21,17 +21,21 @@ import ReactFlow, {
   NodeTypes,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Loader } from 'lucide-react';
+import { Loader, Layout, RotateCcw } from 'lucide-react';
 
 import { CustomNode } from '@/features/workspace/components/custome-node/custom-node';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { useWorkspaceData } from '@/features/workspace/hooks/use-workspace-data';
 import { useNodeSelection } from '@/features/workspace/hooks/use-node-selection';
 import { useNodeOperations } from '@/features/workspace/hooks/use-node-operations';
+import { useAutoLayout } from '@/features/workspace/hooks/use-auto-layout';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
 import { SSEStatusIndicator } from '@/components/sse-status-indicator';
+import { Button } from '@/components/ui/button';
 import { CustomNodeModel } from '@/types/node';
 import { NodeCreatedEvent, NodeUpdatedEvent } from '@/types/sse';
+import { LayoutType } from '@/utils/layout-utils';
+
 interface VisualizationAreaProps {
   mapID: string;
 }
@@ -42,13 +46,132 @@ const nodeTypes: NodeTypes = {
 };
 
 function MapCanvas({ mapID }: VisualizationAreaProps) {
-  const { selectedNodeIDs, actions } = useWorkspaceStore();
+  const selectedNodeIDs = useWorkspaceStore(state => state.selectedNodeIDs);
+  const actions = useWorkspaceStore(state => state.actions);
   const { nodes: nodesData, edges: edgesData, isLoading } = useWorkspaceData(mapID);
   const { handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu } = useNodeSelection();
   const { handleNodeEdit, handleNodeDelete, handleAddChild, handleNodeUpdateID } = useNodeOperations();
+  const { isLayouting, applyAutoLayout, layoutConfig, updateLayoutConfig, finishAnimation } = useAutoLayout();
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<CustomNodeModel>[]>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [layoutType, setLayoutType] = useState<LayoutType>('local');
+  const [pendingLayout, setPendingLayout] = useState<{ nodeId?: string; type: LayoutType } | null>(null);
+  const triggerLayoutTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const nodeSizesRef = useRef<Map<string, { width: number; height: number }>>(new Map());
+  // 节点尺寸变化处理函数
+  const handleNodeSizeChange = useCallback((id: string, size: { width: number; height: number }) => {
+    nodeSizesRef.current.set(id, size);
+    // console.log(`节点 ${id} 尺寸更新:`, size);
+  }, []);
+
+  // 使用稳定的处理函数引用
+  const stableHandlers = useRef({
+    handleNodeEdit,
+    handleNodeDelete,
+    handleAddChild,
+    handleNodeClick,
+    handleNodeDoubleClick,
+    handleNodeContextMenu,
+    handleNodeUpdateID,
+    handleNodeSizeChange,
+  });
+  
+  // 只在组件挂载时设置一次
+  useEffect(() => {
+    stableHandlers.current = {
+      handleNodeEdit,
+      handleNodeDelete,
+      handleAddChild,
+      handleNodeClick,
+      handleNodeDoubleClick,
+      handleNodeContextMenu,
+      handleNodeUpdateID,
+      handleNodeSizeChange,
+    };
+  }, [handleNodeSizeChange]);
+
+  // 手动触发全局布局
+  const handleGlobalLayout = useCallback(async () => {
+    if (isLayouting || nodes.length === 0) {
+      return;
+    }
+    
+    try {
+      const layoutResult = await applyAutoLayout(
+        nodes as Node<CustomNodeModel>[],
+        edges,
+        'global',
+        undefined,
+        nodeSizesRef.current
+      );
+      
+      if (layoutResult.animationState) {
+        // 第一步：添加动画样式并设置到目标位置
+        setNodes((nds) => 
+          nds.map((node) => {
+            const layoutedNode = layoutResult.nodes.find(n => n.id === node.id);
+            if (layoutedNode) {
+              return { 
+                ...node, 
+                position: layoutedNode.position,
+                data: {
+                  ...node.data,
+                  isAnimating: true,
+                  animationDuration: 500,
+                  animationEasing: 'cubic-bezier(0.4, 0, 0.2, 1)'
+                }
+              };
+            }
+            return node;
+          })
+        );
+        
+        // 第二步：动画完成后移除动画样式并同步到store
+        setTimeout(() => {
+          setNodes((nds) => 
+            nds.map((node) => {
+              const layoutedNode = layoutResult.nodes.find(n => n.id === node.id);
+              if (layoutedNode) {
+                // 同步位置到store
+                actions.updateNode(node.id, { position: layoutedNode.position });
+                // 记录位置变更的节点，用于后续提交给后端
+                actions.addChangedNodePosition(node.id);
+                return { 
+                  ...node, 
+                  data: {
+                    ...node.data,
+                    isAnimating: false,
+                    animationDuration: undefined,
+                    animationEasing: undefined
+                  }
+                };
+              }
+              return node;
+            })
+          );
+          finishAnimation();
+        }, 500);
+      } else {
+        // 无动画状态，直接更新位置
+        setNodes((nds) => 
+          nds.map((node) => {
+            const layoutedNode = layoutResult.nodes.find(n => n.id === node.id);
+            if (layoutedNode) {
+              actions.updateNode(node.id, { position: layoutedNode.position });
+              // 记录位置变更的节点，用于后续提交给后端
+              actions.addChangedNodePosition(node.id);
+              return { ...node, position: layoutedNode.position };
+            }
+            return node;
+          })
+        );
+      }
+    } catch (error) {
+      console.error('全局布局失败:', error);
+    }
+  }, [isLayouting, nodes, edges, applyAutoLayout, setNodes, actions]);
 
   // SSE事件处理函数 - 使用useCallback优化，避免不必要的重新渲染
   const handleNodeCreated = useCallback((event: NodeCreatedEvent) => {
@@ -77,7 +200,13 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
       // 同步到store
       actions.addNode(newNode);
     }
-  }, [actions]);
+    
+    // 标记需要进行布局更新
+    setPendingLayout({
+      nodeId: event.nodeID,
+      type: layoutType
+    });
+  }, [actions, layoutType]);
 
   const handleNodeUpdated = useCallback((event: NodeUpdatedEvent) => {
     console.log('Received node updated event:', event);
@@ -125,6 +254,7 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
           try {
             const data = JSON.parse(event.data) as NodeCreatedEvent;
             handleNodeCreated(data);
+            console.log(data)
           } catch (error) {
             console.error('解析nodeCreated事件失败:', error, event.data);
           }
@@ -180,49 +310,192 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
     }
   });
 
+  // 节点拖拽开始
+  const onNodeDragStart = useCallback((event: any, draggedNode: any) => {
+    setIsDragging(true);
+    // 拖拽时禁用节点动画，避免移动延迟
+    setNodes((nds) => 
+      nds.map((node) => {
+        if (node.id === draggedNode.id) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              isAnimating: false,
+              animationDuration: undefined,
+              animationEasing: undefined
+            }
+          };
+        }
+        return node;
+      })
+    );
+  }, [setNodes]);
+
   // 节点拖动结束时同步到 store
   const onNodeDragStop = useCallback((event: any, draggedNode: any) => {
+    setIsDragging(false);
     actions.updateNode(draggedNode.id, { position: draggedNode.position });
     actions.addChangedNodePosition(draggedNode.id);
-  }, [actions]);
-
-  // 注入事件到节点 data
-  const nodesWithHandlers = useCallback((nodeData: any[]): Node[] => {
-    return nodeData.map((node) => ({
-      ...node,
-      data: {
-        ...node.data,
-        onEdit: handleNodeEdit,
-        onDelete: handleNodeDelete,
-        onAddChild: handleAddChild,
-        onSelect: handleNodeClick,
-        onDoubleClick: handleNodeDoubleClick,
-        onContextMenu: handleNodeContextMenu,
-        onUpdateID: handleNodeUpdateID,
-      } as any,
-    }));
-  }, []);
+    
+    // 拖拽结束后恢复节点的正常状态（不强制开启动画）
+    setNodes((nds) => 
+      nds.map((node) => {
+        if (node.id === draggedNode.id) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              isAnimating: false,
+              animationDuration: undefined,
+              animationEasing: undefined
+            }
+          };
+        }
+        return node;
+      })
+    );
+  }, [actions, setNodes]);
 
   // 从state中同步
   useEffect(() => {
     if (nodesData.length > 0) {
-      setNodes(nodesWithHandlers(nodesData));
-      setEdges(edgesData);
+      const handlers = stableHandlers.current;
+      setNodes((currentNodes) => {
+        return nodesData.map((node) => {
+          // 查找当前节点以保留动画状态
+          const currentNode = currentNodes.find(n => n.id === node.id);
+          const currentAnimationState = currentNode?.data ? {
+            isAnimating: currentNode.data.isAnimating,
+            animationDuration: currentNode.data.animationDuration,
+            animationEasing: currentNode.data.animationEasing
+          } : {};
+          
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              ...currentAnimationState, // 保留动画状态
+              onEdit: handlers.handleNodeEdit,
+              onDelete: handlers.handleNodeDelete,
+              onAddChild: handlers.handleAddChild,
+              onSelect: handlers.handleNodeClick,
+              onDoubleClick: handlers.handleNodeDoubleClick,
+              onContextMenu: handlers.handleNodeContextMenu,
+              onUpdateID: handlers.handleNodeUpdateID,
+              onSizeChange: handlers.handleNodeSizeChange,
+              selected: selectedNodeIDs.includes(node.id),
+            } as any,
+          };
+        });
+      });
     }
-  }, [nodesData, edgesData]);
-
-  // 当选中状态变化时更新节点
+  }, [nodesData, selectedNodeIDs]);
+  
+  // 单独同步边数据
   useEffect(() => {
-    setNodes((nds) =>
-      nds.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          selected: selectedNodeIDs.includes(node.id),
-        },
-      }))
-    );
-  }, [selectedNodeIDs]);
+    setEdges(edgesData);
+  }, [edgesData]);
+  
+  // 监听节点数据变化，触发自动布局
+  useEffect(() => {
+    if (nodesData.length > 0 && pendingLayout && !isDragging && !isLayouting) {
+      
+      if (triggerLayoutTimeoutRef.current) {
+        clearTimeout(triggerLayoutTimeoutRef.current);
+      }
+      
+      const { nodeId, type } = pendingLayout;
+      setPendingLayout(null);
+      
+      triggerLayoutTimeoutRef.current = setTimeout(async () => {
+        try {
+          const layoutResult = await applyAutoLayout(
+            nodesData as Node<CustomNodeModel>[],
+            edgesData,
+            type,
+            nodeId,
+            nodeSizesRef.current
+          );
+          
+          if (layoutResult.animationState) {
+            // 第一步：添加动画样式并设置到目标位置
+            setNodes((nds) => 
+              nds.map((node) => {
+                const layoutedNode = layoutResult.nodes.find(n => n.id === node.id);
+                if (layoutedNode) {
+                  return { 
+                    ...node, 
+                    position: layoutedNode.position,
+                    data: {
+                      ...node.data,
+                      isAnimating: true,
+                      animationDuration: 500,
+                      animationEasing: 'cubic-bezier(0.4, 0, 0.2, 1)'
+                    }
+                  };
+                }
+                return node;
+              })
+            );
+            
+            // 第二步：动画完成后移除动画样式并同步到store
+            setTimeout(() => {
+              setNodes((nds) => 
+                nds.map((node) => {
+                  const layoutedNode = layoutResult.nodes.find(n => n.id === node.id);
+                  if (layoutedNode) {
+                    // 同步位置到store
+                    actions.updateNode(node.id, { position: layoutedNode.position });
+                    // 记录位置变更的节点，用于后续提交给后端
+                    actions.addChangedNodePosition(node.id);
+                    return { 
+                      ...node, 
+                      data: {
+                        ...node.data,
+                        isAnimating: false,
+                        animationDuration: undefined,
+                        animationEasing: undefined
+                      }
+                    };
+                  }
+                  return node;
+                })
+              );
+              finishAnimation();
+            }, 500);
+          } else {
+            // 无动画状态，直接更新位置
+            setNodes((nds) => 
+              nds.map((node) => {
+                const layoutedNode = layoutResult.nodes.find(n => n.id === node.id);
+                if (layoutedNode) {
+                  actions.updateNode(node.id, { position: layoutedNode.position });
+                  // 记录位置变更的节点，用于后续提交给后端
+                  actions.addChangedNodePosition(node.id);
+                  return { ...node, position: layoutedNode.position };
+                }
+                return node;
+              })
+            );
+          }
+        } catch (error) {
+          console.error('自动布局失败:', error);
+        }
+      }, 100);
+    }
+  }, [nodesData, isDragging, isLayouting, pendingLayout, edgesData, applyAutoLayout, setNodes, actions]); // 添加必要的依赖
+  
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (triggerLayoutTimeoutRef.current) {
+        clearTimeout(triggerLayoutTimeoutRef.current);
+      }
+    };
+  }, []);
+
+
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -237,7 +510,7 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
       // TODO: 同步到后端
       console.log('New connection:', newEdge);
     },
-    []
+    [setEdges]
   );
 
   const onPaneClick = useCallback(() => {
@@ -263,18 +536,53 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
         <SSEStatusIndicator isConnected={isConnected} />
       </div>
       
+      {/* 布局控制按钮 */}
+      <div className="absolute top-4 left-4 z-10 flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleGlobalLayout}
+          disabled={isLayouting || nodes.length === 0}
+          className="bg-white/90 backdrop-blur-sm"
+        >
+          <Layout className="h-4 w-4 mr-1" />
+          {isLayouting ? '布局中...' : '全局整理'}
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setLayoutType(layoutType === 'global' ? 'local' : 'global')}
+          className="bg-white/90 backdrop-blur-sm"
+        >
+          {/* <RotateCcw className="h-4 w-4 mr-1" /> */}
+          {layoutType === 'global' ? 'To局部更新' : 'To全局更新'}
+        </Button>
+      </div>
+      
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={nodes.map(node => ({
+          ...node,
+          className: node.data.isAnimating ? 'animating' : ''
+        }))}
+        edges={edges.map(edge => ({
+          ...edge,
+          className: isDragging ? '' : 'animating'
+        }))}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onPaneClick={onPaneClick}
+        onNodeDragStart={onNodeDragStart}
         onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
         attributionPosition="bottom-left"
         className="bg-gray-50"
+        style={{
+          '--rf-edge-transition': 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+          '--rf-node-transition': 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)'
+        } as React.CSSProperties}
       >
         <Background color="#e2e8f0" gap={20} size={1} />
         <Controls className="bg-white border border-gray-200 rounded-lg shadow-sm" />

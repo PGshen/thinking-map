@@ -88,6 +88,19 @@ func (b *Broker) NewClient(clientID, sessionID string) *LocalClient {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
+	// 检查是否已存在相同clientID的连接，如果存在则先移除旧连接
+	if existingClient, exists := b.localClients[clientID]; exists {
+		log.Printf("发现已存在的客户端连接，移除旧连接: %s", clientID)
+		// 关闭旧连接的事件通道
+		close(existingClient.EventChan)
+		// 移除旧的事件处理器
+		if existingClient.HandlerID != "" {
+			if err := b.eventBus.RemoveSessionHandler(context.Background(), sessionID, existingClient.HandlerID); err != nil {
+				log.Printf("移除旧会话事件处理器失败: %v", err)
+			}
+		}
+	}
+
 	// 注册连接到ConnectionManager
 	conn := &ClientConnection{
 		ID:        clientID,
@@ -96,6 +109,8 @@ func (b *Broker) NewClient(clientID, sessionID string) *LocalClient {
 	if err := b.connManager.RegisterConnection(context.Background(), conn); err != nil {
 		log.Printf("注册连接失败: %v", err)
 		return nil
+	} else {
+		log.Printf("注册连接成功: %s - %s", sessionID, clientID)
 	}
 
 	// 添加到本地客户端映射
@@ -106,8 +121,26 @@ func (b *Broker) NewClient(clientID, sessionID string) *LocalClient {
 
 // RemoveClient 移除客户端
 func (b *Broker) RemoveClient(clientID, sessionID string) {
+	b.RemoveClientWithTimestamp(clientID, sessionID, 0)
+}
+
+// RemoveClientWithTimestamp 移除指定时间戳的客户端，避免并发问题
+func (b *Broker) RemoveClientWithTimestamp(clientID, sessionID string, createdAt int64) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
+
+	// 检查客户端是否存在
+	client, exists := b.localClients[clientID]
+	if !exists {
+		log.Printf("客户端不存在，无需移除: %s", clientID)
+		return
+	}
+
+	// 如果指定了时间戳，检查是否匹配，避免移除新建立的连接
+	if createdAt > 0 && client.CreatedAt != createdAt {
+		log.Printf("客户端时间戳不匹配，跳过移除: %s (期望: %d, 实际: %d)", clientID, createdAt, client.CreatedAt)
+		return
+	}
 
 	// 注销连接
 	if err := b.connManager.UnregisterConnection(context.Background(), clientID); err != nil {
@@ -115,7 +148,7 @@ func (b *Broker) RemoveClient(clientID, sessionID string) {
 	}
 
 	// 移除会话事件处理器
-	if client, exists := b.localClients[clientID]; exists && client.HandlerID != "" {
+	if client.HandlerID != "" {
 		if err := b.eventBus.RemoveSessionHandler(context.Background(), sessionID, client.HandlerID); err != nil {
 			log.Printf("移除会话事件处理器失败: %v", err)
 		}
@@ -124,7 +157,7 @@ func (b *Broker) RemoveClient(clientID, sessionID string) {
 	// 从本地客户端映射中移除
 	delete(b.localClients, clientID)
 
-	log.Printf("移除客户端: %s, 会话: %s", clientID, sessionID)
+	log.Printf("移除客户端: %s, 会话: %s, 时间戳: %d", clientID, sessionID, client.CreatedAt)
 }
 
 // GetLocalClient 获取本地客户端（实现LocalClientProvider接口）
@@ -191,7 +224,8 @@ func (b *Broker) HandleSSE(c *gin.Context, sessionID, clientID string) {
 		})
 		return
 	}
-	defer b.RemoveClient(clientID, sessionID)
+	// 使用带时间戳的移除方法，确保只移除当前连接创建的客户端
+	defer b.RemoveClientWithTimestamp(clientID, sessionID, client.CreatedAt)
 
 	// 设置SSE响应头
 	c.Header("Content-Type", "text/event-stream")
@@ -310,7 +344,12 @@ func (b *Broker) updateClientActivity(clientID string) {
 // ping 发送心跳
 func (b *Broker) ping(client *LocalClient) {
 	ticker := time.NewTicker(b.pingInterval)
-	defer ticker.Stop()
+	defer func() {
+		ticker.Stop()
+		if err := recover(); err != nil {
+			log.Printf("ping goroutine recovered from panic: %v", err)
+		}
+	}()
 	for {
 		select {
 		case <-ticker.C:

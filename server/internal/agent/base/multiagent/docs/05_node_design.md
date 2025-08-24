@@ -475,7 +475,7 @@ func (h *PlanUpdateHandler) buildPlanUpdatePrompt(state *EnhancedState) *schema.
     promptBuilder.WriteString("  \"description\": \"更新后的计划描述\",\n")
     promptBuilder.WriteString("  \"steps\": [\n")
     promptBuilder.WriteString("    {\n")
-    promptBuilder.WriteString("      \"id\": \"step_id\",\n")
+    promptBuilder.WriteString("      \"id\": \"stepID\",\n")
     promptBuilder.WriteString("      \"name\": \"步骤名称\",\n")
     promptBuilder.WriteString("      \"description\": \"步骤描述\",\n")
     promptBuilder.WriteString("      \"assigned_to\": \"专家名称\",\n")

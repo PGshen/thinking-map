@@ -4,7 +4,7 @@ import { getToken } from '@/lib/auth';
 import API_ENDPOINTS from '@/api/endpoints';
 
 // SSE事件类型定义
-type SSEEventType = 'nodeCreated' | 'nodeUpdated' | 'connection_established' | 'messageText' | 'messageAction' | 'error' | 'ping' | 'message';
+type SSEEventType = 'nodeCreated' | 'nodeUpdated' | 'connection_established' | 'messageText' | 'messageThought' | 'messageNotice' | 'messageAction' | 'messagePlan' | 'error' | 'ping' | 'message';
 
 // SSE事件数据结构
 interface SSEEventData {
@@ -205,12 +205,19 @@ class SSEConnectionManager {
           };
           
           // 根据事件类型触发相应的回调
+          let hasCallback = false;
           connection.callbacks.forEach((callbacks) => {
             const eventCallback = callbacks.eventCallbacks.get(eventData.event);
             if (eventCallback) {
               eventCallback(eventData);
+              hasCallback = true;
             }
           });
+          
+          // 如果没有找到对应的callback，则把内容打印到控制台
+          if (!hasCallback) {
+            console.log('No callback found for event:', eventData.event, 'data:', eventData.data);
+          }
         },
          onerror(error) {
            console.error('SSE connection error:', error);

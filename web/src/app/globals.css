@@ -120,3 +120,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ReactFlow边的动画样式 - 只在animating状态下启用 */
+.react-flow__edge.animating path {
+  transition: var(--rf-edge-transition, all 500ms cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+/* ReactFlow节点的动画样式 - 只在animating状态下启用 */
+.react-flow__node.animating {
+  transition: var(--rf-node-transition, transform 500ms cubic-bezier(0.4, 0, 0.2, 1));
+}

@@ -150,3 +150,32 @@ func (s *NodeOperator) DeleteNode(ctx context.Context, nodeID string) error {
 
 	return s.nodeRepo.Delete(ctx, nodeID)
 }
+
+// UpdateNodeDependencies 更新节点依赖关系
+func (s *NodeOperator) UpdateNodeDependencies(ctx context.Context, nodeID string, dependencies []string) (*model.ThinkingNode, error) {
+	// 获取节点
+	node, err := s.nodeRepo.FindByID(ctx, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("node not found: %w", err)
+	}
+
+	// 更新依赖关系
+	node.Dependencies = dependencies
+	node.UpdatedAt = time.Now()
+
+	// 保存到数据库
+	if err := s.nodeRepo.Update(ctx, node); err != nil {
+		return nil, fmt.Errorf("failed to update node dependencies: %w", err)
+	}
+
+	return node, nil
+}
+
+// GetNodesByIDs 获取多个节点
+func (s *NodeOperator) GetNodesByIDs(ctx context.Context, nodeIDs []string) ([]*model.ThinkingNode, error) {
+	nodes, err := s.nodeRepo.FindByIDs(ctx, nodeIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nodes: %w", err)
+	}
+	return nodes, nil
+}

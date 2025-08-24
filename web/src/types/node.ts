@@ -47,6 +47,7 @@ export interface CustomNodeModel {
   onDoubleClick?: (id: string) => void;
   onContextMenu?: (id: string, e: React.MouseEvent) => void;
   onUpdateID?: (mapID: string|null, oldID: string, newID: string) => void;
+  onSizeChange?: (id: string, size: { width: number; height: number }) => void;
 }
 
 export interface DependentContext {

@@ -68,14 +68,14 @@ type ConversationContext struct {
     IsContinuation   bool                   `json:"is_continuation"`    // 是否延续对话
     
     // 用户意图分析
-    UserIntent       string                 `json:"user_intent"`        // 用户意图
+    UserIntent       string                 `json:"userIntent"`        // 用户意图
     IntentConfidence float64               `json:"intent_confidence"`  // 意图置信度
     IntentCategory   string                 `json:"intent_category"`    // 意图分类
     
     // 上下文关联
-    RelevantHistory  []*schema.Message      `json:"relevant_history"`   // 相关历史消息
-    ContextSummary   string                 `json:"context_summary"`    // 上下文摘要
-    KeyTopics        []string               `json:"key_topics"`         // 关键话题
+    RelevantHistory  []*schema.Message      `json:"relevantHistory"`   // 相关历史消息
+    ContextSummary   string                 `json:"contextSummary"`    // 上下文摘要
+    KeyTopics        []string               `json:"keyTopics"`         // 关键话题
     
     // 对话状态
     RequiresClarification bool              `json:"requires_clarification"` // 是否需要澄清
@@ -94,8 +94,8 @@ type ConversationContext struct {
 type ExecutionRecord struct {
     ID              string                 `json:"id"`                // 记录唯一标识
     Round           int                    `json:"round"`             // 执行轮次
-    PlanVersion     int                    `json:"plan_version"`      // 规划版本
-    StepID          string                 `json:"step_id"`           // 步骤ID
+    PlanVersion     int                    `json:"planVersion"`      // 规划版本
+    StepID          string                 `json:"stepID"`           // 步骤ID
     StepName        string                 `json:"step_name"`         // 步骤名称
     AssignedTo      string                 `json:"assigned_to"`       // 分配给的专家
     Status          ExecutionStatus        `json:"status"`            // 执行状态
@@ -372,7 +372,7 @@ type TaskPlan struct {
     ResourceAllocation map[string]string   `json:"resource_allocation"` // 资源分配映射
     
     // 更新历史
-    UpdateHistory   []*PlanUpdate          `json:"update_history"`    // 更新历史记录
+    UpdateHistory   []*PlanUpdate          `json:"updateHistory"`    // 更新历史记录
     
     // 元数据
     Metadata        map[string]interface{} `json:"metadata"`          // 扩展信息
@@ -417,7 +417,7 @@ func (ps PlanStatus) String() string {
 type PlanUpdate struct {
     ID              string                 `json:"id"`                // 更新记录ID
     Version         int                    `json:"version"`           // 目标版本
-    UpdateType      PlanUpdateType         `json:"update_type"`       // 更新类型
+    UpdateType      PlanUpdateType         `json:"updateType"`       // 更新类型
     Description     string                 `json:"description"`       // 更新描述
     Reason          string                 `json:"reason"`            // 更新原因
     
@@ -495,7 +495,7 @@ type StepResult struct {
     Output          interface{}            `json:"output"`            // 输出结果
     Error           string                 `json:"error,omitempty"`   // 错误信息
     Confidence      float64                `json:"confidence"`        // 结果置信度
-    QualityScore    float64                `json:"quality_score"`     // 质量评分
+    QualityScore    float64                `json:"qualityScore"`     // 质量评分
     Metadata        map[string]interface{} `json:"metadata"`          // 扩展信息
 }
 ```

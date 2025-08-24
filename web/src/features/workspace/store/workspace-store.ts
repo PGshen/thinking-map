@@ -234,31 +234,39 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           const parentNode = get().nodes.find(node => node.id === parentID);
           if (!parentNode) return;
 
-          // 计算子节点位置（在父节点右下方）
-          const childPosition = {
-            x: parentNode.position.x + (parentNode.width || 0) + 200,
-            y: parentNode.position.y + (parentNode.height || 0) + 200
-          };
-
-          // 创建新节点
-          const newNode = {
-            ...childNode,
-            position: childPosition,
-          };
-
-          // 创建连接边
-          const newEdge = {
-            id: `${parentID}-${childNode.id}`,
-            source: parentID,
-            target: childNode.id,
-            type: 'default',
-          };
-
           set(
-            (state) => ({
-              nodes: [...state.nodes, newNode],
-              edges: [...state.edges, newEdge],
-            }),
+            (state) => {
+              // 检查子节点ID是否已存在，避免重复添加
+              const existingNode = state.nodes.find(n => n.id === childNode.id);
+              if (existingNode) {
+                return state; // 节点已存在，不添加
+              }
+
+              // 计算子节点位置（在父节点右下方）
+              const childPosition = {
+                x: parentNode.position.x + (parentNode.width || 0) + 200,
+                y: parentNode.position.y + (parentNode.height || 0) + 200
+              };
+
+              // 创建新节点
+              const newNode = {
+                ...childNode,
+                position: childPosition,
+              };
+
+              // 创建连接边
+              const newEdge = {
+                id: `${parentID}-${childNode.id}`,
+                source: parentID,
+                target: childNode.id,
+                type: 'default',
+              };
+
+              return {
+                nodes: [...state.nodes, newNode],
+                edges: [...state.edges, newEdge],
+              };
+            },
             false,
             'addChildNode'
           );

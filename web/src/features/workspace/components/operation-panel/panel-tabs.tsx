@@ -82,19 +82,19 @@ export function PanelTabs({ nodeID }: PanelTabsProps) {
         {/* Tab内容 */}
         <div className="flex-1 overflow-hidden">
           <TabsContent value="info" className="h-full m-0 p-0 overflow-x-auto overflow-y-auto">
-            <div className="p-4 min-w-fit">
+            <div className="px-4 min-w-fit">
               <InfoTab nodeID={nodeID} nodeData={nodeData} />
             </div>
           </TabsContent>
 
           <TabsContent value="decompose" className="h-full m-0 p-0">
-            <div className="h-full p-4 min-w-fit">
+            <div className="h-full px-4 min-w-fit">
               <DecomposeTab nodeID={nodeID} nodeData={nodeData} />
             </div>
           </TabsContent>
 
           <TabsContent value="conclusion" className="h-full m-0 p-0 overflow-x-auto overflow-y-auto">
-            <div className="p-4 min-w-fit">
+            <div className="px-4 min-w-fit">
               <ConclusionTab nodeID={nodeID} node={currentNode} />
             </div>
           </TabsContent>

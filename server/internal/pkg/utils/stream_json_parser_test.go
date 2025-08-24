@@ -468,7 +468,7 @@ func TestRealtimeIncrementalArrayBehaviorSummary(t *testing.T) {
             "id": "step_1",
             "name": "Determine Decomposition Strategy",
             "description": "Analyze the complexity of the task and decide on the suitable decomposition strategy for the evaluation process.",
-            "assigned_specialist": "DecompositionDecisionAgent",
+            "assignedSpecialist": "DecompositionDecisionAgent",
             "priority": 1,
             "dependencies": [],
             "parameters": {}
@@ -477,7 +477,7 @@ func TestRealtimeIncrementalArrayBehaviorSummary(t *testing.T) {
             "id": "step_2",
             "name": "Decompose Evaluation Framework",
             "description": "Based on the determined strategy, decompose the overall evaluation framework into manageable sub-problems and identify their dependencies.",
-            "assigned_specialist": "ProblemDecompositionAgent",
+            "assignedSpecialist": "ProblemDecompositionAgent",
             "priority": 2,
             "dependencies": [
                 "step_1"
