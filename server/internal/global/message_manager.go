@@ -171,6 +171,7 @@ func (s *MessageManager) SaveDecompositionMessage(ctx context.Context, nodeID st
 	// 2. 获取当前节点的最后消息ID作为新消息的父ID
 	lastMessageID := node.Decomposition.LastMessageID
 	req.ParentID = lastMessageID
+	fmt.Println("lastMessageID", lastMessageID)
 
 	// 3. 在事务中创建新消息
 	msg, err := s.CreateMessageInTx(ctx, tx, req.UserID, req)

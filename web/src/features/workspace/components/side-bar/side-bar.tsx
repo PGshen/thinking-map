@@ -98,7 +98,7 @@ export function InfoSidebar({ mapID, ...props }: React.ComponentProps<typeof Sid
                       hidden: false,
                     }}
                     onClick={handleExit}
-                    className="px-2.5 md:px-2"
+                    className="px-2.5 md:px-2 cursor-pointer"
                   >
                     <ArrowLeft className="size-4" />
                     <span>退出</span>
@@ -113,7 +113,7 @@ export function InfoSidebar({ mapID, ...props }: React.ComponentProps<typeof Sid
                       hidden: false,
                     }}
                     onClick={() => handlePanelChange('map-info')}
-                    className="px-2.5 md:px-2"
+                    className="px-2.5 md:px-2 cursor-pointer"
                   >
                     <GalleryVerticalEnd className="size-4" />
                     <span>导图信息</span>
@@ -128,7 +128,7 @@ export function InfoSidebar({ mapID, ...props }: React.ComponentProps<typeof Sid
                       hidden: false,
                     }}
                     onClick={() => handlePanelChange('settings')}
-                    className="px-2.5 md:px-2"
+                    className="px-2.5 md:px-2 cursor-pointer"
                   >
                     <SettingsIcon className="size-4" />
                     <span>设置</span>

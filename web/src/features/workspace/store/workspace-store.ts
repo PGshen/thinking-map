@@ -9,6 +9,18 @@ import { devtools } from 'zustand/middleware';
 import { Node, Edge } from 'reactflow';
 import { Map } from '@/types/map';
 import { Conclusion, CustomNodeModel, Decomposition } from '@/types/node';
+import { LayoutConfig, DEFAULT_LAYOUT_CONFIG } from '@/utils/layout-utils';
+
+// 动画配置
+interface AnimationConfig {
+  duration: number; // 动画持续时间（毫秒）
+  easing: string; // 缓动函数
+}
+
+const DEFAULT_ANIMATION_CONFIG: AnimationConfig = {
+  duration: 500,
+  easing: 'cubic-bezier(0.4, 0, 0.2, 1)', // ease-out
+};
 
 // 工作区状态接口
 interface WorkspaceState {
@@ -46,9 +58,11 @@ interface WorkspaceState {
     autoSave: boolean;
     showMinimap: boolean;
     showControls: boolean;
-    layoutDirection: 'TB' | 'LR' | 'BT' | 'RL';
+    layoutType: 'global' | 'local';
     nodeSpacing: number;
     edgeType: 'default' | 'straight' | 'step' | 'smoothstep';
+    layoutConfig: LayoutConfig;
+    animationConfig: AnimationConfig;
   };
 }
 
@@ -137,9 +151,11 @@ const initialState: WorkspaceState = {
     autoSave: true,
     showMinimap: true,
     showControls: true,
-    layoutDirection: 'TB',
+    layoutType: 'local',
     nodeSpacing: 100,
     edgeType: 'default',
+    layoutConfig: DEFAULT_LAYOUT_CONFIG,
+    animationConfig: DEFAULT_ANIMATION_CONFIG,
   },
 };
 

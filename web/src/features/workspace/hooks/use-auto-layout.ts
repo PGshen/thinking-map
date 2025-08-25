@@ -12,19 +12,14 @@ import {
   applyLayout,
   LayoutType,
   LayoutConfig,
-  DEFAULT_LAYOUT_CONFIG,
 } from '@/utils/layout-utils';
+import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 
-// 动画配置
+// 动画配置接口（从store导入）
 interface AnimationConfig {
   duration: number; // 动画持续时间（毫秒）
   easing: string; // 缓动函数
 }
-
-const DEFAULT_ANIMATION_CONFIG: AnimationConfig = {
-  duration: 500,
-  easing: 'cubic-bezier(0.4, 0, 0.2, 1)', // ease-out
-};
 
 // Hook返回类型
 interface UseAutoLayoutReturn {
@@ -56,17 +51,23 @@ interface AnimationState {
 
 export const useAutoLayout = (): UseAutoLayoutReturn => {
   const [isLayouting, setIsLayouting] = useState(false);
-  const [layoutConfig, setLayoutConfig] = useState<LayoutConfig>(DEFAULT_LAYOUT_CONFIG);
-  const [animationConfig, setAnimationConfig] = useState<AnimationConfig>(DEFAULT_ANIMATION_CONFIG);
   const animationRef = useRef<AbortController | null>(null);
-
+  
+  // 从store获取配置
+  const { settings, actions } = useWorkspaceStore();
+  const { layoutConfig, animationConfig } = settings;
+  
   const updateLayoutConfig = useCallback((config: Partial<LayoutConfig>) => {
-    setLayoutConfig(prev => ({ ...prev, ...config }));
-  }, []);
+    actions.updateSettings({
+      layoutConfig: { ...layoutConfig, ...config }
+    });
+  }, [layoutConfig, actions]);
 
   const updateAnimationConfig = useCallback((config: Partial<AnimationConfig>) => {
-    setAnimationConfig(prev => ({ ...prev, ...config }));
-  }, []);
+    actions.updateSettings({
+      animationConfig: { ...animationConfig, ...config }
+    });
+  }, [animationConfig, actions]);
 
   const finishAnimation = useCallback(() => {
     setIsLayouting(false);

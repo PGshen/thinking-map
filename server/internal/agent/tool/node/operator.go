@@ -432,10 +432,10 @@ func GetAllNodeTools() ([]tool.BaseTool, error) {
 		return nil, err
 	}
 
-	setNodeDependenciesTool, err := SetNodeDependenciesTool()
-	if err != nil {
-		return nil, err
-	}
+	// setNodeDependenciesTool, err := SetNodeDependenciesTool()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	return []tool.BaseTool{createNodeTool, updateNodeTool, deleteNodeTool, setNodeDependenciesTool}, nil
+	return []tool.BaseTool{createNodeTool, updateNodeTool, deleteNodeTool}, nil
 }

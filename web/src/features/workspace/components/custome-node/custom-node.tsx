@@ -14,7 +14,7 @@ import { Handle, Position } from 'reactflow';
 import { MarkdownContent } from '@/components/ui/markdown-content';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { useWorkspaceStoreData } from '../../store/workspace-store';
+import { useWorkspaceStoreData, useWorkspaceStore } from '../../store/workspace-store';
 
 interface CustomNodeProps {
   data: CustomNodeModel & {
@@ -26,6 +26,7 @@ interface CustomNodeProps {
 
 export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
   const { mapID } = useWorkspaceStoreData()
+  const settings = useWorkspaceStore(state => state.settings)
   const nodeRef = useRef<HTMLDivElement>(null);
   const [editForm, setEditForm] = useState({
     question: data.question,
@@ -99,13 +100,17 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
       {/* ReactFlow Handles for edge connection */}
       <Handle 
         type="target" 
-        position={Position.Top} 
-        className="!w-2 !h-1 !rounded-none !border-blue-500 !bg-blue-500"
+        position={settings.layoutConfig.direction === 'TB' ? Position.Top : Position.Left} 
+        className={`!rounded-none !border-blue-500 !bg-blue-500 ${
+          settings.layoutConfig.direction === 'TB' ? '!w-2 !h-1' : '!w-1 !h-2'
+        }`}
       />
       <Handle 
         type="source" 
-        position={Position.Bottom} 
-        className="!w-2 !h-1 !rounded-none !border-blue-500 !bg-blue-500"
+        position={settings.layoutConfig.direction === 'TB' ? Position.Bottom : Position.Right} 
+        className={`!rounded-none !border-blue-500 !bg-blue-500 ${
+          settings.layoutConfig.direction === 'TB' ? '!w-2 !h-1' : '!w-1 !h-2'
+        }`}
       />
       
       {/* Header: 类型+状态 */}
