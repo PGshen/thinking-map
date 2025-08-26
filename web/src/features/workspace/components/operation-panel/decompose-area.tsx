@@ -185,26 +185,26 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                 {/* <ChatMessageAvatar /> */}
                 <div className="flex-1">
                   <Collapsible open={!isCollapsed} onOpenChange={() => toggleCollapse(message.id)}>
-                    <CollapsibleTrigger className="cursor-pointer flex items-center gap-2 text-left p-1 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-200">
-                      <Brain className="h-4 w-4 text-gray-600 flex-shrink-0" />
-                      <span className="text-sm font-medium text-gray-800 flex-1">消息通知</span>
+                    <CollapsibleTrigger className="cursor-pointer flex items-center gap-2 text-left p-1 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200">
+                      <Brain className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      <span className="text-sm font-medium text-blue-800 flex-1">消息通知</span>
                       {isCollapsed ? (
-                        <ChevronRight className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                        <ChevronRight className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       ) : (
-                        <ChevronDown className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                        <ChevronDown className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       )}
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-2">
-                      <div className="pl-2 border-l-2 border-gray-200">
-                        <div className="space-y-2">
-                          <div className={`p-3 ${theme.bg} border ${theme.border} rounded-md`}>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`px-2 py-1 ${theme.tagBg} ${theme.tagText} text-xs rounded-md font-medium`}>
+                    <CollapsibleContent className="mt-1">
+                      <div className="pl-2 border-l-2 border-blue-200">
+                        <div className="space-y-1">
+                          <div className={`p-2 ${theme.bg} border ${theme.border} rounded-md`}>
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <span className={`px-1.5 py-0.5 ${theme.tagBg} ${theme.tagText} text-xs rounded font-medium`}>
                                 {notice.type}
                               </span>
-                              <span className={`font-medium ${theme.nameText}`}>{notice.name}</span>
+                              <span className={`font-medium ${theme.nameText} text-sm`}>{notice.name}</span>
                             </div>
-                            <p className={`${theme.contentText} text-sm`}>{notice.content}</p>
+                            <p className={`${theme.contentText} text-xs leading-relaxed`}>{notice.content}</p>
                           </div>
                         </div>
                       </div>
@@ -288,17 +288,17 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                 {/* <ChatMessageAvatar /> */}
                 <div className="flex-1">
                   <Collapsible open={!isCollapsed} onOpenChange={() => toggleCollapse(message.id)}>
-                    <CollapsibleTrigger className="cursor-pointer flex items-center gap-2 text-left p-1 rounded-md bg-yellow-50 hover:bg-yellow-100 transition-colors border border-yellow-200">
-                      <Brain className="h-4 w-4 text-yellow-600 flex-shrink-0" />
-                      <span className="text-sm font-medium text-yellow-800 flex-1">执行动作</span>
+                    <CollapsibleTrigger className="cursor-pointer flex items-center gap-2 text-left p-1 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200">
+                      <Brain className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      <span className="text-sm font-medium text-blue-800 flex-1">执行动作</span>
                       {isCollapsed ? (
-                        <ChevronRight className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+                        <ChevronRight className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       ) : (
-                        <ChevronDown className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+                        <ChevronDown className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       )}
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-2">
-                      <div className="pl-2 border-l-2 border-yellow-200">
+                      <div className="pl-2 border-l-2 border-blue-200">
                         <div className="flex flex-wrap gap-2">
                           {message.content.action?.map((action, index) => {
 
@@ -419,17 +419,17 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                 {/* <ChatMessageAvatar /> */}
                 <div className="flex-1">
                   <Collapsible open={!isCollapsed} onOpenChange={() => toggleCollapse(message.id)}>
-                    <CollapsibleTrigger className="cursor-pointer flex items-center gap-2 text-left p-1 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors border border-purple-200">
-                      <Waypoints className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm font-medium text-purple-800">执行计划</span>
+                    <CollapsibleTrigger className="cursor-pointer flex items-center gap-2 text-left p-1 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200">
+                      <Waypoints className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">执行计划</span>
                       {isCollapsed ? (
-                        <ChevronRight className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                        <ChevronRight className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       ) : (
-                        <ChevronDown className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                        <ChevronDown className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       )}
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-2">
-                      <div className="space-y-2 pl-2 border-l-2 border-purple-200">
+                      <div className="space-y-2 pl-2 border-l-2 border-blue-200">
                         {message.content.plan?.steps?.map((step, index) => {
 
                           const theme = getPlanTheme(step.status);

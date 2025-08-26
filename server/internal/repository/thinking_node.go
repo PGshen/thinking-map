@@ -12,6 +12,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type thinkingNodeRepository struct {
@@ -52,7 +53,7 @@ func (r *thinkingNodeRepository) FindByID(ctx context.Context, id string) (*mode
 // FindByIDForUpdate 使用行级锁查找节点
 func (r *thinkingNodeRepository) FindByIDForUpdate(ctx context.Context, tx *gorm.DB, id string) (*model.ThinkingNode, error) {
 	var node model.ThinkingNode
-	err := tx.WithContext(ctx).Set("gorm:query_option", "FOR UPDATE").Where(whereID, id).First(&node).Error
+	err := tx.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Where(whereID, id).First(&node).Error
 	if err != nil {
 		return nil, err
 	}
