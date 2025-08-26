@@ -52,6 +52,8 @@ You must strictly reply in the following JSON format:
 - The fields of thought and final_answer can be in markdown format to make the content clearer.
 - If information is insufficient, prioritize choosing continue or tool_call to get more information
 - Only choose final_answer when confident in providing accurate and complete answers
+- The value of action must be one of the following: continue, tool_call, final_answer
+- The data type of final_answer must be string and can not be an object or array
 - Maintain logical and coherent reasoning process
 - Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
 - Must strictly follow JSON format for replies, do not add any extra text

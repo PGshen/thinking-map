@@ -494,8 +494,8 @@ func (m *specialistMessageHandler) OnStreamMessage(ctx context.Context, sr *sche
 		if str, ok := value.(string); ok {
 			sseBroker.PublishToSession(m.mapID, sse.Event{
 				ID:   m.nodeID,
-				Type: dto.MessageTextEventType,
-				Data: dto.MessageTextEvent{
+				Type: dto.MessageThoughtEventType,
+				Data: dto.MessageThoughtEvent{
 					NodeID:    m.nodeID,
 					MessageID: messageID,
 					Message:   str,

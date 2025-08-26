@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/cloudwego/eino/schema"
 )
 
@@ -328,7 +329,7 @@ func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Messag
 	state.ClearSpecialistResults() // Clear previous round results
 
 	// Find the next step to execute
-	nextStep := h.findNextStep(state)
+	nextStep := findNextStep(state)
 	if nextStep == nil {
 		// All steps completed, proceed to result collection
 		return &schema.Message{
@@ -361,11 +362,11 @@ func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Messag
 }
 
 // findNextStep finds the next step to execute based on dependencies and status
-func (h *PlanExecutionHandler) findNextStep(state *MultiAgentState) *PlanStep {
+func findNextStep(state *MultiAgentState) *PlanStep {
 	for _, step := range state.CurrentPlan.Steps {
 		if step.Status == StepStatusPending {
 			// Check if all dependencies are completed
-			if h.areDependenciesCompleted(step, state) {
+			if areDependenciesCompleted(step, state) {
 				return step
 			}
 		}
@@ -374,7 +375,7 @@ func (h *PlanExecutionHandler) findNextStep(state *MultiAgentState) *PlanStep {
 }
 
 // areDependenciesCompleted checks if all dependencies for a step are completed
-func (h *PlanExecutionHandler) areDependenciesCompleted(step *PlanStep, state *MultiAgentState) bool {
+func areDependenciesCompleted(step *PlanStep, state *MultiAgentState) bool {
 	for _, depID := range step.Dependencies {
 		for _, planStep := range state.CurrentPlan.Steps {
 			if planStep.ID == depID && planStep.Status != StepStatusCompleted {
@@ -582,7 +583,14 @@ func NewReflectionBranchHandler(config *MultiAgentConfig) *ReflectionBranchHandl
 	}
 }
 
-func (h *ReflectionBranchHandler) evaluateReflectionDecision(state *MultiAgentState) (string, error) {
+func (h *ReflectionBranchHandler) evaluateReflectionDecision(state *MultiAgentState) (decision string) {
+	defer func() {
+		if decision == planExecutionNodeKey && findNextStep(state) == nil {
+			// 如果计划已经执行完毕，那么就不能再到planExecutionNode,而是应该到finalAnswerNode
+			state.SetExecutionStatus(ExecutionStatusCompleted)
+			decision = toFinalAnswerNodeKey
+		}
+	}()
 	// Get feedback decision from metadata
 	executionCompleted, hasCompleted := state.GetMetadata("feedback_execution_completed")
 	planNeedsUpdate, hasUpdate := state.GetMetadata("feedback_plan_needs_update")
@@ -591,31 +599,38 @@ func (h *ReflectionBranchHandler) evaluateReflectionDecision(state *MultiAgentSt
 
 	// If feedback metadata is missing, default to continue execution
 	if !hasCompleted || !hasUpdate {
-		return planExecutionNodeKey, nil
+		decision = planExecutionNodeKey
+		return
 	}
 
 	// Convert metadata to appropriate types
 	isCompleted, ok := executionCompleted.(bool)
 	if !ok {
-		return planExecutionNodeKey, fmt.Errorf("invalid execution_completed type")
+		logger.Error("invalid execution_completed type")
+		decision = planExecutionNodeKey
+		return
 	}
 
 	needsUpdate, ok := planNeedsUpdate.(bool)
 	if !ok {
-		return planExecutionNodeKey, fmt.Errorf("invalid plan_needs_update type")
+		logger.Error("invalid plan_needs_update type")
+		decision = planExecutionNodeKey
+		return
 	}
 
 	// Decision logic based on feedback
 	if isCompleted {
 		// Task is completed, proceed to final answer
 		state.SetExecutionStatus(ExecutionStatusCompleted)
-		return toFinalAnswerNodeKey, nil
+		decision = toFinalAnswerNodeKey
+		return
 	}
 
 	if needsUpdate {
 		// Plan needs update, go to plan update
 		state.SetExecutionStatus(ExecutionStatusPlanning)
-		return toPlanUpdateNodeKey, nil
+		decision = toPlanUpdateNodeKey
+		return
 	}
 
 	// Check quality and confidence thresholds
@@ -624,27 +639,33 @@ func (h *ReflectionBranchHandler) evaluateReflectionDecision(state *MultiAgentSt
 		conf, cOk := confidence.(float64)
 		if qOk && cOk && (quality < 0.6 || conf < 0.7) {
 			// Low quality or confidence, consider plan update
+			logger.Info("low quality or confidence, consider plan update")
 			state.SetExecutionStatus(ExecutionStatusPlanning)
-			return toPlanUpdateNodeKey, nil
+			decision = toPlanUpdateNodeKey
+			return
 		}
 	}
 
 	if !isCompleted {
 		// If not completed, continue execution
 		state.SetExecutionStatus(ExecutionStatusExecuting)
-		return planExecutionNodeKey, nil
+		decision = planExecutionNodeKey
+		return
 	}
 
 	// Check if we've reached max rounds
 	if state.RoundNumber >= state.MaxRounds {
 		// Force completion if max rounds reached
+		logger.Info("max rounds reached, force completion")
 		state.SetExecutionStatus(ExecutionStatusCompleted)
-		return toFinalAnswerNodeKey, nil
+		decision = toFinalAnswerNodeKey
+		return
 	}
 
 	// Default: continue execution with current plan
 	state.SetExecutionStatus(ExecutionStatusExecuting)
-	return toFinalAnswerNodeKey, nil
+	decision = planExecutionNodeKey
+	return
 }
 
 // PlanUpdateHandler handles the plan update process
