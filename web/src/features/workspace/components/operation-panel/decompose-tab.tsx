@@ -105,6 +105,9 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
     data: MessageTextEvent | MessageThoughtEvent, 
     messageType: 'text' | 'thought'
   ) => {
+    if (data.message == "") {
+      return;
+    }
     handleMessageEvent(data, messageType, (eventData, existingContent, mode) => {
       if (mode === 'replace') {
         // 替换模式：直接替换文本内容
@@ -168,17 +171,6 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
             handleMessageNoticeEvent(data);
           } catch (error) {
             console.error('解析messageNotice事件失败:', error, event.data);
-          }
-        }
-      },
-      {
-        eventType: 'messageAction' as const,
-        callback: (event: any) => {
-          try {
-            const data = JSON.parse(event.data) as MessageActionEvent;
-            handleMessageActionEvent(data);
-          } catch (error) {
-            console.error('解析messageAction事件失败:', error, event.data);
           }
         }
       },
