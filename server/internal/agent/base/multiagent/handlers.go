@@ -386,6 +386,20 @@ func areDependenciesCompleted(step *PlanStep, state *MultiAgentState) bool {
 	return true
 }
 
+func findCurrentStep(state *MultiAgentState) *PlanStep {
+	if state.CurrentPlan == nil {
+		return nil
+	}
+
+	for _, step := range state.CurrentPlan.Steps {
+		if step.ID == state.CurrentStep {
+			return step
+		}
+	}
+
+	return nil
+}
+
 // SpecialistBranchHandler handles specialist selection and branching
 type SpecialistBranchHandler struct {
 	config *MultiAgentConfig
@@ -477,6 +491,11 @@ func (h *ResultCollectorHandler) ResultCollector(ctx context.Context, input []*s
 		}, nil
 	}
 
+	currentStep := findCurrentStep(state)
+	if currentStep == nil {
+		return nil, fmt.Errorf("current step not found")
+	}
+
 	// Collect all results
 	var results []*schema.Message
 	for specialistName, result := range state.SpecialistResults {
@@ -484,7 +503,7 @@ func (h *ResultCollectorHandler) ResultCollector(ctx context.Context, input []*s
 			// Add specialist name as context
 			msg := &schema.Message{
 				Role:    result.Output.Role,
-				Content: fmt.Sprintf("[%s]: %s", specialistName, result.Output.Content),
+				Content: fmt.Sprintf("%s\n[%s]: %s", currentStep.Description, specialistName, result.Output.Content),
 			}
 			results = append(results, msg)
 			state.AddCollectedResult(msg)
@@ -501,9 +520,6 @@ func (h *ResultCollectorHandler) ResultCollector(ctx context.Context, input []*s
 		Role:    schema.Assistant,
 		Content: summary,
 	}
-
-	// Update state using unified method
-	state.SetFinalResult(finalResult)
 
 	return finalResult, nil
 }
@@ -552,13 +568,14 @@ func (h *FeedbackProcessorHandler) processFeedbackResult(output *schema.Message,
 	}
 
 	// Update state with feedback
-	feedbackData := map[string]any{
-		"content":             output.Content,
-		"timestamp":           time.Now(),
-		"execution_completed": feedback.ExecutionCompleted,
-		"plan_needs_update":   feedback.PlanNeedsUpdate,
-		"overall_quality":     feedback.OverallQuality,
-		"confidence":          feedback.Confidence,
+	feedbackData := &Feedback{
+		ExecutionCompleted: feedback.ExecutionCompleted,
+		OverallQuality:     feedback.OverallQuality,
+		PlanNeedsUpdate:    feedback.PlanNeedsUpdate,
+		Issues:             feedback.Issues,
+		Suggestions:        feedback.Suggestions,
+		Confidence:         feedback.Confidence,
+		NextActionReason:   feedback.NextActionReason,
 	}
 	state.AddFeedback(feedbackData)
 

@@ -151,6 +151,17 @@ type TaskPlan struct {
 	Metadata      map[string]any  `json:"metadata,omitempty"`
 }
 
+// Feedback represents the feedback received from the user
+type Feedback struct {
+	ExecutionCompleted bool     `json:"execution_completed"`
+	OverallQuality     float64  `json:"overall_quality"`
+	PlanNeedsUpdate    bool     `json:"plan_needs_update"`
+	Issues             []string `json:"issues"`
+	Suggestions        []string `json:"suggestions"`
+	Confidence         float64  `json:"confidence"`
+	NextActionReason   string   `json:"next_action_reason"`
+}
+
 // MultiAgent represents the enhanced multi-agent system
 type MultiAgent struct {
 	Runnable         compose.Runnable[[]*schema.Message, *schema.Message]

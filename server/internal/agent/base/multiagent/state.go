@@ -30,11 +30,10 @@ type MultiAgentState struct {
 
 	// Collected Results
 	CollectedResults []*schema.Message `json:"collected_results,omitempty"`
-	FinalResult      *schema.Message   `json:"final_result,omitempty"`
 
 	// Feedback and Reflection
-	FeedbackHistory []map[string]any `json:"feedback_history,omitempty"`
-	ReflectionCount int              `json:"reflection_count"`
+	FeedbackHistory []*Feedback `json:"feedback_history,omitempty"`
+	ReflectionCount int         `json:"reflection_count"`
 
 	// Execution Control
 	MaxRounds      int  `json:"max_rounds"`
@@ -144,14 +143,10 @@ func (es *MultiAgentState) AddCollectedResult(result *schema.Message) {
 	es.CollectedResults = append(es.CollectedResults, result)
 }
 
-func (es *MultiAgentState) SetFinalResult(result *schema.Message) {
-	es.FinalResult = result
-}
-
 // 反馈管理方法
-func (es *MultiAgentState) AddFeedback(feedback map[string]any) {
+func (es *MultiAgentState) AddFeedback(feedback *Feedback) {
 	if es.FeedbackHistory == nil {
-		es.FeedbackHistory = make([]map[string]any, 0)
+		es.FeedbackHistory = make([]*Feedback, 0)
 	}
 	es.FeedbackHistory = append(es.FeedbackHistory, feedback)
 }
