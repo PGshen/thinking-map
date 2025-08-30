@@ -105,6 +105,7 @@ type ExecutionRecord struct {
 // StepResult represents the result of executing a plan step
 type StepResult struct {
 	Success      bool            `json:"success"`
+	Target       string          `json:"target,omitempty"`
 	Output       *schema.Message `json:"output"`
 	Error        string          `json:"error,omitempty"`
 	Confidence   float64         `json:"confidence"`

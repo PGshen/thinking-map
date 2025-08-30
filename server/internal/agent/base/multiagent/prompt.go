@@ -2,9 +2,42 @@ package multiagent
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cloudwego/eino/schema"
 )
+
+func buildConversationAnalysisPrompt(messages []*schema.Message) *schema.Message {
+	prompt := `Analyze the following conversation and extract key information:
+
+Conversation:
+`
+	for _, msg := range messages {
+		prompt += fmt.Sprintf("%s: %s\n", msg.Role, msg.Content)
+	}
+
+	prompt += `
+IMPORTANT: You MUST respond with ONLY a valid JSON object. Do not include any explanations, comments, or additional text before or after the JSON. Your response should start with { and end with }.
+
+Please analyze and provide the following information in JSON format:
+{
+  "userIntent": "Brief description of what the user wants to achieve",
+  "keyTopics": ["topic1", "topic2", "topic3"],
+  "contextSummary": "Summary of the conversation context",
+  "complexity": "simple|moderate|complex|very_complex",
+  "metadata": {}
+}
+
+Remember: 
+- Output ONLY the JSON object, no other text.
+- Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
+`
+
+	return &schema.Message{
+		Role:    schema.User,
+		Content: prompt,
+	}
+}
 
 func buildDirectAnswerPrompt(state *MultiAgentState) *schema.Message {
 	prompt := fmt.Sprintf(`Provide a direct answer to the user's request.
@@ -40,7 +73,7 @@ func buildPlanCreationPrompt(state *MultiAgentState, config *MultiAgentConfig) *
 Task Context:
 - User Intent: %s
 - Complexity: %s
-- Key Topics: %v
+- Key Topics: %s
 
 Available Specialists:
 %s
@@ -73,7 +106,7 @@ Notice:
 - Must strictly follow JSON format for replies, do not add any extra text`,
 		state.ConversationContext.UserIntent,
 		state.ConversationContext.Complexity,
-		state.ConversationContext.KeyTopics,
+		strings.Join(state.ConversationContext.KeyTopics, ", "),
 		specialistList,
 	)
 
@@ -129,7 +162,6 @@ func buildFeedbackPrompt(state *MultiAgentState) []*schema.Message {
 
 Original User Intent: ` + state.ConversationContext.UserIntent + `
 
-Current Plan:
 `
 	if state.CurrentPlan != nil {
 		prompt += fmt.Sprintf("Plan: %s\nDescription: %s\n", state.CurrentPlan.Name, state.CurrentPlan.Description)
