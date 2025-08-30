@@ -2,9 +2,42 @@ package multiagent
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cloudwego/eino/schema"
 )
+
+func buildConversationAnalysisPrompt(messages []*schema.Message) *schema.Message {
+	prompt := `Analyze the following conversation and extract key information:
+
+Conversation:
+`
+	for _, msg := range messages {
+		prompt += fmt.Sprintf("%s: %s\n", msg.Role, msg.Content)
+	}
+
+	prompt += `
+IMPORTANT: You MUST respond with ONLY a valid JSON object. Do not include any explanations, comments, or additional text before or after the JSON. Your response should start with { and end with }.
+
+Please analyze and provide the following information in JSON format:
+{
+  "userIntent": "Brief description of what the user wants to achieve",
+  "keyTopics": ["topic1", "topic2", "topic3"],
+  "contextSummary": "Summary of the conversation context",
+  "complexity": "simple|moderate|complex|very_complex",
+  "metadata": {}
+}
+
+Remember: 
+- Output ONLY the JSON object, no other text.
+- Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
+`
+
+	return &schema.Message{
+		Role:    schema.User,
+		Content: prompt,
+	}
+}
 
 func buildDirectAnswerPrompt(state *MultiAgentState) *schema.Message {
 	prompt := fmt.Sprintf(`Provide a direct answer to the user's request.
@@ -40,7 +73,7 @@ func buildPlanCreationPrompt(state *MultiAgentState, config *MultiAgentConfig) *
 Task Context:
 - User Intent: %s
 - Complexity: %s
-- Key Topics: %v
+- Key Topics: %s
 
 Available Specialists:
 %s
@@ -73,7 +106,7 @@ Notice:
 - Must strictly follow JSON format for replies, do not add any extra text`,
 		state.ConversationContext.UserIntent,
 		state.ConversationContext.Complexity,
-		state.ConversationContext.KeyTopics,
+		strings.Join(state.ConversationContext.KeyTopics, ", "),
 		specialistList,
 	)
 
@@ -90,9 +123,14 @@ func buildSpecialistPrompt(specialist *Specialist, step *PlanStep, state *MultiA
 			Role:    schema.System,
 			Content: specialist.SystemPrompt,
 		})
+	} else {
+		messages = append(messages, &schema.Message{
+			Role:    schema.System,
+			Content: fmt.Sprintf(`You are a %s specialist, intended to %s.`, specialist.Name, specialist.IntendedUse),
+		})
 	}
 	// Build specialist prompt
-	prompt := fmt.Sprintf(`You are a %s specialist, intended to %s. Execute the following step:
+	prompt := fmt.Sprintf(`Execute the following step:
 
 Step: %s
 Description: %s
@@ -101,20 +139,15 @@ Context:
 - User Intent: %s
 - Overall Plan: %s
 
-Parameters: %v
-
 Please complete this step and provide your result.
 
 Notice:
 - Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
 `,
-		specialist.Name,
-		specialist.IntendedUse,
 		step.Name,
 		step.Description,
 		state.ConversationContext.UserIntent,
 		state.CurrentPlan.Description,
-		step.Parameters,
 	)
 	messages = append(messages, &schema.Message{
 		Role:    schema.User,
@@ -129,7 +162,6 @@ func buildFeedbackPrompt(state *MultiAgentState) []*schema.Message {
 
 Original User Intent: ` + state.ConversationContext.UserIntent + `
 
-Current Plan:
 `
 	if state.CurrentPlan != nil {
 		prompt += fmt.Sprintf("Plan: %s\nDescription: %s\n", state.CurrentPlan.Name, state.CurrentPlan.Description)
@@ -221,15 +253,25 @@ Current Plan:
 	// Add feedback information
 	if len(state.FeedbackHistory) > 0 {
 		latestFeedback := state.FeedbackHistory[len(state.FeedbackHistory)-1]
-		if content, ok := latestFeedback["content"].(string); ok {
-			prompt += "\nLatest Feedback:\n" + content + "\n\n"
+		prompt += "\nLatest Feedback:\n"
+		prompt += fmt.Sprintf("Execution Completed: %v\n", latestFeedback.ExecutionCompleted)
+		prompt += fmt.Sprintf("Overall Quality: %.2f\n", latestFeedback.OverallQuality)
+		prompt += fmt.Sprintf("Plan Needs Update: %v\n", latestFeedback.PlanNeedsUpdate)
+		prompt += fmt.Sprintf("Confidence: %.2f\n", latestFeedback.Confidence)
+		if len(latestFeedback.Issues) > 0 {
+			prompt += fmt.Sprintf("Issues: %v\n", latestFeedback.Issues)
 		}
+		if len(latestFeedback.Suggestions) > 0 {
+			prompt += fmt.Sprintf("Suggestions: %v\n", latestFeedback.Suggestions)
+		}
+		prompt += "\n"
 	}
 
 	// Add feedback decision context
-	if reason, exists := state.GetMetadata("feedback_next_action_reason"); exists {
-		if reasonStr, ok := reason.(string); ok {
-			prompt += "Reason for Plan Update: " + reasonStr + "\n\n"
+	if len(state.FeedbackHistory) > 0 {
+		latestFeedback := state.FeedbackHistory[len(state.FeedbackHistory)-1]
+		if latestFeedback.NextActionReason != "" {
+			prompt += "Reason for Plan Update: " + latestFeedback.NextActionReason + "\n\n"
 		}
 	}
 

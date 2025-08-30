@@ -105,6 +105,7 @@ type ExecutionRecord struct {
 // StepResult represents the result of executing a plan step
 type StepResult struct {
 	Success      bool            `json:"success"`
+	Target       string          `json:"target,omitempty"`
 	Output       *schema.Message `json:"output"`
 	Error        string          `json:"error,omitempty"`
 	Confidence   float64         `json:"confidence"`
@@ -149,6 +150,17 @@ type TaskPlan struct {
 	Steps         []*PlanStep     `json:"steps"`
 	UpdateHistory []*PlanUpdate   `json:"updateHistory,omitempty"`
 	Metadata      map[string]any  `json:"metadata,omitempty"`
+}
+
+// Feedback represents the feedback received from the user
+type Feedback struct {
+	ExecutionCompleted bool     `json:"execution_completed"`
+	OverallQuality     float64  `json:"overall_quality"`
+	PlanNeedsUpdate    bool     `json:"plan_needs_update"`
+	Issues             []string `json:"issues"`
+	Suggestions        []string `json:"suggestions"`
+	Confidence         float64  `json:"confidence"`
+	NextActionReason   string   `json:"next_action_reason"`
 }
 
 // MultiAgent represents the enhanced multi-agent system

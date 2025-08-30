@@ -12,6 +12,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type thinkingNodeRepository struct {
@@ -31,6 +32,11 @@ func (r *thinkingNodeRepository) Update(ctx context.Context, node *model.Thinkin
 	return r.db.WithContext(ctx).Save(node).Error
 }
 
+// UpdateInTx 在事务中更新节点
+func (r *thinkingNodeRepository) UpdateInTx(ctx context.Context, tx *gorm.DB, node *model.ThinkingNode) error {
+	return tx.WithContext(ctx).Save(node).Error
+}
+
 func (r *thinkingNodeRepository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Where(whereID, id).Delete(&model.ThinkingNode{}).Error
 }
@@ -38,6 +44,16 @@ func (r *thinkingNodeRepository) Delete(ctx context.Context, id string) error {
 func (r *thinkingNodeRepository) FindByID(ctx context.Context, id string) (*model.ThinkingNode, error) {
 	var node model.ThinkingNode
 	err := r.db.WithContext(ctx).Where(whereID, id).First(&node).Error
+	if err != nil {
+		return nil, err
+	}
+	return &node, nil
+}
+
+// FindByIDForUpdate 使用行级锁查找节点
+func (r *thinkingNodeRepository) FindByIDForUpdate(ctx context.Context, tx *gorm.DB, id string) (*model.ThinkingNode, error) {
+	var node model.ThinkingNode
+	err := tx.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Where(whereID, id).First(&node).Error
 	if err != nil {
 		return nil, err
 	}

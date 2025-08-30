@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/cloudwego/eino/schema"
 )
 
@@ -35,7 +36,7 @@ func (h *ConversationAnalyzerHandler) PreHandler(ctx context.Context, input []*s
 	// Set analysis state
 	state.SetExecutionStatus(ExecutionStatusAnalyzing)
 	// Build conversation analysis prompt
-	prompt := h.buildConversationAnalysisPrompt(input)
+	prompt := buildConversationAnalysisPrompt(input)
 	return []*schema.Message{prompt}, nil
 }
 
@@ -51,35 +52,6 @@ func (h *ConversationAnalyzerHandler) PostHandler(ctx context.Context, output *s
 	state.UpdateConversationContext(context)
 	state.SetExecutionStatus(ExecutionStatusPlanning)
 	return output, nil
-}
-
-func (h *ConversationAnalyzerHandler) buildConversationAnalysisPrompt(messages []*schema.Message) *schema.Message {
-	prompt := `Analyze the following conversation and extract key information:
-
-Conversation:
-`
-	for _, msg := range messages {
-		prompt += fmt.Sprintf("%s: %s\n", msg.Role, msg.Content)
-	}
-
-	prompt += `
-IMPORTANT: You MUST respond with ONLY a valid JSON object. Do not include any explanations, comments, or additional text before or after the JSON. Your response should start with { and end with }.
-
-Please analyze and provide the following information in JSON format:
-{
-  "userIntent": "Brief description of what the user wants to achieve",
-  "keyTopics": ["topic1", "topic2", "topic3"],
-  "contextSummary": "Summary of the conversation context",
-  "complexity": "simple|moderate|complex|very_complex",
-  "metadata": {}
-}
-
-Remember: Output ONLY the JSON object, no other text.`
-
-	return &schema.Message{
-		Role:    schema.User,
-		Content: prompt,
-	}
 }
 
 func (h *ConversationAnalyzerHandler) parseConversationContext(content string) (*ConversationContext, error) {
@@ -248,7 +220,7 @@ func NewSpecialistHandler(specialist *Specialist) *SpecialistHandler {
 // PreHandler prepares input for specialist execution
 func (h *SpecialistHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 	// Find the current step for this specialist
-	currentStep := h.findCurrentStep(state)
+	currentStep := findCurrentStep(state)
 	if currentStep == nil {
 		return nil, fmt.Errorf("no current step found for specialist %s", h.specialist.Name)
 	}
@@ -260,9 +232,14 @@ func (h *SpecialistHandler) PreHandler(ctx context.Context, input []*schema.Mess
 
 // PostHandler processes specialist execution results
 func (h *SpecialistHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
+	currentStep := findCurrentStep(state)
+	if currentStep == nil {
+		return nil, fmt.Errorf("no current step found for specialist %s", h.specialist.Name)
+	}
 	// Create step result
 	result := &StepResult{
 		Success:      true,
+		Target:       fmt.Sprintf("%s:%s", currentStep.Name, currentStep.Description),
 		Output:       output,
 		Confidence:   0.8, // TODO: implement confidence calculation
 		QualityScore: 0.8, // TODO: implement quality scoring
@@ -282,27 +259,10 @@ func (h *SpecialistHandler) PostHandler(ctx context.Context, output *schema.Mess
 	state.AddExecutionRecord(record)
 
 	// Update step status
-	currentStep := h.findCurrentStep(state)
-	if currentStep != nil {
-		currentStep.Status = StepStatusCompleted
-		currentStep.Result = result
-	}
+	currentStep.Status = StepStatusCompleted
+	currentStep.Result = result
 
 	return output, nil
-}
-
-func (h *SpecialistHandler) findCurrentStep(state *MultiAgentState) *PlanStep {
-	if state.CurrentPlan == nil {
-		return nil
-	}
-
-	for _, step := range state.CurrentPlan.Steps {
-		if step.AssignedSpecialist == h.specialist.Name && step.Status == StepStatusRunning {
-			return step
-		}
-	}
-
-	return nil
 }
 
 // PlanExecutionHandler handles plan execution coordination
@@ -328,7 +288,7 @@ func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Messag
 	state.ClearSpecialistResults() // Clear previous round results
 
 	// Find the next step to execute
-	nextStep := h.findNextStep(state)
+	nextStep := findNextStep(state)
 	if nextStep == nil {
 		// All steps completed, proceed to result collection
 		return &schema.Message{
@@ -361,11 +321,11 @@ func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Messag
 }
 
 // findNextStep finds the next step to execute based on dependencies and status
-func (h *PlanExecutionHandler) findNextStep(state *MultiAgentState) *PlanStep {
+func findNextStep(state *MultiAgentState) *PlanStep {
 	for _, step := range state.CurrentPlan.Steps {
 		if step.Status == StepStatusPending {
 			// Check if all dependencies are completed
-			if h.areDependenciesCompleted(step, state) {
+			if areDependenciesCompleted(step, state) {
 				return step
 			}
 		}
@@ -374,7 +334,7 @@ func (h *PlanExecutionHandler) findNextStep(state *MultiAgentState) *PlanStep {
 }
 
 // areDependenciesCompleted checks if all dependencies for a step are completed
-func (h *PlanExecutionHandler) areDependenciesCompleted(step *PlanStep, state *MultiAgentState) bool {
+func areDependenciesCompleted(step *PlanStep, state *MultiAgentState) bool {
 	for _, depID := range step.Dependencies {
 		for _, planStep := range state.CurrentPlan.Steps {
 			if planStep.ID == depID && planStep.Status != StepStatusCompleted {
@@ -383,6 +343,20 @@ func (h *PlanExecutionHandler) areDependenciesCompleted(step *PlanStep, state *M
 		}
 	}
 	return true
+}
+
+func findCurrentStep(state *MultiAgentState) *PlanStep {
+	if state.CurrentPlan == nil {
+		return nil
+	}
+
+	for _, step := range state.CurrentPlan.Steps {
+		if step.ID == state.CurrentStep {
+			return step
+		}
+	}
+
+	return nil
 }
 
 // SpecialistBranchHandler handles specialist selection and branching
@@ -404,7 +378,7 @@ func (h *SpecialistBranchHandler) Evaluate(ctx context.Context, state *MultiAgen
 	}
 
 	// Find the current step by ID
-	currentStep := h.findStepByID(state.CurrentStep, state)
+	currentStep := findCurrentStep(state)
 	if currentStep == nil {
 		return generalSpecialistNodeKey, nil // Step not found, go to common specialist
 	}
@@ -424,20 +398,6 @@ func (h *SpecialistBranchHandler) Evaluate(ctx context.Context, state *MultiAgen
 
 	// Specialist not found, go to common specialist
 	return generalSpecialistNodeKey, nil
-}
-
-// findStepByID finds a step by its ID in the current plan
-func (h *SpecialistBranchHandler) findStepByID(stepID string, state *MultiAgentState) *PlanStep {
-	if state.CurrentPlan == nil {
-		return nil
-	}
-
-	for _, step := range state.CurrentPlan.Steps {
-		if step.ID == stepID {
-			return step
-		}
-	}
-	return nil
 }
 
 // buildSpecialistBranchMap creates a map of specialist names to branch conditions
@@ -476,14 +436,19 @@ func (h *ResultCollectorHandler) ResultCollector(ctx context.Context, input []*s
 		}, nil
 	}
 
+	currentStep := findCurrentStep(state)
+	if currentStep == nil {
+		return nil, fmt.Errorf("current step not found")
+	}
+
 	// Collect all results
 	var results []*schema.Message
-	for specialistName, result := range state.SpecialistResults {
+	for _, result := range state.SpecialistResults {
 		if result.Success && result.Output != nil {
 			// Add specialist name as context
 			msg := &schema.Message{
 				Role:    result.Output.Role,
-				Content: fmt.Sprintf("[%s]: %s", specialistName, result.Output.Content),
+				Content: fmt.Sprintf("\nTarget:%s\nResult: %s", result.Target, result.Output.Content),
 			}
 			results = append(results, msg)
 			state.AddCollectedResult(msg)
@@ -500,9 +465,6 @@ func (h *ResultCollectorHandler) ResultCollector(ctx context.Context, input []*s
 		Role:    schema.Assistant,
 		Content: summary,
 	}
-
-	// Update state using unified method
-	state.SetFinalResult(finalResult)
 
 	return finalResult, nil
 }
@@ -551,22 +513,16 @@ func (h *FeedbackProcessorHandler) processFeedbackResult(output *schema.Message,
 	}
 
 	// Update state with feedback
-	feedbackData := map[string]any{
-		"content":             output.Content,
-		"timestamp":           time.Now(),
-		"execution_completed": feedback.ExecutionCompleted,
-		"plan_needs_update":   feedback.PlanNeedsUpdate,
-		"overall_quality":     feedback.OverallQuality,
-		"confidence":          feedback.Confidence,
+	feedbackData := &Feedback{
+		ExecutionCompleted: feedback.ExecutionCompleted,
+		OverallQuality:     feedback.OverallQuality,
+		PlanNeedsUpdate:    feedback.PlanNeedsUpdate,
+		Issues:             feedback.Issues,
+		Suggestions:        feedback.Suggestions,
+		Confidence:         feedback.Confidence,
+		NextActionReason:   feedback.NextActionReason,
 	}
 	state.AddFeedback(feedbackData)
-
-	// Store feedback decision for branch evaluation
-	state.SetMetadata("feedback_execution_completed", feedback.ExecutionCompleted)
-	state.SetMetadata("feedback_plan_needs_update", feedback.PlanNeedsUpdate)
-	state.SetMetadata("feedback_overall_quality", feedback.OverallQuality)
-	state.SetMetadata("feedback_confidence", feedback.Confidence)
-	state.SetMetadata("feedback_next_action_reason", feedback.NextActionReason)
 
 	return nil
 }
@@ -582,69 +538,62 @@ func NewReflectionBranchHandler(config *MultiAgentConfig) *ReflectionBranchHandl
 	}
 }
 
-func (h *ReflectionBranchHandler) evaluateReflectionDecision(state *MultiAgentState) (string, error) {
-	// Get feedback decision from metadata
-	executionCompleted, hasCompleted := state.GetMetadata("feedback_execution_completed")
-	planNeedsUpdate, hasUpdate := state.GetMetadata("feedback_plan_needs_update")
-	overallQuality, hasQuality := state.GetMetadata("feedback_overall_quality")
-	confidence, hasConfidence := state.GetMetadata("feedback_confidence")
-
-	// If feedback metadata is missing, default to continue execution
-	if !hasCompleted || !hasUpdate {
-		return planExecutionNodeKey, nil
+func (h *ReflectionBranchHandler) evaluateReflectionDecision(state *MultiAgentState) (decision string) {
+	defer func() {
+		if decision == planExecutionNodeKey && findNextStep(state) == nil {
+			// 如果计划已经执行完毕，那么就不能再到planExecutionNode,而是应该到finalAnswerNode
+			state.SetExecutionStatus(ExecutionStatusCompleted)
+			decision = toFinalAnswerNodeKey
+		}
+	}()
+	
+	// Get latest feedback from feedback history
+	if len(state.FeedbackHistory) == 0 {
+		// No feedback available, default to continue execution
+		decision = planExecutionNodeKey
+		return
 	}
 
-	// Convert metadata to appropriate types
-	isCompleted, ok := executionCompleted.(bool)
-	if !ok {
-		return planExecutionNodeKey, fmt.Errorf("invalid execution_completed type")
-	}
-
-	needsUpdate, ok := planNeedsUpdate.(bool)
-	if !ok {
-		return planExecutionNodeKey, fmt.Errorf("invalid plan_needs_update type")
-	}
+	// Get the latest feedback
+	latestFeedback := state.FeedbackHistory[len(state.FeedbackHistory)-1]
 
 	// Decision logic based on feedback
-	if isCompleted {
+	if latestFeedback.ExecutionCompleted {
 		// Task is completed, proceed to final answer
 		state.SetExecutionStatus(ExecutionStatusCompleted)
-		return toFinalAnswerNodeKey, nil
+		decision = toFinalAnswerNodeKey
+		return
 	}
 
-	if needsUpdate {
+	if latestFeedback.PlanNeedsUpdate {
 		// Plan needs update, go to plan update
 		state.SetExecutionStatus(ExecutionStatusPlanning)
-		return toPlanUpdateNodeKey, nil
+		decision = toPlanUpdateNodeKey
+		return
 	}
 
 	// Check quality and confidence thresholds
-	if hasQuality && hasConfidence {
-		quality, qOk := overallQuality.(float64)
-		conf, cOk := confidence.(float64)
-		if qOk && cOk && (quality < 0.6 || conf < 0.7) {
-			// Low quality or confidence, consider plan update
-			state.SetExecutionStatus(ExecutionStatusPlanning)
-			return toPlanUpdateNodeKey, nil
-		}
-	}
-
-	if !isCompleted {
-		// If not completed, continue execution
-		state.SetExecutionStatus(ExecutionStatusExecuting)
-		return planExecutionNodeKey, nil
+	if latestFeedback.OverallQuality < 0.6 || latestFeedback.Confidence < 0.7 {
+		// Low quality or confidence, consider plan update
+		logger.Info("low quality or confidence, consider plan update")
+		state.SetExecutionStatus(ExecutionStatusPlanning)
+		decision = toPlanUpdateNodeKey
+		return
 	}
 
 	// Check if we've reached max rounds
 	if state.RoundNumber >= state.MaxRounds {
 		// Force completion if max rounds reached
+		logger.Info("max rounds reached, force completion")
 		state.SetExecutionStatus(ExecutionStatusCompleted)
-		return toFinalAnswerNodeKey, nil
+		decision = toFinalAnswerNodeKey
+		return
 	}
 
 	// Default: continue execution with current plan
 	state.SetExecutionStatus(ExecutionStatusExecuting)
-	return toFinalAnswerNodeKey, nil
+	decision = planExecutionNodeKey
+	return
 }
 
 // PlanUpdateHandler handles the plan update process

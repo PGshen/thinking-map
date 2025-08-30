@@ -119,6 +119,7 @@ func CreateNodeFunc(ctx context.Context, req *CreateNodeRequest) (*dto.NodeRespo
 		},
 	})
 
+	resp.NodeID = resp.ID
 	return resp, nil
 }
 
@@ -307,14 +308,10 @@ func CreateNodeTool() (tool.InvokableTool, error) {
 		Desc: "创建新的思维导图节点",
 		ParamsOneOf: schema.NewParamsOneOfByParams(
 			map[string]*schema.ParameterInfo{
-				"nodeID": {
-					Type:     schema.String,
-					Desc:     "节点ID: uuid格式，如954b9be3-cae8-43bf-9ac6-b423bb62f8f4",
-					Required: true,
-				},
 				"nodeType": {
 					Type:     schema.String,
-					Desc:     "节点类型，如problem、information、analysis、generation、evaluation等",
+					Desc:     "节点类型",
+					Enum:     []string{"problem", "information", "analysis", "generation", "evaluation"},
 					Required: true,
 				},
 				"question": {
@@ -405,7 +402,11 @@ func SetNodeDependenciesTool() (tool.InvokableTool, error) {
 					Required: true,
 				},
 				"dependencies": {
-					Type:     schema.Array,
+					Type: schema.Array,
+					ElemInfo: &schema.ParameterInfo{
+						Type: schema.String,
+						Desc: "依赖的节点ID",
+					},
 					Desc:     "依赖的节点ID列表，表示当前节点依赖这些节点的完成",
 					Required: true,
 				},

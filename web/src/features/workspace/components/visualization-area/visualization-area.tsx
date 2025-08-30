@@ -47,6 +47,7 @@ const nodeTypes: NodeTypes = {
 
 function MapCanvas({ mapID }: VisualizationAreaProps) {
   const selectedNodeIDs = useWorkspaceStore(state => state.selectedNodeIDs);
+  const settings = useWorkspaceStore(state => state.settings);
   const actions = useWorkspaceStore(state => state.actions);
   const { nodes: nodesData, edges: edgesData, isLoading } = useWorkspaceData(mapID);
   const { handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu } = useNodeSelection();
@@ -56,7 +57,7 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [layoutType, setLayoutType] = useState<LayoutType>('local');
+  const layoutType = useWorkspaceStore(state => state.settings.layoutType);
   const [pendingLayout, setPendingLayout] = useState<{ nodeId?: string; type: LayoutType } | null>(null);
   const triggerLayoutTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const nodeSizesRef = useRef<Map<string, { width: number; height: number }>>(new Map());
@@ -102,7 +103,7 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
       const layoutResult = await applyAutoLayout(
         nodes as Node<CustomNodeModel>[],
         edges,
-        'global',
+        layoutType,
         undefined,
         nodeSizesRef.current
       );
@@ -171,7 +172,7 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
     } catch (error) {
       console.error('全局布局失败:', error);
     }
-  }, [isLayouting, nodes, edges, applyAutoLayout, setNodes, actions]);
+  }, [isLayouting, nodes, edges, applyAutoLayout, setNodes, actions, settings.layoutConfig.direction, layoutType, updateLayoutConfig, finishAnimation]);
 
   // SSE事件处理函数 - 使用useCallback优化，避免不必要的重新渲染
   const handleNodeCreated = useCallback((event: NodeCreatedEvent) => {
@@ -549,15 +550,7 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
           {isLayouting ? '布局中...' : '全局整理'}
         </Button>
         
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setLayoutType(layoutType === 'global' ? 'local' : 'global')}
-          className="bg-white/90 backdrop-blur-sm"
-        >
-          {/* <RotateCcw className="h-4 w-4 mr-1" /> */}
-          {layoutType === 'global' ? 'To局部更新' : 'To全局更新'}
-        </Button>
+
       </div>
       
       <ReactFlow

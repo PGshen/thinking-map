@@ -479,7 +479,8 @@ func (m *specialistMessageHandler) OnMessage(ctx context.Context, message *schem
 }
 
 func (m *specialistMessageHandler) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
-	messageID := uuid.NewString()
+	thoughtMessageID := uuid.NewString()
+	finalAnswerMessageID := uuid.NewString()
 	sseBroker := global.GetBroker()
 	// 使用流式JSON解析器解析ReasoningOutput
 	matcher := utils.NewSimplePathMatcher()
@@ -494,10 +495,10 @@ func (m *specialistMessageHandler) OnStreamMessage(ctx context.Context, sr *sche
 		if str, ok := value.(string); ok {
 			sseBroker.PublishToSession(m.mapID, sse.Event{
 				ID:   m.nodeID,
-				Type: dto.MessageTextEventType,
-				Data: dto.MessageTextEvent{
+				Type: dto.MessageThoughtEventType,
+				Data: dto.MessageThoughtEvent{
 					NodeID:    m.nodeID,
-					MessageID: messageID,
+					MessageID: thoughtMessageID,
 					Message:   str,
 					Mode:      "append",
 				},
@@ -513,7 +514,7 @@ func (m *specialistMessageHandler) OnStreamMessage(ctx context.Context, sr *sche
 				Type: dto.MessageTextEventType,
 				Data: dto.MessageTextEvent{
 					NodeID:    m.nodeID,
-					MessageID: messageID,
+					MessageID: finalAnswerMessageID,
 					Message:   str,
 					Mode:      "append",
 				},
@@ -524,23 +525,37 @@ func (m *specialistMessageHandler) OnStreamMessage(ctx context.Context, sr *sche
 
 	defer func() {
 		sr.Close()
-		if len(thought.String()) == 0 && len(finalAnswer.String()) == 0 {
-			return
+		if len(thought.String()) > 0 {
+			msgReq := dto.CreateMessageRequest{
+				ID:          thoughtMessageID,
+				UserID:      m.userID,
+				MessageType: model.MsgTypeThought,
+				Role:        schema.Assistant,
+				Content: model.MessageContent{
+					Thought: thought.String(),
+				},
+			}
+			_, err2 := m.msgManager.SaveDecompositionMessage(ctx, m.nodeID, msgReq)
+			if err2 != nil {
+				logger.Error("create message failed", zap.Error(err2))
+				return
+			}
 		}
-		// fmt.Println("fullMsg.Content", fullMsg.Content)
-		msgReq := dto.CreateMessageRequest{
-			ID:          messageID,
-			UserID:      m.userID,
-			MessageType: model.MsgTypeText,
-			Role:        schema.Assistant,
-			Content: model.MessageContent{
-				Text: thought.String() + "\n" + finalAnswer.String(),
-			},
-		}
-		_, err2 := m.msgManager.SaveDecompositionMessage(ctx, m.nodeID, msgReq)
-		if err2 != nil {
-			logger.Error("create message failed", zap.Error(err2))
-			return
+		if len(finalAnswer.String()) > 0 {
+			msgReq := dto.CreateMessageRequest{
+				ID:          finalAnswerMessageID,
+				UserID:      m.userID,
+				MessageType: model.MsgTypeText,
+				Role:        schema.Assistant,
+				Content: model.MessageContent{
+					Text: finalAnswer.String(),
+				},
+			}
+			_, err2 := m.msgManager.SaveDecompositionMessage(ctx, m.nodeID, msgReq)
+			if err2 != nil {
+				logger.Error("create message failed", zap.Error(err2))
+				return
+			}
 		}
 	}()
 outer:
@@ -596,6 +611,29 @@ func (p *planMessageHandler) OnPlanStepDelete(ctx context.Context, plan *multiag
 
 func (p *planMessageHandler) OnPlanStepEnd(ctx context.Context, plan *multiagent.TaskPlan) (context.Context, error) {
 	p.sendPlanEvent(ctx, *plan, true)
+	err := p.savePlanMessage(ctx, *plan)
+	if err != nil {
+		return ctx, err
+	}
+	//  本次消息结束，更新messageID
+	p.messageID = uuid.NewString()
+	return ctx, nil
+}
+
+func (p *planMessageHandler) sendPlanEvent(_ context.Context, plan multiagent.TaskPlan, isEnd bool) {
+	global.GetBroker().PublishToSession(p.mapID, sse.Event{
+		ID:   p.nodeID,
+		Type: dto.MessagePlanEventType,
+		Data: dto.MessagePlanEvent{
+			NodeID:    p.nodeID,
+			MessageID: p.messageID,
+			Plan:      plan,
+			IsEnd:     isEnd,
+		},
+	})
+}
+
+func (p *planMessageHandler) savePlanMessage(ctx context.Context, plan multiagent.TaskPlan) error {
 	// save plan
 	planSteps := make([]model.PlanStep, 0)
 	for _, step := range plan.Steps {
@@ -620,21 +658,7 @@ func (p *planMessageHandler) OnPlanStepEnd(ctx context.Context, plan *multiagent
 	})
 	if err != nil {
 		logger.Error("save plan message failed", zap.Error(err))
+		return err
 	}
-	//  本次消息结束，更新messageID
-	p.messageID = uuid.NewString()
-	return ctx, nil
-}
-
-func (p *planMessageHandler) sendPlanEvent(_ context.Context, plan multiagent.TaskPlan, isEnd bool) {
-	global.GetBroker().PublishToSession(p.mapID, sse.Event{
-		ID:   p.nodeID,
-		Type: dto.MessagePlanEventType,
-		Data: dto.MessagePlanEvent{
-			NodeID:    p.nodeID,
-			MessageID: p.messageID,
-			Plan:      plan,
-			IsEnd:     isEnd,
-		},
-	})
+	return nil
 }

@@ -27,6 +27,11 @@ func (r *messageRepository) Create(ctx context.Context, message *model.Message) 
 	return r.db.WithContext(ctx).Create(message).Error
 }
 
+// CreateInTx 在事务中创建消息
+func (r *messageRepository) CreateInTx(ctx context.Context, tx *gorm.DB, message *model.Message) error {
+	return tx.WithContext(ctx).Create(message).Error
+}
+
 func (r *messageRepository) Update(ctx context.Context, message *model.Message) error {
 	return r.db.WithContext(ctx).Save(message).Error
 }

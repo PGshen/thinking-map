@@ -194,7 +194,7 @@ func NewMultiAgent(ctx context.Context, config *MultiAgentConfig, agentOptions .
 	reflectionBranch := compose.NewGraphBranch(func(ctx context.Context, input *schema.Message) (string, error) {
 		var result string
 		err = compose.ProcessState(ctx, func(ctx context.Context, state *MultiAgentState) error {
-			result, err = reflectionBranchHandler.evaluateReflectionDecision(state)
+			result = reflectionBranchHandler.evaluateReflectionDecision(state)
 			return err
 		})
 		return result, err

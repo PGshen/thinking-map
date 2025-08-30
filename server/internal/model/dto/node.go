@@ -41,6 +41,7 @@ type UpdateNodeContextRequest struct {
 // NodeResponse represents the node data in responses
 type NodeResponse struct {
 	ID            string                 `json:"id"`
+	NodeID        string                 `json:"nodeID"`
 	MapID         string                 `json:"mapID,omitempty"`
 	ParentID      string                 `json:"parentID"`
 	NodeType      string                 `json:"nodeType"`

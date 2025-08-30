@@ -8,6 +8,7 @@ package global
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/PGshen/thinking-map/server/internal/model"
@@ -416,4 +417,166 @@ func TestMessageManager_CreateConversation(t *testing.T) {
 	// 验证返回的是有效的UUID
 	_, err = uuid.Parse(conversationID)
 	assert.NoError(t, err)
+}
+
+// TestMessageManager_SaveDecompositionMessage_Concurrent 测试并发环境下 SaveDecompositionMessage 的正确性
+func TestMessageManager_SaveDecompositionMessage_Concurrent(t *testing.T) {
+	ctx := context.Background()
+	nodeID := uuid.NewString()
+
+	// 创建测试节点（模拟节点存在）
+	// 注意：这里需要先创建一个真实的节点，或者mock nodeRepo
+	// 为了测试简化，我们假设节点已存在
+
+	// 并发数量
+	concurrentCount := 10
+	results := make([]*dto.MessageResponse, concurrentCount)
+	errors := make([]error, concurrentCount)
+
+	// 使用 sync.WaitGroup 等待所有goroutine完成
+	var wg sync.WaitGroup
+	wg.Add(concurrentCount)
+
+	// 启动多个goroutine并发调用 SaveDecompositionMessage
+	for i := 0; i < concurrentCount; i++ {
+		go func(index int) {
+			defer wg.Done()
+			
+			req := dto.CreateMessageRequest{
+				ID:          uuid.NewString(),
+				MessageType: comm.MessageTypeText,
+				Role:        schema.User,
+				Content: model.MessageContent{
+					Text: fmt.Sprintf("并发测试消息 %d", index),
+				},
+			}
+			
+			result, err := messageManager.SaveDecompositionMessage(ctx, nodeID, req)
+			results[index] = result
+			errors[index] = err
+		}(i)
+		}
+
+	// 等待所有goroutine完成
+	wg.Wait()
+
+	// 验证结果
+	successCount := 0
+	for i := 0; i < concurrentCount; i++ {
+		if errors[i] == nil && results[i] != nil {
+			successCount++
+			// 验证消息内容正确
+			assert.Equal(t, fmt.Sprintf("并发测试消息 %d", i), results[i].Content.Text)
+			// 验证消息ID不为空
+			assert.NotEmpty(t, results[i].ID)
+			// 验证会话ID不为空
+			assert.NotEmpty(t, results[i].ConversationID)
+		}
+	}
+
+	// 在并发环境下，所有操作都应该成功
+	// 如果没有事务和行级锁，可能会出现消息链断裂的问题
+	assert.Equal(t, concurrentCount, successCount, "所有并发操作都应该成功")
+
+	// 验证消息链的完整性
+	// 获取所有成功创建的消息，验证它们形成了正确的链式结构
+	if successCount > 0 {
+		// 找到第一个成功的消息作为起点
+		var firstMessage *dto.MessageResponse
+		for i := 0; i < concurrentCount; i++ {
+			if results[i] != nil {
+				firstMessage = results[i]
+				break
+			}
+		}
+		
+		if firstMessage != nil {
+			// 获取整个消息链
+			messageChain, err := messageManager.GetMessageChain(ctx, firstMessage.ID, firstMessage.ConversationID)
+			assert.NoError(t, err)
+			
+			// 验证消息链的长度应该等于成功创建的消息数量
+			// 注意：由于并发创建，消息链可能不是线性的，这里主要验证没有出现断链
+			assert.GreaterOrEqual(t, len(messageChain), 1, "消息链不应该为空")
+			
+			// 验证消息链中的每个消息都有正确的父子关系
+			for i := 1; i < len(messageChain); i++ {
+				assert.Equal(t, messageChain[i-1].ID, messageChain[i].ParentID, "消息链中的父子关系应该正确")
+			}
+		}
+	}
+}
+
+// TestMessageManager_SaveDecompositionMessage_TransactionRollback 测试事务回滚功能
+func TestMessageManager_SaveDecompositionMessage_TransactionRollback(t *testing.T) {
+	ctx := context.Background()
+	nodeID := "non-existent-node-id" // 使用不存在的节点ID来触发错误
+
+	req := dto.CreateMessageRequest{
+		ID:          uuid.NewString(),
+		MessageType: comm.MessageTypeText,
+		Role:        schema.User,
+		Content: model.MessageContent{
+			Text: "事务回滚测试消息",
+		},
+	}
+
+	// 调用 SaveDecompositionMessage，期望失败
+	result, err := messageManager.SaveDecompositionMessage(ctx, nodeID, req)
+
+	// 验证操作失败
+	assert.Error(t, err)
+	assert.Nil(t, result)
+
+	// 验证消息没有被创建（事务已回滚）
+	_, getErr := messageManager.GetMessageByID(ctx, req.ID)
+	assert.Error(t, getErr, "消息不应该存在，因为事务已回滚")
+}
+
+// TestMessageManager_SaveDecompositionMessage_MessageChainIntegrity 测试消息链完整性
+func TestMessageManager_SaveDecompositionMessage_MessageChainIntegrity(t *testing.T) {
+	ctx := context.Background()
+	nodeID := uuid.NewString()
+
+	// 创建多个消息，验证消息链的完整性
+	messageCount := 5
+	messages := make([]*dto.MessageResponse, messageCount)
+
+	for i := 0; i < messageCount; i++ {
+		req := dto.CreateMessageRequest{
+			ID:          uuid.NewString(),
+			MessageType: comm.MessageTypeText,
+			Role:        schema.User,
+			Content: model.MessageContent{
+				Text: fmt.Sprintf("消息链测试消息 %d", i+1),
+			},
+		}
+
+		result, err := messageManager.SaveDecompositionMessage(ctx, nodeID, req)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		messages[i] = result
+
+		// 验证每个消息的父ID正确设置
+		if i == 0 {
+			// 第一个消息的父ID应该是空或者节点的最后消息ID
+			// 这里我们不做具体验证，因为依赖于节点的初始状态
+		} else {
+			// 后续消息的父ID应该是前一个消息的ID
+			assert.Equal(t, messages[i-1].ID, result.ParentID)
+		}
+	}
+
+	// 验证最后一个消息的完整消息链
+	lastMessage := messages[messageCount-1]
+	messageChain, err := messageManager.GetMessageChain(ctx, lastMessage.ID, lastMessage.ConversationID)
+	assert.NoError(t, err)
+
+	// 验证消息链包含所有创建的消息
+	assert.GreaterOrEqual(t, len(messageChain), messageCount)
+
+	// 验证消息链的顺序和完整性
+	for i := 1; i < len(messageChain); i++ {
+		assert.Equal(t, messageChain[i-1].ID, messageChain[i].ParentID, "消息链中的父子关系应该正确")
+	}
 }

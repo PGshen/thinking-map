@@ -92,22 +92,20 @@ func (h *ToolHandler) PostHandler(ctx context.Context, output []*schema.Message,
 	// Check if any tool should return directly
 	if h.config.ToolReturnDirectly != nil {
 		for _, msg := range output {
-			if msg.ToolCallID != "" {
+			if msg.ToolCallID != "" && len(state.ReasoningHistory) > 0 {
 				// Find the corresponding tool call to get tool name
-				for _, reasoning := range state.ReasoningHistory {
-					for _, toolCall := range reasoning.ToolCalls {
-						if toolCall.ID == msg.ToolCallID {
-							if shouldReturn, exists := h.config.ToolReturnDirectly[toolCall.Function.Name]; exists && shouldReturn {
-								state.ReturnDirectlyToolCallID = msg.ToolCallID
-								break
-							}
+				reasoning := state.ReasoningHistory[len(state.ReasoningHistory)-1]
+				for _, toolCall := range reasoning.ToolCalls {
+					if toolCall.ID == msg.ToolCallID {
+						if shouldReturn, exists := h.config.ToolReturnDirectly[toolCall.Function.Name]; exists && shouldReturn {
+							state.ReturnDirectlyToolCallID = msg.ToolCallID
+							break
 						}
 					}
 				}
 			}
 		}
 	}
-
 	return output, nil
 }
 

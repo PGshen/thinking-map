@@ -23,6 +23,6 @@ func (h *UnderstandingHandler) Handle(c *gin.Context) (msgID string, event strin
 	if err = c.ShouldBindJSON(&req); err != nil {
 		return
 	}
-	event, sr, err = h.understandingService.Understanding(c, req)
+	msgID, event, sr, err = h.understandingService.Understanding(c, req)
 	return
 }

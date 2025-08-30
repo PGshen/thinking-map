@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 	nodeRepo := repository.NewThinkingNodeRepository(testDB)
 
 	// 初始化MessageManager
-	InitMessageManager(messageRepo, nodeRepo)
+	InitMessageManager(messageRepo, nodeRepo, testDB)
 	messageManager = GetMessageManager()
 
 	code := m.Run()
