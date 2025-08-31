@@ -65,6 +65,18 @@ export interface MessagePlanEvent {
   timestamp: string;
 }
 
+export interface NodeDeletedEvent {
+  nodeID: string;
+  question: string;
+  timestamp: string;
+}
+
+export interface NodeDependenciesUpdatedEvent {
+  nodeID: string;
+  dependencies: string[];
+  timestamp: string;
+}
+
 export interface ErrorEvent {
   nodeID: string;
   errorCode: string;
@@ -73,7 +85,7 @@ export interface ErrorEvent {
 }
 
 export interface TestEventRequest {
-  eventType: 'node_created' | 'node_updated' | 'thinking_progress' | 'error' | 'custom';
+  eventType: 'node_created' | 'node_updated' | 'node_deleted' | 'node_dependencies_updated' | 'thinking_progress' | 'error' | 'custom';
   data: Record<string, any>;
   delay: number;
 }
@@ -85,4 +97,4 @@ export interface TestEventResponse {
   message: string;
 }
 
-export type SSEEvent = NodeCreatedEvent | NodeUpdatedEvent | ThinkingProgressEvent | ErrorEvent;
+export type SSEEvent = NodeCreatedEvent | NodeUpdatedEvent | NodeDeletedEvent | NodeDependenciesUpdatedEvent | ThinkingProgressEvent | ErrorEvent;

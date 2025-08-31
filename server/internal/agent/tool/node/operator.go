@@ -48,6 +48,7 @@ type DeleteNodeResponse struct {
 type SetNodeDependenciesRequest struct {
 	NodeID       string   `json:"nodeID"`
 	Dependencies []string `json:"dependencies"`
+	Op           string   `json:"op"` // "add" 或 "remove"
 }
 
 // SetNodeDependenciesResponse 设置节点依赖关系响应
@@ -251,7 +252,23 @@ func SetNodeDependenciesFunc(ctx context.Context, req *SetNodeDependenciesReques
 	if nodeOperator == nil {
 		return nil, fmt.Errorf("node operator not initialized")
 	}
-	// 获取节点
+
+	// 验证操作类型
+	if req.Op != "add" && req.Op != "remove" {
+		return nil, fmt.Errorf("invalid operation: %s, must be 'add' or 'remove'", req.Op)
+	}
+
+	// 获取当前节点
+	currentNodes, err := nodeOperator.GetNodesByIDs(ctx, []string{req.NodeID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current node: %w", err)
+	}
+	if len(currentNodes) == 0 || currentNodes[0] == nil {
+		return nil, fmt.Errorf("node not found: %s", req.NodeID)
+	}
+	currentNode := currentNodes[0]
+
+	// 获取要操作的依赖节点
 	nodes, err := nodeOperator.GetNodesByIDs(ctx, req.Dependencies)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get nodes: %w", err)
@@ -265,8 +282,50 @@ func SetNodeDependenciesFunc(ctx context.Context, req *SetNodeDependenciesReques
 		}
 	}
 
+	// 获取当前节点的依赖关系
+	currentDependencies := currentNode.Dependencies
+	if currentDependencies == nil {
+		currentDependencies = make([]string, 0)
+	}
+
+	// 根据操作类型处理依赖关系
+	var newDependencies []string
+	var operationName string
+	var operationContent string
+
+	if req.Op == "add" {
+		// 新增依赖：合并当前依赖和新依赖，去重
+		dependencyMap := make(map[string]bool)
+		for _, dep := range currentDependencies {
+			dependencyMap[dep] = true
+		}
+		for _, dep := range validNodeIDs {
+			dependencyMap[dep] = true
+		}
+		newDependencies = make([]string, 0, len(dependencyMap))
+		for dep := range dependencyMap {
+			newDependencies = append(newDependencies, dep)
+		}
+		operationName = "节点依赖关系新增"
+		operationContent = fmt.Sprintf("节点[%s], 新增依赖: %v", currentNode.Question, validNodeNames)
+	} else {
+		// 删除依赖：从当前依赖中移除指定依赖
+		removeMap := make(map[string]bool)
+		for _, dep := range validNodeIDs {
+			removeMap[dep] = true
+		}
+		newDependencies = make([]string, 0)
+		for _, dep := range currentDependencies {
+			if !removeMap[dep] {
+				newDependencies = append(newDependencies, dep)
+			}
+		}
+		operationName = "节点依赖关系删除"
+		operationContent = fmt.Sprintf("节点[%s], 删除依赖: %v", currentNode.Question, validNodeNames)
+	}
+
 	// 更新节点依赖关系
-	node, err := nodeOperator.UpdateNodeDependencies(ctx, req.NodeID, validNodeIDs)
+	_, err = nodeOperator.UpdateNodeDependencies(ctx, req.NodeID, newDependencies)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update node dependencies: %w", err)
 	}
@@ -277,7 +336,7 @@ func SetNodeDependenciesFunc(ctx context.Context, req *SetNodeDependenciesReques
 		Type: dto.NodeDependenciesUpdatedEventType,
 		Data: dto.NodeDependenciesUpdatedEvent{
 			NodeID:       req.NodeID,
-			Dependencies: validNodeIDs,
+			Dependencies: newDependencies,
 		},
 	})
 
@@ -289,15 +348,15 @@ func SetNodeDependenciesFunc(ctx context.Context, req *SetNodeDependenciesReques
 		Content: model.MessageContent{
 			Notice: model.Notice{
 				Type:    model.NoticeTypeSuccess,
-				Name:    "节点依赖关系设置",
-				Content: fmt.Sprintf("节点[%s], 依赖: %v", node.Question, validNodeNames),
+				Name:    operationName,
+				Content: operationContent,
 			},
 		},
 	})
 
 	return &SetNodeDependenciesResponse{
 		Success: true,
-		Message: "节点依赖关系设置成功",
+		Message: fmt.Sprintf("节点依赖关系%s成功", req.Op),
 	}, nil
 }
 
@@ -393,7 +452,7 @@ func DeleteNodeTool() (tool.InvokableTool, error) {
 func SetNodeDependenciesTool() (tool.InvokableTool, error) {
 	tool := utils.NewTool(&schema.ToolInfo{
 		Name: "setNodeDependencies",
-		Desc: "设置思维导图节点的依赖关系，指定当前节点依赖哪些其他节点",
+		Desc: "设置思维导图节点的依赖关系，支持新增或删除依赖",
 		ParamsOneOf: schema.NewParamsOneOfByParams(
 			map[string]*schema.ParameterInfo{
 				"nodeID": {
@@ -405,9 +464,15 @@ func SetNodeDependenciesTool() (tool.InvokableTool, error) {
 					Type: schema.Array,
 					ElemInfo: &schema.ParameterInfo{
 						Type: schema.String,
-						Desc: "依赖的节点ID",
+						Desc: "当前节点所赖的节点ID",
 					},
-					Desc:     "依赖的节点ID列表，表示当前节点依赖这些节点的完成",
+					Desc:     "依赖的节点ID列表",
+					Required: true,
+				},
+				"op": {
+					Type:     schema.String,
+					Desc:     "操作类型：add表示新增依赖，remove表示删除依赖",
+					Enum:     []string{"add", "remove"},
 					Required: true,
 				},
 			},

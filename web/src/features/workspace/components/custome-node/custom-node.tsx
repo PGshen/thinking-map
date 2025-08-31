@@ -98,6 +98,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
       onContextMenu={e => { e.preventDefault(); data.onContextMenu?.(data.id, e); }}
     >
       {/* ReactFlow Handles for edge connection */}
+      {/* 父子关系连接点 */}
       <Handle 
         type="target" 
         position={settings.layoutConfig.direction === 'TB' ? Position.Top : Position.Left} 
@@ -111,6 +112,30 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
         className={`!rounded-none !border-blue-500 !bg-blue-500 ${
           settings.layoutConfig.direction === 'TB' ? '!w-2 !h-1' : '!w-1 !h-2'
         }`}
+      />
+      
+      {/* 依赖关系连接点 */}
+      <Handle 
+        id="dependency-target"
+        type="target" 
+        position={settings.layoutConfig.direction === 'TB' ? Position.Left : Position.Top} 
+        className={`!rounded-none !border-purple-500 !bg-purple-500 !w-1 !h-1`}
+        style={{
+          left: settings.layoutConfig.direction === 'TB' ? '0px' : '50%',
+          top: settings.layoutConfig.direction === 'TB' ? '50%' : '0px'
+        }}
+      />
+      <Handle 
+        id="dependency-source"
+        type="source" 
+        position={settings.layoutConfig.direction === 'TB' ? Position.Right : Position.Bottom} 
+        className={`!rounded-none !border-purple-500 !bg-purple-500 !w-1 !h-1`}
+        style={{
+          right: settings.layoutConfig.direction === 'TB' ? '0px' : 'auto',
+          left: settings.layoutConfig.direction === 'TB' ? 'auto' : '50%',
+          bottom: settings.layoutConfig.direction === 'TB' ? 'auto' : '0px',
+          top: settings.layoutConfig.direction === 'TB' ? '50%' : 'auto'
+        }}
       />
       
       {/* Header: 类型+状态 */}

@@ -96,6 +96,11 @@ interface WorkspaceActions {
   addEdge: (edge: Edge) => void;
   deleteEdge: (edgeID: string) => void;
   
+  // 依赖关系操作
+  updateNodeDependencies: (nodeID: string, dependencies: string[]) => void;
+  addDependencyEdges: (nodeID: string, dependencies: string[]) => void;
+  removeDependencyEdges: (nodeID: string, dependencies?: string[]) => void;
+  
   // 思维导图操作
   updateMap: (info: WorkspaceState['mapInfo']) => void;
   
@@ -364,6 +369,17 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
                 }
               })),
               selectedNodeIDs: nodeID ? [nodeID] : [],
+              edges: state.edges.map((edge) => {
+                if (edge.type === 'dependency') {
+                  // 显示与选中节点相关的依赖边（作为源节点或目标节点）
+                  const isRelated = nodeID && (edge.source === nodeID || edge.target === nodeID);
+                  return {
+                    ...edge,
+                    hidden: !isRelated,
+                  };
+                }
+                return edge;
+              }),
             }),
             false,
             'selectNode'
@@ -394,6 +410,15 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
                 selected: false,
               })),
               selectedNodeIDs: [],
+              edges: state.edges.map((edge) => {
+                if (edge.type === 'dependency') {
+                  return {
+                    ...edge,
+                    hidden: true, // 隐藏所有依赖边
+                  };
+                }
+                return edge;
+              }),
             }),
             false,
             'clearSelection'
@@ -470,6 +495,110 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
             }),
             false,
             'deleteEdge'
+          );
+        },
+        
+        // 依赖关系操作
+        updateNodeDependencies: (nodeID: string, dependencies: string[]) => {
+          set(
+            (state) => {
+              // 更新节点的依赖信息
+              const updatedNodes = state.nodes.map((node) => {
+                if (node.id === nodeID) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      dependencies: dependencies,
+                    },
+                  };
+                }
+                return node;
+              });
+              
+              // 移除该节点的所有依赖边
+              const filteredEdges = state.edges.filter(
+                (edge) => !(edge.source === nodeID && edge.type === 'dependency')
+              );
+              
+              // 添加新的依赖边
+              const newDependencyEdges = dependencies.map((depNodeID) => ({
+                id: `dep-${nodeID}-${depNodeID}`,
+                source: nodeID,
+                target: depNodeID,
+                type: 'dependency',
+                style: { strokeDasharray: '5,5', stroke: '#6366f1' },
+                animated: false,
+                sourceHandle: 'dependency-source',
+                targetHandle: 'dependency-target',
+              }));
+              
+              return {
+                nodes: updatedNodes,
+                edges: [...filteredEdges, ...newDependencyEdges],
+              };
+            },
+            false,
+            'updateNodeDependencies'
+          );
+        },
+        
+        addDependencyEdges: (nodeID: string, dependencies: string[]) => {
+          set(
+            (state) => {
+              const newDependencyEdges = dependencies
+                .filter((depNodeID) => 
+                  !state.edges.some(
+                    (edge) => edge.source === nodeID && edge.target === depNodeID && edge.type === 'dependency'
+                  )
+                )
+                .map((depNodeID) => ({
+                  id: `dep-${nodeID}-${depNodeID}`,
+                  source: nodeID,
+                  target: depNodeID,
+                  type: 'dependency',
+                  style: { strokeDasharray: '5,5', stroke: '#8b5cf6' },
+                  animated: true,
+                  sourceHandle: 'dependency-source',
+                  targetHandle: 'dependency-target',
+                  hidden: true, // 默认隐藏
+                }));
+              
+              return {
+                edges: [...state.edges, ...newDependencyEdges],
+              };
+            },
+            false,
+            'addDependencyEdges'
+          );
+        },
+        
+        removeDependencyEdges: (nodeID: string, dependencies?: string[]) => {
+          set(
+            (state) => {
+              let filteredEdges;
+              if (dependencies) {
+                // 移除指定的依赖边
+                filteredEdges = state.edges.filter(
+                  (edge) => !(
+                    edge.source === nodeID && 
+                    edge.type === 'dependency' && 
+                    dependencies.includes(edge.target)
+                  )
+                );
+              } else {
+                // 移除该节点的所有依赖边
+                filteredEdges = state.edges.filter(
+                  (edge) => !(edge.source === nodeID && edge.type === 'dependency')
+                );
+              }
+              
+              return {
+                edges: filteredEdges,
+              };
+            },
+            false,
+            'removeDependencyEdges'
           );
         },
         

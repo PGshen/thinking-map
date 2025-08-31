@@ -15,20 +15,20 @@ import (
 
 // 事件类型
 const (
-	ConnectionEstablishedEventType = "connectionEstablished"
-	NodeCreatedEventType           = "nodeCreated"
-	NodeUpdatedEventType           = "nodeUpdated"
-	NodeDeletedEventType           = "nodeDeleted"
+	ConnectionEstablishedEventType   = "connectionEstablished"
+	NodeCreatedEventType             = "nodeCreated"
+	NodeUpdatedEventType             = "nodeUpdated"
+	NodeDeletedEventType             = "nodeDeleted"
 	NodeDependenciesUpdatedEventType = "nodeDependenciesUpdated"
-	ThinkingProgressEventType      = "thinkingProgress"
-	MessageTextEventType           = "messageText"
-	MessageThoughtEventType        = "messageThought"
-	MessageNoticeEventType         = "messageNotice"
-	MessageActionEventType         = "messageAction"
-	MessagePlanEventType           = "messagePlan"
-	MessageRagEventType            = "messageRag"
-	ErrorEventType                 = "error"
-	CustomEventType                = "custom"
+	ThinkingProgressEventType        = "thinkingProgress"
+	MessageTextEventType             = "messageText"
+	MessageThoughtEventType          = "messageThought"
+	MessageNoticeEventType           = "messageNotice"
+	MessageActionEventType           = "messageAction"
+	MessagePlanEventType             = "messagePlan"
+	MessageRagEventType              = "messageRag"
+	ErrorEventType                   = "error"
+	CustomEventType                  = "custom"
 )
 
 type ConnectionEstablishedEvent struct {
@@ -63,7 +63,8 @@ type NodeDeletedEvent struct {
 // NodeDependenciesUpdatedEvent represents the node dependencies update event
 type NodeDependenciesUpdatedEvent struct {
 	NodeID       string   `json:"nodeID"`
-	Dependencies []string `json:"dependencies"`
+	Op           string   `json:"op"`           // add or remove
+	Dependencies []string `json:"dependencies"` // 依赖节点ID列表
 }
 
 // ThinkingProgressEvent represents the thinking progress event

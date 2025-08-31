@@ -93,8 +93,10 @@ export const useAutoLayout = (): UseAutoLayoutReturn => {
     animationRef.current = new AbortController();
     
     try {
+      // 过滤掉依赖关系边
+      const nonDependencyEdges = edges.filter(edge => edge.type === 'dependency');
       // 计算新的布局
-      const layoutResult = applyLayout(nodes, edges, layoutType, newNodeId, layoutConfig, nodeSizesMap);
+      const layoutResult = applyLayout(nodes, nonDependencyEdges, layoutType, newNodeId, layoutConfig, nodeSizesMap);
       
       // 检查是否有位置变化
       const fromPositions = new Map<string, { x: number; y: number }>();

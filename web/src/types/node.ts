@@ -36,6 +36,7 @@ export interface CustomNodeModel {
   context?: DependentContext;
   decomposition?: Decomposition;
   conclusion?: Conclusion;
+  dependencies?: string[];
   metadata?: any;
   selected?: boolean;
   isEditing?: boolean;
@@ -91,6 +92,7 @@ export interface NodeResponse {
   };
   decomposition: Decomposition;
   conclusion: Conclusion;
+  dependencies: string[];
   status: string;
   position: Position;
   metadata: Record<string, any>;

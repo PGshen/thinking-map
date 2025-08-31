@@ -249,6 +249,13 @@ func (s *DecompositionService) Decompose(ctx *gin.Context, contextInfo *ContextI
 		}
 	}()
 
+	// 查询当前节点的和子节点列表。作为上下文消息，用于后续操作节点
+	childrenMessages, err := s.msgManager.GetNodeChildren(ctx, contextInfo.NodeInfo.ID)
+	if err != nil {
+		return err
+	}
+	messages = append(messages, childrenMessages...)
+
 	analyzerMessageHandler := &analyzerMessageHandler{
 		mapID:      contextInfo.MapInfo.ID,
 		nodeID:     contextInfo.NodeInfo.ID,
@@ -572,9 +579,11 @@ outer:
 					break outer
 				}
 			}
-			fmt.Print(chunk.Content)
-			if err := parser.Write(chunk.Content); err != nil {
-				logger.Error("parse reasoning response failed", zap.Error(err))
+			if chunk != nil {
+				fmt.Print(chunk.Content)
+				if err := parser.Write(chunk.Content); err != nil {
+					logger.Error("parse reasoning response failed", zap.Error(err))
+				}
 			}
 		}
 	}

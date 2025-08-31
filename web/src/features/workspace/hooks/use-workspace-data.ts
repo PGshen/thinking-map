@@ -72,15 +72,35 @@ export function useWorkspaceData(mapID?: string) {
         } as CustomNodeModel,
       }));
       
-      // 生成边（parentID存在且非空）
-      const reactFlowEdges = nodes
+      // 生成父子关系边（parentID存在且非空）
+      const parentChildEdges = nodes
         .filter(node => node.parentID)
         .map(node => ({
           id: `${node.parentID}-${node.id}`,
           source: node.parentID,
           target: node.id,
           type: 'default',
+          style: { stroke: '#3b82f6' },
         }));
+      
+      // 生成依赖关系边（默认隐藏，只在选中节点时显示）
+      const dependencyEdges = nodes
+        .filter(node => node.dependencies && node.dependencies.length > 0)
+        .flatMap(node => 
+          node.dependencies!.map(depNodeID => ({
+            id: `dep-${node.id}-${depNodeID}`,
+            source: node.id,
+            target: depNodeID,
+            type: 'dependency',
+            style: { strokeDasharray: '5,5', stroke: '#8b5cf6' },
+            animated: true,
+            sourceHandle: 'dependency-source',
+            targetHandle: 'dependency-target',
+            hidden: true, // 默认隐藏
+          }))
+        );
+      
+      const reactFlowEdges = [...parentChildEdges, ...dependencyEdges];
       
       actions.setNodes(reactFlowNodes);
       actions.setEdges(reactFlowEdges);

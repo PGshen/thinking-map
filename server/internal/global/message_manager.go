@@ -578,6 +578,46 @@ func (s *MessageManager) GetMessageStatus(ctx context.Context, messageID string)
 	return status, nil
 }
 
+// GetNodeChildren 获取节点的所有子节点信息，格式化为消息用于LLM上下文
+func (s *MessageManager) GetNodeChildren(ctx context.Context, nodeID string) ([]*schema.Message, error) {
+	// 查询当前节点的所有子节点
+	children, err := s.nodeRepo.FindByParentID(ctx, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find child nodes: %w", err)
+	}
+
+	// 如果没有子节点，返回空切片
+	if len(children) == 0 {
+		return []*schema.Message{}, nil
+	}
+
+	// 构建子节点信息的消息
+	var messages []*schema.Message
+
+	childContentList := []string{}
+	// 为每个子节点添加详细信息消息
+	for idx, child := range children {
+		childContent := fmt.Sprintf("子节点 %d 信息：\n"+
+			"- 节点ID：%s\n"+
+			"- 问题：%s\n"+
+			"- 目标：%s\n"+
+			"- 状态：%s\n"+
+			"- 节点类型：%s\n",
+			idx+1, child.ID, child.Question, child.Target, child.Status, child.NodeType)
+
+		if child.Conclusion.Content != "" {
+			childContent += fmt.Sprintf("- 结论：%s\n", child.Conclusion.Content)
+		}
+		childContentList = append(childContentList, childContent)
+	}
+	messages = append(messages, &schema.Message{
+		Role:    schema.User,
+		Content: strings.Join(childContentList, "\n"),
+	})
+
+	return messages, nil
+}
+
 // isZeroMessageContent 判断 MessageContent 是否为零值
 func isZeroMessageContent(mc model.MessageContent) bool {
 	return mc.Text == "" && len(mc.RAG) == 0

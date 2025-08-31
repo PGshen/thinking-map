@@ -7,13 +7,11 @@ import { DependentContext } from '@/types/node';
  */
 export function getUnmetDependenciesMessage(context: DependentContext): string {
   const unmetDependencies = {
-    ancestor: context.ancestor?.filter(item => item.status !== 'completed') || [],
     prevSibling: context.prevSibling?.filter(item => item.status !== 'completed') || [],
     children: context.children?.filter(item => item.status !== 'completed') || []
   };
 
-  const totalUnmet = unmetDependencies.ancestor.length + 
-                     unmetDependencies.prevSibling.length + 
+  const totalUnmet = unmetDependencies.prevSibling.length + 
                      unmetDependencies.children.length;
 
   if (totalUnmet === 0) {
@@ -21,9 +19,6 @@ export function getUnmetDependenciesMessage(context: DependentContext): string {
   }
 
   const messages = [];
-  if (unmetDependencies.ancestor.length > 0) {
-    messages.push(`${unmetDependencies.ancestor.length} 个祖先节点`);
-  }
   if (unmetDependencies.prevSibling.length > 0) {
     messages.push(`${unmetDependencies.prevSibling.length} 个同级节点`);
   }
