@@ -53,6 +53,7 @@ type NodeResponse struct {
 	Status        string                 `json:"status"`
 	Position      model.Position         `json:"position"`
 	Metadata      interface{}            `json:"metadata"`
+	Dependencies  model.Dependencies     `json:"dependencies"`
 	CreatedAt     time.Time              `json:"createdAt"`
 	UpdatedAt     time.Time              `json:"updatedAt"`
 }
@@ -77,6 +78,7 @@ func ToNodeResponse(n *model.ThinkingNode) NodeResponse {
 		Status:        n.Status,
 		Position:      n.Position,
 		Metadata:      n.Metadata,
+		Dependencies:  n.Dependencies,
 		CreatedAt:     n.CreatedAt,
 		UpdatedAt:     n.UpdatedAt,
 	}

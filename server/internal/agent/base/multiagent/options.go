@@ -85,7 +85,7 @@ type PlanHandler interface {
 	OnPlanStepUpdate(ctx context.Context, plan *TaskPlan, step *PlanStep) (context.Context, error)
 	OnPlanStepStatusUpdate(ctx context.Context, plan *TaskPlan, step *PlanStep) (context.Context, error)
 	OnPlanStepDelete(ctx context.Context, plan *TaskPlan, step *PlanStep) (context.Context, error)
-	OnPlanStepEnd(ctx context.Context, plan *TaskPlan) (context.Context, error)
+	OnPlanOpEnd(ctx context.Context, plan *TaskPlan) (context.Context, error)
 }
 
 func WithPlanHandler(handler PlanHandler) base.AgentOption {
@@ -138,17 +138,22 @@ func WithPlanHandler(handler PlanHandler) base.AgentOption {
 	puHandler := callbacks.NewHandlerBuilder().OnEndFn(func(ctx context.Context, info *callbacks.RunInfo, output callbacks.CallbackOutput) context.Context {
 		// 计划更新结束
 		compose.ProcessState(ctx, func(ctx context.Context, state *MultiAgentState) error {
-			var currentStep *PlanStep
-			for _, step := range state.CurrentPlan.Steps {
-				if step.ID == state.CurrentStep {
-					currentStep = step
-					break
+			planUpdate := state.CurrentPlan.PlanUpdate // 当前计划的更新信息
+			// planUpdate.Operations
+			for _, op := range planUpdate.Operations {
+				switch op.Type {
+				case "add":
+					opStep := getAddStep(op)
+					ctx, _ = handler.OnPlanStepCreate(ctx, state.CurrentPlan, opStep)
+				case "modify":
+					opStep := getModifyStep(state.CurrentPlan, op)
+					ctx, _ = handler.OnPlanStepUpdate(ctx, state.CurrentPlan, opStep)
+				case "remove":
+					opStep := getRemoveStep(state.CurrentPlan, op)
+					ctx, _ = handler.OnPlanStepDelete(ctx, state.CurrentPlan, opStep)
 				}
 			}
-			if currentStep == nil {
-				return errors.New("current step not found")
-			}
-			ctx, _ = handler.OnPlanStepUpdate(ctx, state.CurrentPlan, currentStep)
+			ctx, _ = handler.OnPlanOpEnd(ctx, state.CurrentPlan)
 			return nil
 		})
 		return ctx
@@ -265,7 +270,7 @@ func processPlanStepsStream(ctx context.Context, sr *schema.StreamReader[*schema
 	defer func() {
 		sr.Close()
 		// 通知本轮解析结束
-		handler.OnPlanStepEnd(ctx, plan)
+		handler.OnPlanOpEnd(ctx, plan)
 	}()
 
 	// 处理流式数据

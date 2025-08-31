@@ -129,6 +129,12 @@ func buildSpecialistPrompt(specialist *Specialist, step *PlanStep, state *MultiA
 			Content: fmt.Sprintf(`You are a %s specialist, intended to %s.`, specialist.Name, specialist.IntendedUse),
 		})
 	}
+
+	doneSteps := ""
+	for idx, step := range state.CollectedResults {
+		doneSteps += fmt.Sprintf("%d. %s\n", idx+1, step.Content)
+	}
+
 	// Build specialist prompt
 	prompt := fmt.Sprintf(`Execute the following step:
 
@@ -138,6 +144,7 @@ Description: %s
 Context:
 - User Intent: %s
 - Overall Plan: %s
+- Done Steps: %s
 
 Please complete this step and provide your result.
 
@@ -148,6 +155,7 @@ Notice:
 		step.Description,
 		state.ConversationContext.UserIntent,
 		state.CurrentPlan.Description,
+		doneSteps,
 	)
 	messages = append(messages, &schema.Message{
 		Role:    schema.User,
@@ -336,7 +344,7 @@ Notice:
 
 func buildFinalAnswerPrompt(state *MultiAgentState) *schema.Message {
 	// Build prompt for final answer generation
-	content := "Please provide a comprehensive final answer based on the following analysis and execution results:\n\n"
+	content := "Please organize and summarize the following execution results based on the planned steps. Do NOT provide additional analysis or new answers beyond what has been executed:\n\n"
 
 	// Add original question
 	if len(state.OriginalMessages) > 0 {
@@ -354,17 +362,22 @@ func buildFinalAnswerPrompt(state *MultiAgentState) *schema.Message {
 
 	// Add collected results
 	if len(state.CollectedResults) > 0 {
-		content += "Analysis Results:\n"
+		content += "Execution Results:\n"
 		for i, result := range state.CollectedResults {
 			content += fmt.Sprintf("Result %d: %s\n", i+1, result.Content)
 		}
 		content += "\n"
 	}
 
-	content += `Please synthesize all the above information into a clear, comprehensive, and well-structured final answer.
+	content += `Please organize and summarize the execution results above according to the planned steps. Your task is to:
+1. Structure the results in a clear and logical manner
+2. Ensure all executed steps are properly reflected in the summary
+3. Present the information in a coherent and well-organized format
+4. Do NOT add new analysis, opinions, or answers beyond what was already executed
 
 Notice:
 - Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
+- Focus on organizing and summarizing existing results, not generating new content
 `
 
 	return &schema.Message{

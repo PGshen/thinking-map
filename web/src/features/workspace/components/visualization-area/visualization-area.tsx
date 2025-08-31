@@ -19,11 +19,14 @@ import ReactFlow, {
   Edge,
   Node,
   NodeTypes,
+  EdgeTypes,
+  getBezierPath,
+  EdgeProps,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Loader, Layout, RotateCcw } from 'lucide-react';
 
-import { CustomNode } from '@/features/workspace/components/custome-node/custom-node';
+import { CustomNode } from '@/features/workspace/components/custom-node/custom-node';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { useWorkspaceData } from '@/features/workspace/hooks/use-workspace-data';
 import { useNodeSelection } from '@/features/workspace/hooks/use-node-selection';
@@ -33,16 +36,23 @@ import { useSSEConnection } from '@/hooks/use-sse-connection';
 import { SSEStatusIndicator } from '@/components/sse-status-indicator';
 import { Button } from '@/components/ui/button';
 import { CustomNodeModel } from '@/types/node';
-import { NodeCreatedEvent, NodeUpdatedEvent } from '@/types/sse';
+import { NodeCreatedEvent, NodeUpdatedEvent, NodeDeletedEvent, NodeDependenciesUpdatedEvent } from '@/types/sse';
 import { LayoutType } from '@/utils/layout-utils';
+import { DependencyEdge } from '@/features/workspace/components/custom-edge/custom-edge';
 
 interface VisualizationAreaProps {
   mapID: string;
 }
 
+
 // 定义节点类型
 const nodeTypes: NodeTypes = {
   custom: CustomNode,
+};
+
+// 定义边类型
+const edgeTypes: EdgeTypes = {
+  dependency: DependencyEdge,
 };
 
 function MapCanvas({ mapID }: VisualizationAreaProps) {
@@ -240,6 +250,26 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
     actions.updateNode(event.nodeID, { data: processedUpdates} as Partial<CustomNodeModel> );
   }, [actions]);
 
+  const handleNodeDeleted = useCallback((event: NodeDeletedEvent) => {
+    console.log('Received node deleted event:', event);
+    
+    // 从store中删除节点，这会自动删除相关的边
+    actions.deleteNode(event.nodeID);
+    
+    // 如果删除的是当前选中的节点，清除选择状态
+    const { activeNodeID } = useWorkspaceStore.getState();
+    if (activeNodeID === event.nodeID) {
+      actions.closePanel();
+    }
+  }, [actions]);
+
+  const handleNodeDependenciesUpdated = useCallback((event: NodeDependenciesUpdatedEvent) => {
+    console.log('Received node dependencies updated event:', event);
+    
+    // 更新节点的依赖关系，这会自动更新依赖边
+    actions.updateNodeDependencies(event.nodeID, event.dependencies);
+  }, [actions]);
+
   const handleConnectionEstablished = useCallback((data: any) => {
     console.log('SSE connection established:', data);
     // 可以在这里显示连接状态或执行其他初始化操作
@@ -270,6 +300,30 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
             console.log(data)
           } catch (error) {
             console.error('解析nodeUpdated事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'nodeDeleted',
+        callback: (event) => {
+          try {
+            const data = JSON.parse(event.data) as NodeDeletedEvent;
+            handleNodeDeleted(data);
+            console.log(data)
+          } catch (error) {
+            console.error('解析nodeDeleted事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'nodeDependenciesUpdated',
+        callback: (event) => {
+          try {
+            const data = JSON.parse(event.data) as NodeDependenciesUpdatedEvent;
+            handleNodeDependenciesUpdated(data);
+            console.log(data)
+          } catch (error) {
+            console.error('解析nodeDependenciesUpdated事件失败:', error, event.data);
           }
         }
       },
@@ -569,6 +623,7 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
         onNodeDragStart={onNodeDragStart}
         onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         attributionPosition="bottom-left"
         className="bg-gray-50"

@@ -47,9 +47,11 @@ func (h *ReasoningHandler) PreHandler(ctx context.Context, input []*schema.Messa
 		{Role: schema.System, Content: systemPrompt},
 	}
 	messages = append(messages, state.Messages...)
-	// for i, message := range messages {
-	// 	fmt.Printf("ReasoningHandler: %d %s %s\n", i, message.Role, message.Content)
-	// }
+	fmt.Printf("---START1---\n")
+	for i, message := range messages {
+		fmt.Printf("ReasoningHandler: %d %s %s\n", i, message.Role, message.Content)
+	}
+	fmt.Printf("---START2---\n")
 
 	return messages, nil
 }
@@ -60,11 +62,14 @@ func (h *ReasoningHandler) PostHandler(ctx context.Context, output *schema.Messa
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse reasoning response: %w", err)
 	}
-	if len(reasoning.ToolCalls) > 0 {
-		for _, toolCall := range reasoning.ToolCalls {
-			fmt.Printf("ReasoningHandler: tool call %s %s\n", toolCall.Function.Name, toolCall.Function.Arguments)
-		}
-	}
+	// if len(reasoning.ToolCalls) > 0 {
+	// 	for _, toolCall := range reasoning.ToolCalls {
+	// 		fmt.Printf("ReasoningHandler: tool call %s %s\n", toolCall.Function.Name, toolCall.Function.Arguments)
+	// 	}
+	// }
+	fmt.Printf("---END1---\n")
+	fmt.Println(output.Content)
+	fmt.Printf("---END2---\n")
 
 	// Add to reasoning history
 	state.ReasoningHistory = append(state.ReasoningHistory, *reasoning)

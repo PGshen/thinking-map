@@ -127,29 +127,47 @@ type PlanStep struct {
 	Metadata           map[string]any `json:"metadata,omitempty"`
 }
 
-// PlanUpdate represents an update to a task plan
+// OperationData defines the structure for plan update operations
+type OperationData struct {
+	Type     string    `json:"type"`
+	StepID   string    `json:"stepID"`
+	StepData *StepData `json:"step_data,omitempty"`
+	Position string    `json:"position,omitempty"`
+	Reason   string    `json:"reason,omitempty"`
+}
+
+type StepData struct {
+	ID                 string         `json:"id"`
+	Name               string         `json:"name"`
+	Description        string         `json:"description"`
+	AssignedSpecialist string         `json:"assignedSpecialist"`
+	Priority           int            `json:"priority"`
+	Dependencies       []string       `json:"dependencies,omitempty"`
+	Parameters         map[string]any `json:"parameters,omitempty"`
+}
+
+// PlanUpdateData represents the data for a plan update
 type PlanUpdate struct {
-	ID          string         `json:"id"`
-	PlanVersion int            `json:"planVersion"`
-	UpdateType  PlanUpdateType `json:"updateType"`
-	Description string         `json:"description"`
-	Reason      string         `json:"reason"`
-	Timestamp   time.Time      `json:"timestamp"`
-	Metadata    map[string]any `json:"metadata,omitempty"`
+	UpdateReason string           `json:"update_reason"`
+	Operations   []*OperationData `json:"operations"`
+	PlanMetadata *struct {
+		Name        string `json:"name,omitempty"`
+		Description string `json:"description,omitempty"`
+	} `json:"plan_metadata,omitempty"`
 }
 
 // TaskPlan represents a complete task execution plan
 type TaskPlan struct {
-	ID            string          `json:"id"`
-	Version       int             `json:"version"`
-	Name          string          `json:"name"`
-	Description   string          `json:"description"`
-	Status        ExecutionStatus `json:"status"`
-	CreatedAt     time.Time       `json:"created_at"`
-	UpdatedAt     time.Time       `json:"updated_at"`
-	Steps         []*PlanStep     `json:"steps"`
-	UpdateHistory []*PlanUpdate   `json:"updateHistory,omitempty"`
-	Metadata      map[string]any  `json:"metadata,omitempty"`
+	ID          string          `json:"id"`
+	Version     int             `json:"version"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Status      ExecutionStatus `json:"status"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+	Steps       []*PlanStep     `json:"steps"`
+	PlanUpdate  *PlanUpdate     `json:"plan_update,omitempty"`
+	Metadata    map[string]any  `json:"metadata,omitempty"`
 }
 
 // Feedback represents the feedback received from the user
