@@ -89,8 +89,8 @@ export function useWorkspaceData(mapID?: string) {
         .flatMap(node => 
           node.dependencies!.map(depNodeID => ({
             id: `dep-${node.id}-${depNodeID}`,
-            source: node.id,
-            target: depNodeID,
+            source: depNodeID,
+            target: node.id,
             type: 'dependency',
             style: { strokeDasharray: '5,5', stroke: '#8b5cf6' },
             animated: true,

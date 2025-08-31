@@ -121,7 +121,7 @@ func buildProblemDecompositionAgent(ctx context.Context, option ...base.AgentOpt
 
 	return &multiagent.Specialist{
 		Name:        "ProblemDecompositionAgent",
-		IntendedUse: "基于拆解策略将复杂问题分解为可管理的子问题，创建子节点并设置依赖关系",
+		IntendedUse: "基于拆解策略将复杂问题分解为可管理的子问题，创建子问题节点并根据需要设置依赖关系以标识子问题节点之间执行先后关系",
 		// ChatModel:    cm,
 		SystemPrompt: buildProblemDecompositionPrompt(),
 		ReactAgent:   agent,

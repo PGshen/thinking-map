@@ -448,7 +448,7 @@ func (h *ResultCollectorHandler) ResultCollector(ctx context.Context, input []*s
 			// Add specialist name as context
 			msg := &schema.Message{
 				Role:    result.Output.Role,
-				Content: fmt.Sprintf("\nTarget:%s\nResult: %s", result.Target, result.Output.Content),
+				Content: fmt.Sprintf("Target:%s\nResult: %s", result.Target, result.Output.Content),
 			}
 			results = append(results, msg)
 			state.AddCollectedResult(msg)
@@ -546,7 +546,7 @@ func (h *ReflectionBranchHandler) evaluateReflectionDecision(state *MultiAgentSt
 			decision = toFinalAnswerNodeKey
 		}
 	}()
-	
+
 	// Get latest feedback from feedback history
 	if len(state.FeedbackHistory) == 0 {
 		// No feedback available, default to continue execution

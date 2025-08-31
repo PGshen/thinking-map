@@ -464,9 +464,9 @@ func SetNodeDependenciesTool() (tool.InvokableTool, error) {
 					Type: schema.Array,
 					ElemInfo: &schema.ParameterInfo{
 						Type: schema.String,
-						Desc: "当前节点所赖的节点ID",
+						Desc: "当前节点的依赖节点ID（若要执行当前节点，被依赖的节点需要先执行）",
 					},
-					Desc:     "依赖的节点ID列表",
+					Desc:     "依赖的节点ID列表（要执行当前节点，被依赖的节点需要先执行）",
 					Required: true,
 				},
 				"op": {

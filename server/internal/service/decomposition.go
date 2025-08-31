@@ -227,7 +227,7 @@ outer:
 					break outer
 				}
 			}
-			fmt.Print(chunk.Content)
+			// fmt.Print(chunk.Content)
 			if err := parser.Write(chunk.Content); err != nil {
 				logger.Error("parse reasoning response failed", zap.Error(err))
 			}
@@ -393,7 +393,7 @@ outer:
 					break outer
 				}
 			}
-			fmt.Print(chunk.Content)
+			// fmt.Print(chunk.Content)
 			if err := parser.Write(chunk.Content); err != nil {
 				logger.Error("parse reasoning response failed", zap.Error(err))
 			}
@@ -455,7 +455,7 @@ outer:
 					break outer
 				}
 			}
-			fmt.Print(chunk.Content)
+			// fmt.Print(chunk.Content)
 			// sse 事件
 			sseBroker.PublishToSession(m.mapID, sse.Event{
 				ID:   m.nodeID,
@@ -580,7 +580,7 @@ outer:
 				}
 			}
 			if chunk != nil {
-				fmt.Print(chunk.Content)
+				// fmt.Print(chunk.Content)
 				if err := parser.Write(chunk.Content); err != nil {
 					logger.Error("parse reasoning response failed", zap.Error(err))
 				}

@@ -22,7 +22,7 @@ interface NodeActionButtonsProps {
 
 export const NodeActionButtons: React.FC<NodeActionButtonsProps> = ({ id, mapID, onEdit, onDelete, onAddChild }) => {
   return (
-    <div className="flex gap-1.5 bg-white/80 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border border-gray-100">
+    <div className="flex gap-1.5 bg-white/80 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border ">
       <button 
         className="p-1.5 rounded-md hover:bg-blue-50 text-blue-500 transition-colors"
         onClick={e => { e.stopPropagation(); onEdit?.(id); }}

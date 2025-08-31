@@ -7,7 +7,7 @@ import {
 import { ChatMessageArea } from "@/components/ui/chat-message-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Action, MessageResponse, NoticeType } from "@/types/message";
-import { ChevronDown, ChevronRight, Loader, Brain, Check, Clock, Pause, X, FileText, Waypoints } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader, Brain, Check, Clock, Pause, X, FileText, Waypoints, SquareActivity, MessageSquareMore, Sparkle, CirclePlay } from "lucide-react";
 import { useState } from "react";
 
 interface DecomposeAreaProps {
@@ -100,7 +100,7 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                 <div className="flex-1">
                   <Collapsible open={!isCollapsed} onOpenChange={() => toggleCollapse(message.id)}>
                     <CollapsibleTrigger className="cursor-pointer flex items-center gap-2 text-left p-1 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200">
-                      <Brain className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      <Sparkle className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       <span className="text-sm font-medium text-blue-800 flex-1">思考过程</span>
                       {isCollapsed ? (
                         <ChevronRight className="h-4 w-4 text-blue-600 flex-shrink-0" />
@@ -186,7 +186,7 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                 <div className="flex-1">
                   <Collapsible open={!isCollapsed} onOpenChange={() => toggleCollapse(message.id)}>
                     <CollapsibleTrigger className="cursor-pointer flex items-center gap-2 text-left p-1 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200">
-                      <Brain className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      <MessageSquareMore className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       <span className="text-sm font-medium text-blue-800 flex-1">消息通知</span>
                       {isCollapsed ? (
                         <ChevronRight className="h-4 w-4 text-blue-600 flex-shrink-0" />
@@ -289,7 +289,7 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                 <div className="flex-1">
                   <Collapsible open={!isCollapsed} onOpenChange={() => toggleCollapse(message.id)}>
                     <CollapsibleTrigger className="cursor-pointer flex items-center gap-2 text-left p-1 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200">
-                      <Brain className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      <CirclePlay className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       <span className="text-sm font-medium text-blue-800 flex-1">执行动作</span>
                       {isCollapsed ? (
                         <ChevronRight className="h-4 w-4 text-blue-600 flex-shrink-0" />
@@ -439,7 +439,7 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                           return (
                             <div key={index} className={`relative p-3 ${theme.bg} border ${theme.border} rounded-lg transition-all duration-200 hover:shadow-sm`}>
                               {/* 步骤序号 */}
-                              <div className="absolute -left-1.5 -top-1.5 w-5 h-5 bg-white border-2 border-purple-200 rounded-full flex items-center justify-center text-xs font-bold text-purple-600">
+                              <div className="absolute -left-1.5 -top-1.5 w-5 h-5 bg-white border-2 border-blue-200 rounded-full flex items-center justify-center text-xs font-bold text-blue-600">
                                 {index + 1}
                               </div>
 

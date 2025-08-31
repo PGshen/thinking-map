@@ -93,10 +93,16 @@ export const useAutoLayout = (): UseAutoLayoutReturn => {
     animationRef.current = new AbortController();
     
     try {
-      // 过滤掉依赖关系边
+      let layoutEdges = edges;
+      // 如果存在依赖边，则使用依赖边
       const nonDependencyEdges = edges.filter(edge => edge.type === 'dependency');
+      if (nonDependencyEdges.length > 0) {
+        layoutEdges = nonDependencyEdges;
+        // layoutConfig.direction = layoutConfig.direction === 'TB' ? 'LR' : 'TB'; // 按依赖边的方向
+        // console.log('layoutConfig.direction', layoutConfig.direction)
+      }
       // 计算新的布局
-      const layoutResult = applyLayout(nodes, nonDependencyEdges, layoutType, newNodeId, layoutConfig, nodeSizesMap);
+      const layoutResult = applyLayout(nodes, layoutEdges, layoutType, newNodeId, layoutConfig, nodeSizesMap);
       
       // 检查是否有位置变化
       const fromPositions = new Map<string, { x: number; y: number }>();

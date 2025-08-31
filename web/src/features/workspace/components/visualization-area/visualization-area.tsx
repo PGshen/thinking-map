@@ -19,11 +19,14 @@ import ReactFlow, {
   Edge,
   Node,
   NodeTypes,
+  EdgeTypes,
+  getBezierPath,
+  EdgeProps,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Loader, Layout, RotateCcw } from 'lucide-react';
 
-import { CustomNode } from '@/features/workspace/components/custome-node/custom-node';
+import { CustomNode } from '@/features/workspace/components/custom-node/custom-node';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { useWorkspaceData } from '@/features/workspace/hooks/use-workspace-data';
 import { useNodeSelection } from '@/features/workspace/hooks/use-node-selection';
@@ -35,14 +38,21 @@ import { Button } from '@/components/ui/button';
 import { CustomNodeModel } from '@/types/node';
 import { NodeCreatedEvent, NodeUpdatedEvent, NodeDeletedEvent, NodeDependenciesUpdatedEvent } from '@/types/sse';
 import { LayoutType } from '@/utils/layout-utils';
+import { DependencyEdge } from '@/features/workspace/components/custom-edge/custom-edge';
 
 interface VisualizationAreaProps {
   mapID: string;
 }
 
+
 // 定义节点类型
 const nodeTypes: NodeTypes = {
   custom: CustomNode,
+};
+
+// 定义边类型
+const edgeTypes: EdgeTypes = {
+  dependency: DependencyEdge,
 };
 
 function MapCanvas({ mapID }: VisualizationAreaProps) {
@@ -613,6 +623,7 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
         onNodeDragStart={onNodeDragStart}
         onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         attributionPosition="bottom-left"
         className="bg-gray-50"

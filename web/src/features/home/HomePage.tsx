@@ -24,10 +24,10 @@ const PROBLEM_TYPES = [
 ];
 
 const PROBLEM_EXAMPLES = {
-  研究型: '如何评估人工智能在教育领域的应用效果？',
+  研究型: '评估人工智能在教育领域的应用效果？',
   创意型: '设计一个创新的城市共享单车系统',
   分析型: '分析全球供应链中断对电子产品市场的影响',
-  规划型: '制定一个为期6个月的产品推广策略'
+  规划型: 'python入门学习规划'
 };
 
 export default function HomePage() {
