@@ -19,6 +19,12 @@ func BuildDecompositionAgent(ctx context.Context, option ...base.AgentOption) (c
 	if err != nil {
 		return nil, err
 	}
+	// 添加节点操作工具
+	toolInfos, err := node.GetAllToolInfos(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cm.WithTools(toolInfos)
 
 	// 创建拆解决策Agent specialist
 	decompositionDecisionAgent, err := buildDecompositionDecisionAgent(ctx, option...)

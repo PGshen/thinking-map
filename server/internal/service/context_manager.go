@@ -298,7 +298,7 @@ func (cm *ContextManager) FormatContextForAgent(contextInfo *ContextInfo) string
 	}
 
 	// 添加当前节点信息
-	prompt += fmt.Sprintf(`\n当前节点信息：
+	prompt += fmt.Sprintf(`当前节点信息：
 - 问题：%s
 - 目标：%s
 - 状态：%s

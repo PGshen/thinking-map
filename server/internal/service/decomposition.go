@@ -610,6 +610,13 @@ func (p *planMessageHandler) OnPlanStepUpdate(ctx context.Context, plan *multiag
 
 func (p *planMessageHandler) OnPlanStepStatusUpdate(ctx context.Context, plan *multiagent.TaskPlan, step *multiagent.PlanStep) (context.Context, error) {
 	p.sendPlanEvent(ctx, *plan, false)
+	// 有状态更新，也保存一下消息
+	err := p.savePlanMessage(ctx, *plan)
+	if err != nil {
+		return ctx, err
+	}
+	//  本次消息结束，更新messageID
+	p.messageID = uuid.NewString()
 	return ctx, nil
 }
 
@@ -618,7 +625,7 @@ func (p *planMessageHandler) OnPlanStepDelete(ctx context.Context, plan *multiag
 	return ctx, nil
 }
 
-func (p *planMessageHandler) OnPlanStepEnd(ctx context.Context, plan *multiagent.TaskPlan) (context.Context, error) {
+func (p *planMessageHandler) OnPlanOpEnd(ctx context.Context, plan *multiagent.TaskPlan) (context.Context, error) {
 	p.sendPlanEvent(ctx, *plan, true)
 	err := p.savePlanMessage(ctx, *plan)
 	if err != nil {

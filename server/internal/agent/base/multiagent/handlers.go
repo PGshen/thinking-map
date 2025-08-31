@@ -625,22 +625,9 @@ func (h *PlanUpdateHandler) PostHandler(ctx context.Context, output *schema.Mess
 
 func (h *PlanUpdateHandler) processPlanUpdate(output *schema.Message, state *MultiAgentState) error {
 	// Parse incremental update operations
-	var updateData struct {
-		UpdateReason string `json:"update_reason"`
-		Operations   []struct {
-			Type     string    `json:"type"`
-			StepID   string    `json:"stepID"`
-			StepData *StepData `json:"step_data,omitempty"`
-			Position string    `json:"position,omitempty"`
-			Reason   string    `json:"reason,omitempty"`
-		} `json:"operations"`
-		PlanMetadata *struct {
-			Name        string `json:"name,omitempty"`
-			Description string `json:"description,omitempty"`
-		} `json:"plan_metadata,omitempty"`
-	}
+	var planUpdate PlanUpdate
 
-	err := json.Unmarshal([]byte(output.Content), &updateData)
+	err := json.Unmarshal([]byte(output.Content), &planUpdate)
 	if err != nil {
 		return fmt.Errorf("failed to parse plan update operations: %w", err)
 	}
@@ -655,19 +642,19 @@ func (h *PlanUpdateHandler) processPlanUpdate(output *schema.Message, state *Mul
 	updatedPlan.UpdatedAt = time.Now()
 
 	// Update plan metadata if provided
-	if updateData.PlanMetadata != nil {
-		if updateData.PlanMetadata.Name != "" {
-			updatedPlan.Name = updateData.PlanMetadata.Name
+	if planUpdate.PlanMetadata != nil {
+		if planUpdate.PlanMetadata.Name != "" {
+			updatedPlan.Name = planUpdate.PlanMetadata.Name
 		}
-		if updateData.PlanMetadata.Description != "" {
-			updatedPlan.Description = updateData.PlanMetadata.Description
+		if planUpdate.PlanMetadata.Description != "" {
+			updatedPlan.Description = planUpdate.PlanMetadata.Description
 		}
 	}
 
 	// Apply operations in order
 	var appliedOperations []string
 	var operationDataList []OperationData
-	for _, op := range updateData.Operations {
+	for _, op := range planUpdate.Operations {
 		opData := &OperationData{
 			Type:     op.Type,
 			StepID:   op.StepID,
@@ -682,33 +669,14 @@ func (h *PlanUpdateHandler) processPlanUpdate(output *schema.Message, state *Mul
 		appliedOperations = append(appliedOperations, fmt.Sprintf("%s:%s", op.Type, op.StepID))
 		operationDataList = append(operationDataList, *opData)
 	}
+	// save update info
+	updatedPlan.PlanUpdate = &planUpdate
 
 	// Add old plan to history
 	state.AddPlanToHistory(state.CurrentPlan)
 
 	// Update state with modified plan
 	state.SetCurrentPlan(updatedPlan)
-
-	// Record the plan update
-	planUpdate := &PlanUpdate{
-		ID:          fmt.Sprintf("update_%d", time.Now().Unix()),
-		PlanVersion: updatedPlan.Version,
-		UpdateType:  h.determineUpdateType(operationDataList),
-		Description: updateData.UpdateReason,
-		Reason:      "Plan updated incrementally based on execution feedback",
-		Timestamp:   time.Now(),
-		Metadata: map[string]any{
-			"round":              state.RoundNumber,
-			"applied_operations": appliedOperations,
-			"operation_count":    len(updateData.Operations),
-		},
-	}
-
-	// Add update to plan history
-	if updatedPlan.UpdateHistory == nil {
-		updatedPlan.UpdateHistory = make([]*PlanUpdate, 0)
-	}
-	updatedPlan.UpdateHistory = append(updatedPlan.UpdateHistory, planUpdate)
 
 	// Only clear specialist results for steps that were modified/removed
 	// This preserves results for completed and unmodified steps
@@ -721,16 +689,16 @@ func (h *PlanUpdateHandler) processPlanUpdate(output *schema.Message, state *Mul
 // clonePlan creates a deep copy of the task plan
 func (h *PlanUpdateHandler) clonePlan(plan *TaskPlan) *TaskPlan {
 	cloned := &TaskPlan{
-		ID:            plan.ID,
-		Version:       plan.Version,
-		Name:          plan.Name,
-		Description:   plan.Description,
-		Status:        plan.Status,
-		CreatedAt:     plan.CreatedAt,
-		UpdatedAt:     plan.UpdatedAt,
-		Steps:         make([]*PlanStep, len(plan.Steps)),
-		UpdateHistory: make([]*PlanUpdate, len(plan.UpdateHistory)),
-		Metadata:      make(map[string]any),
+		ID:          plan.ID,
+		Version:     plan.Version,
+		Name:        plan.Name,
+		Description: plan.Description,
+		Status:      plan.Status,
+		CreatedAt:   plan.CreatedAt,
+		UpdatedAt:   plan.UpdatedAt,
+		Steps:       make([]*PlanStep, len(plan.Steps)),
+		PlanUpdate:  new(PlanUpdate),
+		Metadata:    make(map[string]any),
 	}
 
 	// Clone steps
@@ -756,34 +724,12 @@ func (h *PlanUpdateHandler) clonePlan(plan *TaskPlan) *TaskPlan {
 		}
 	}
 
-	// Clone update history
-	copy(cloned.UpdateHistory, plan.UpdateHistory)
-
 	// Clone metadata
 	for k, v := range plan.Metadata {
 		cloned.Metadata[k] = v
 	}
 
 	return cloned
-}
-
-// OperationData defines the structure for plan update operations
-type OperationData struct {
-	Type     string    `json:"type"`
-	StepID   string    `json:"stepID"`
-	StepData *StepData `json:"step_data,omitempty"`
-	Position string    `json:"position,omitempty"`
-	Reason   string    `json:"reason,omitempty"`
-}
-
-type StepData struct {
-	ID                 string         `json:"id"`
-	Name               string         `json:"name"`
-	Description        string         `json:"description"`
-	AssignedSpecialist string         `json:"assignedSpecialist"`
-	Priority           int            `json:"priority"`
-	Dependencies       []string       `json:"dependencies,omitempty"`
-	Parameters         map[string]any `json:"parameters,omitempty"`
 }
 
 // applyOperation applies a single update operation to the plan
@@ -808,17 +754,7 @@ func (h *PlanUpdateHandler) addStep(plan *TaskPlan, op *OperationData) error {
 		return fmt.Errorf("step_data is required for add operation")
 	}
 
-	newStep := &PlanStep{
-		ID:                 op.StepData.ID,
-		Name:               op.StepData.Name,
-		Description:        op.StepData.Description,
-		AssignedSpecialist: op.StepData.AssignedSpecialist,
-		Priority:           op.StepData.Priority,
-		Status:             StepStatusPending,
-		Dependencies:       op.StepData.Dependencies,
-		Parameters:         op.StepData.Parameters,
-		Metadata:           map[string]any{"created_at": time.Now(), "operation": "add"},
-	}
+	newStep := getAddStep(op)
 
 	// Determine insertion position
 	insertIndex := len(plan.Steps) // Default: append at end
@@ -848,14 +784,30 @@ func (h *PlanUpdateHandler) addStep(plan *TaskPlan, op *OperationData) error {
 	return nil
 }
 
+// getAddStep returns a new PlanStep from OperationData
+func getAddStep(op *OperationData) *PlanStep {
+	if op.StepData == nil {
+		return nil
+	}
+	return &PlanStep{
+		ID:                 op.StepData.ID,
+		Name:               op.StepData.Name,
+		Description:        op.StepData.Description,
+		AssignedSpecialist: op.StepData.AssignedSpecialist,
+		Priority:           op.StepData.Priority,
+		Status:             StepStatusPending,
+		Dependencies:       op.StepData.Dependencies,
+		Parameters:         op.StepData.Parameters,
+		Metadata:           map[string]any{"created_at": time.Now(), "operation": "add"},
+	}
+}
+
 // modifyStep modifies an existing step
 func (h *PlanUpdateHandler) modifyStep(plan *TaskPlan, op *OperationData) error {
-	stepIndex := h.findStepIndex(plan, op.StepID)
-	if stepIndex < 0 {
+	step := getModifyStep(plan, op)
+	if step == nil {
 		return fmt.Errorf("step %s not found", op.StepID)
 	}
-
-	step := plan.Steps[stepIndex]
 
 	// Don't modify completed steps unless explicitly allowed
 	if step.Status == StepStatusCompleted {
@@ -893,6 +845,24 @@ func (h *PlanUpdateHandler) modifyStep(plan *TaskPlan, op *OperationData) error 
 	return nil
 }
 
+// getModifyStep returns the step to modify
+func getModifyStep(plan *TaskPlan, op *OperationData) *PlanStep {
+	if op.StepData == nil {
+		return nil
+	}
+	var targetStep *PlanStep
+	for _, step := range plan.Steps {
+		if step.ID == op.StepID {
+			targetStep = step
+			break
+		}
+	}
+	if targetStep == nil {
+		return nil
+	}
+	return targetStep
+}
+
 // removeStep removes a step from the plan
 func (h *PlanUpdateHandler) removeStep(plan *TaskPlan, op *OperationData) error {
 	stepIndex := h.findStepIndex(plan, op.StepID)
@@ -919,6 +889,24 @@ func (h *PlanUpdateHandler) removeStep(plan *TaskPlan, op *OperationData) error 
 	// Remove the step
 	plan.Steps = append(plan.Steps[:stepIndex], plan.Steps[stepIndex+1:]...)
 	return nil
+}
+
+// getRemoveStep returns the step to remove
+func getRemoveStep(plan *TaskPlan, op *OperationData) *PlanStep {
+	if op.StepData == nil {
+		return nil
+	}
+	var targetStep *PlanStep
+	for _, step := range plan.Steps {
+		if step.ID == op.StepID {
+			targetStep = step
+			break
+		}
+	}
+	if targetStep == nil {
+		return nil
+	}
+	return targetStep
 }
 
 // reorderStep changes the position of a step
@@ -971,35 +959,6 @@ func (h *PlanUpdateHandler) findStepIndex(plan *TaskPlan, stepID string) int {
 		}
 	}
 	return -1
-}
-
-// determineUpdateType determines the primary update type based on operations
-func (h *PlanUpdateHandler) determineUpdateType(operations []OperationData) PlanUpdateType {
-	if len(operations) == 0 {
-		return PlanUpdateTypeUnknown
-	}
-
-	// Count operation types
-	typeCounts := make(map[string]int)
-	for _, op := range operations {
-		typeCounts[op.Type]++
-	}
-
-	// Determine primary type based on most frequent operation
-	if typeCounts["add"] > 0 {
-		return PlanUpdateTypeStepAdd
-	}
-	if typeCounts["modify"] > 0 {
-		return PlanUpdateTypeStepModify
-	}
-	if typeCounts["remove"] > 0 {
-		return PlanUpdateTypeStepRemove
-	}
-	if typeCounts["reorder"] > 0 {
-		return PlanUpdateTypeStepReorder
-	}
-
-	return PlanUpdateTypeStrategyChange
 }
 
 // selectiveClearSpecialistResults clears results only for affected steps

@@ -40,8 +40,8 @@ func TestPlanUpdateHandler_IncrementalUpdate(t *testing.T) {
 				Parameters:         map[string]any{"param2": "value2"},
 			},
 		},
-		UpdateHistory: []*PlanUpdate{},
-		Metadata:      map[string]any{},
+		PlanUpdate: new(PlanUpdate),
+		Metadata:   map[string]any{},
 	}
 
 	// Create handler
@@ -148,17 +148,6 @@ func TestPlanUpdateHandler_IncrementalUpdate(t *testing.T) {
 
 		assert.Equal(t, 1, len(plan.Steps))
 		assert.Equal(t, "step-1", plan.Steps[0].ID)
-	})
-
-	// Test determineUpdateType
-	t.Run("DetermineUpdateType", func(t *testing.T) {
-		operations := []OperationData{
-			{Type: "add", StepID: "step-3"},
-			{Type: "modify", StepID: "step-2"},
-		}
-
-		updateType := handler.determineUpdateType(operations)
-		assert.Equal(t, PlanUpdateTypeStepAdd, updateType) // Add takes precedence
 	})
 
 	// Test findStepIndex

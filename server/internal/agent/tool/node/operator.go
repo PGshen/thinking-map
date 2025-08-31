@@ -505,3 +505,20 @@ func GetAllNodeTools() ([]tool.BaseTool, error) {
 
 	return []tool.BaseTool{createNodeTool, updateNodeTool, deleteNodeTool, setNodeDependenciesTool}, nil
 }
+
+// genToolInfos generates tool information from tools config
+func GetAllToolInfos(ctx context.Context) ([]*schema.ToolInfo, error) {
+	tools, err := GetAllNodeTools()
+	if err != nil {
+		return nil, err
+	}
+	toolInfos := make([]*schema.ToolInfo, 0, len(tools))
+	for _, tool := range tools {
+		info, err := tool.Info(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get tool info: %w", err)
+		}
+		toolInfos = append(toolInfos, info)
+	}
+	return toolInfos, nil
+}
