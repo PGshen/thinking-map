@@ -68,9 +68,32 @@ func buildPlanCreationPrompt(state *MultiAgentState, config *MultiAgentConfig) *
 
 	planningPrompt := config.Host.Planning.PlanningPrompt
 
+	// 构建原始消息上下文
+	originalContext := ""
+	if len(state.OriginalMessages) > 0 {
+		originalContext = "Original Messages:\n"
+		for i, msg := range state.OriginalMessages {
+			originalContext += fmt.Sprintf("%d. %s: %s\n", i+1, msg.Role, msg.Content)
+		}
+		originalContext += "\n"
+	}
+
+	// 构建执行历史上下文
+	executionContext := ""
+	if len(state.ExecutionHistory) > 0 {
+		executionContext = "Previous Execution History:\n"
+		for i, record := range state.ExecutionHistory {
+			executionContext += fmt.Sprintf("%d. Step: %s, Action: %s, Status: %s\n", i+1, record.StepID, record.Action, record.Status)
+			if record.Error != "" {
+				executionContext += fmt.Sprintf("   Error: %s\n", record.Error)
+			}
+		}
+		executionContext += "\n"
+	}
+
 	prompt := fmt.Sprintf(`Create a detailed execution plan for the following task.
 
-Task Context:
+%s%sTask Context:
 - User Intent: %s
 - Complexity: %s
 - Key Topics: %s
@@ -104,6 +127,8 @@ Notice:
 - Each step must be assigned to a specialist, and the specialist must be available.
 - Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
 - Must strictly follow JSON format for replies, do not add any extra text`,
+		originalContext,
+		executionContext,
 		state.ConversationContext.UserIntent,
 		state.ConversationContext.Complexity,
 		strings.Join(state.ConversationContext.KeyTopics, ", "),
@@ -135,13 +160,40 @@ func buildSpecialistPrompt(specialist *Specialist, step *PlanStep, state *MultiA
 		doneSteps += fmt.Sprintf("%d. %s\n", idx+1, step.Content)
 	}
 
+	// 构建原始消息上下文
+	originalContext := ""
+	if len(state.OriginalMessages) > 0 {
+		originalContext = "Original Messages:\n"
+		for i, msg := range state.OriginalMessages {
+			originalContext += fmt.Sprintf("%d. %s: %s\n", i+1, msg.Role, msg.Content)
+		}
+		originalContext += "\n"
+	}
+
+	// 构建执行历史上下文
+	executionContext := ""
+	if len(state.ExecutionHistory) > 0 {
+		executionContext = "Execution History:\n"
+		for i, record := range state.ExecutionHistory {
+			executionContext += fmt.Sprintf("%d. Step: %s, Action: %s, Status: %s", i+1, record.StepID, record.Action, record.Status)
+			if record.Output != nil {
+				executionContext += fmt.Sprintf(", Output: %s", record.Output.Content)
+			}
+			executionContext += "\n"
+			if record.Error != "" {
+				executionContext += fmt.Sprintf("   Error: %s\n", record.Error)
+			}
+		}
+		executionContext += "\n"
+	}
+
 	// Build specialist prompt
 	prompt := fmt.Sprintf(`Execute the following step:
 
 Step: %s
 Description: %s
 
-Context:
+%s%sContext:
 - User Intent: %s
 - Overall Plan: %s
 - Done Steps: %s
@@ -153,6 +205,8 @@ Notice:
 `,
 		step.Name,
 		step.Description,
+		originalContext,
+		executionContext,
 		state.ConversationContext.UserIntent,
 		state.CurrentPlan.Description,
 		doneSteps,
@@ -346,16 +400,36 @@ func buildFinalAnswerPrompt(state *MultiAgentState) *schema.Message {
 	// Build prompt for final answer generation
 	content := "Please organize and summarize the following execution results based on the planned steps. Do NOT provide additional analysis or new answers beyond what has been executed:\n\n"
 
-	// Add original question
+	// Add original messages context
 	if len(state.OriginalMessages) > 0 {
-		content += "Original Question: " + state.OriginalMessages[0].Content + "\n\n"
+		content += "Original Messages:\n"
+		for i, msg := range state.OriginalMessages {
+			content += fmt.Sprintf("%d. %s: %s\n", i+1, msg.Role, msg.Content)
+		}
+		content += "\n"
+	}
+
+	// Add execution history
+	if len(state.ExecutionHistory) > 0 {
+		content += "Complete Execution History:\n"
+		for i, record := range state.ExecutionHistory {
+			content += fmt.Sprintf("%d. Step: %s, Action: %s, Status: %s\n", i+1, record.StepID, record.Action, record.Status)
+			if record.Output != nil {
+				content += fmt.Sprintf("   Output: %s\n", record.Output.Content)
+			}
+			if record.Error != "" {
+				content += fmt.Sprintf("   Error: %s\n", record.Error)
+			}
+			content += fmt.Sprintf("   Duration: %v\n", record.Duration)
+		}
+		content += "\n"
 	}
 
 	// Add execution plan if available
 	if state.CurrentPlan != nil {
 		content += "Execution Plan:\n"
 		for i, step := range state.CurrentPlan.Steps {
-			content += fmt.Sprintf("%d. %s\n", i+1, step.Description)
+			content += fmt.Sprintf("%d. %s (Status: %s)\n", i+1, step.Description, step.Status)
 		}
 		content += "\n"
 	}
@@ -373,11 +447,13 @@ func buildFinalAnswerPrompt(state *MultiAgentState) *schema.Message {
 1. Structure the results in a clear and logical manner
 2. Ensure all executed steps are properly reflected in the summary
 3. Present the information in a coherent and well-organized format
-4. Do NOT add new analysis, opinions, or answers beyond what was already executed
+4. Consider the complete execution history and original context
+5. Do NOT add new analysis, opinions, or answers beyond what was already executed
 
 Notice:
 - Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
 - Focus on organizing and summarizing existing results, not generating new content
+- Use the complete context from original messages and execution history
 `
 
 	return &schema.Message{

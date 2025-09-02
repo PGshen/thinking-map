@@ -61,8 +61,17 @@ func (s *DecompositionService) Decomposition(ctx *gin.Context, req dto.Decomposi
 	ctx.Set("nodeID", req.NodeID)
 
 	// 2. 构建用户消息
+	//  2.1 上下文消息
 	ctxMsg := schema.UserMessage(s.contextManager.FormatContextForAgent(contextInfo))
 	messages := []*schema.Message{ctxMsg}
+
+	// 2.2 查询当前节点的和子节点列表。作为上下文消息，用于后续操作节点
+	childrenMessages, err := s.msgManager.GetNodeChildren(ctx, contextInfo.NodeInfo.ID)
+	if err != nil {
+		return err
+	}
+	messages = append(messages, childrenMessages...)
+	// 2.3 用户提问
 	if req.Clarification != "" {
 		messages = append(messages, schema.UserMessage(req.Clarification))
 		// 3. 保存用户消息
@@ -248,13 +257,6 @@ func (s *DecompositionService) Decompose(ctx *gin.Context, contextInfo *ContextI
 			s.nodeRepo.UpdateIsDecomposed(ctx, contextInfo.NodeInfo.ID, true)
 		}
 	}()
-
-	// 查询当前节点的和子节点列表。作为上下文消息，用于后续操作节点
-	childrenMessages, err := s.msgManager.GetNodeChildren(ctx, contextInfo.NodeInfo.ID)
-	if err != nil {
-		return err
-	}
-	messages = append(messages, childrenMessages...)
 
 	analyzerMessageHandler := &analyzerMessageHandler{
 		mapID:      contextInfo.MapInfo.ID,
