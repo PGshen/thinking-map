@@ -551,7 +551,7 @@ func NewFeedbackProcessorHandler(config *MultiAgentConfig) *FeedbackProcessorHan
 func (h *FeedbackProcessorHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 	// Set feedback processing state
 	state.SetExecutionStatus(ExecutionStatusRunning)
-	
+
 	// Create execution record for feedback processing
 	record := &ExecutionRecord{
 		StepID:    "feedback_processing",
@@ -561,13 +561,13 @@ func (h *FeedbackProcessorHandler) PreHandler(ctx context.Context, input []*sche
 		Status:    ExecutionStatusRunning,
 	}
 	state.AddExecutionRecord(record)
-	
+
 	return buildFeedbackPrompt(state), nil
 }
 
 func (h *FeedbackProcessorHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	err := h.processFeedbackResult(output, state)
-	
+
 	// Update the existing execution record
 	if len(state.ExecutionHistory) > 0 {
 		// Find the most recent feedback processing record
@@ -588,7 +588,7 @@ func (h *FeedbackProcessorHandler) PostHandler(ctx context.Context, output *sche
 			}
 		}
 	}
-	
+
 	if err != nil {
 		return output, err
 	}
@@ -646,6 +646,11 @@ func (h *ReflectionBranchHandler) evaluateReflectionDecision(state *MultiAgentSt
 			// 如果计划已经执行完毕，那么就不能再到planExecutionNode,而是应该到finalAnswerNode
 			state.SetExecutionStatus(ExecutionStatusCompleted)
 			decision = toFinalAnswerNodeKey
+			// 最后计划步骤状态更新为完成
+			currentStep := findCurrentStep(state)
+			if currentStep != nil {
+				currentStep.Status = StepStatusCompleted
+			}
 		}
 	}()
 
@@ -712,7 +717,7 @@ func NewPlanUpdateHandler(config *MultiAgentConfig) *PlanUpdateHandler {
 func (h *PlanUpdateHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 	// Set plan update state
 	state.SetExecutionStatus(ExecutionStatusPlanning)
-	
+
 	// Create execution record for plan update
 	record := &ExecutionRecord{
 		StepID:    "plan_update",
@@ -722,13 +727,13 @@ func (h *PlanUpdateHandler) PreHandler(ctx context.Context, input []*schema.Mess
 		Status:    ExecutionStatusRunning,
 	}
 	state.AddExecutionRecord(record)
-	
+
 	return buildPlanUpdatePrompt(state), nil
 }
 
 func (h *PlanUpdateHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	err := h.processPlanUpdate(output, state)
-	
+
 	// Update the existing execution record
 	if len(state.ExecutionHistory) > 0 {
 		// Find the most recent plan update record
@@ -749,7 +754,7 @@ func (h *PlanUpdateHandler) PostHandler(ctx context.Context, output *schema.Mess
 			}
 		}
 	}
-	
+
 	if err != nil {
 		return output, err
 	}

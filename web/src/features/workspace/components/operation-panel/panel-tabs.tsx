@@ -7,7 +7,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Info, GitBranch, CheckCircle, X } from 'lucide-react';
+import { Info, GitBranch, CheckCircle, X, Bot } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InfoTab } from './info-tab';
 import { DecomposeTab } from './decompose-tab';
@@ -56,8 +56,8 @@ export function PanelTabs({ nodeID }: PanelTabsProps) {
               disabled={!canDecompose}
               className="flex items-center gap-2 cursor-pointer"
             >
-              <GitBranch className="w-4 h-4" />
-              <span className="hidden sm:inline">拆解</span>
+              <Bot className="w-4 h-4" />
+              <span className="hidden sm:inline">对话</span>
             </TabsTrigger>
             <TabsTrigger
               value="conclusion"

@@ -90,6 +90,10 @@ func (config *MultiAgentConfig) Validate() error {
 		}
 	}
 
+	if config.MaxRounds == 0 {
+		config.MaxRounds = 30
+	}
+
 	return nil
 }
 

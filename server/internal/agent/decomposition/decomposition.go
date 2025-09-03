@@ -52,7 +52,7 @@ func BuildDecompositionAgent(ctx context.Context, option ...base.AgentOption) (c
 			decompositionDecisionAgent,
 			problemDecompositionAgent,
 		},
-		MaxRounds: 10,
+		MaxRounds: 20,
 	}
 
 	// 创建MultiAgent实例

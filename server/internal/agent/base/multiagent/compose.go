@@ -270,7 +270,7 @@ func NewMultiAgent(ctx context.Context, config *MultiAgentConfig, agentOptions .
 	graph.AddEdge(finalAnswerNodeKey, compose.END)
 
 	// Compile the graph
-	runnable, err := graph.Compile(ctx)
+	runnable, err := graph.Compile(ctx, compose.WithMaxRunSteps(config.MaxRounds))
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile graph: %w", err)
 	}

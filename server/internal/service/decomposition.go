@@ -71,6 +71,9 @@ func (s *DecompositionService) Decomposition(ctx *gin.Context, req dto.Decomposi
 		return err
 	}
 	messages = append(messages, childrenMessages...)
+	if req.IsDecomposed && req.Clarification == "" {
+		req.Clarification = "开始将问题（任务）拆解为多个子问题（子任务）"
+	}
 	// 2.3 用户提问
 	if req.Clarification != "" {
 		messages = append(messages, schema.UserMessage(req.Clarification))
