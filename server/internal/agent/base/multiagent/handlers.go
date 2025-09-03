@@ -85,11 +85,12 @@ func (h *ConversationAnalyzerHandler) PostHandler(ctx context.Context, output *s
 
 func (h *ConversationAnalyzerHandler) parseConversationContext(content string) (*ConversationContext, error) {
 	var result struct {
-		UserIntent     string         `json:"userIntent"`
-		KeyTopics      []string       `json:"keyTopics"`
-		ContextSummary string         `json:"contextSummary"`
-		Complexity     string         `json:"complexity"`
-		Metadata       map[string]any `json:"metadata"`
+		IsIndependentTopic bool           `json:"isIndependentTopic"`
+		UserIntent         string         `json:"userIntent"`
+		KeyTopics          []string       `json:"keyTopics"`
+		ContextSummary     string         `json:"contextSummary"`
+		Complexity         string         `json:"complexity"`
+		Metadata           map[string]any `json:"metadata"`
 	}
 
 	err := json.Unmarshal([]byte(content), &result)
@@ -113,11 +114,12 @@ func (h *ConversationAnalyzerHandler) parseConversationContext(content string) (
 	}
 
 	return &ConversationContext{
-		UserIntent:     result.UserIntent,
-		KeyTopics:      result.KeyTopics,
-		ContextSummary: result.ContextSummary,
-		Complexity:     complexity,
-		Metadata:       result.Metadata,
+		IsIndependentTopic: result.IsIndependentTopic,
+		UserIntent:         result.UserIntent,
+		KeyTopics:          result.KeyTopics,
+		ContextSummary:     result.ContextSummary,
+		Complexity:         complexity,
+		Metadata:           result.Metadata,
 	}, nil
 }
 

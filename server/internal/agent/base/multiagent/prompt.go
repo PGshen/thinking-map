@@ -25,10 +25,13 @@ Please analyze and provide the following information in JSON format:
   "keyTopics": ["topic1", "topic2", "topic3"],
   "contextSummary": "Summary of the conversation context",
   "complexity": "simple|moderate|complex|very_complex",
+  "isIndependentTopic": false,
   "metadata": {}
 }
 
 Remember: 
+- The last message usually contains the user's question.
+- When the last message is user's question and If it's not related to the conversation context, just return the userIntent as "general" and set isIndependentTopic as true.
 - Output ONLY the JSON object, no other text.
 - Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
 `
@@ -40,7 +43,36 @@ Remember:
 }
 
 func buildDirectAnswerPrompt(state *MultiAgentState) *schema.Message {
-	prompt := fmt.Sprintf(`Provide a direct answer to the user's request.
+	var prompt string
+	
+	// 如果是独立话题，不引用历史上下文
+	if state.ConversationContext.IsIndependentTopic {
+		// 获取最后一条用户消息作为当前问题
+		lastUserMessage := ""
+		if len(state.OriginalMessages) > 0 {
+			for i := len(state.OriginalMessages) - 1; i >= 0; i-- {
+				if state.OriginalMessages[i].Role == schema.User {
+					lastUserMessage = state.OriginalMessages[i].Content
+					break
+				}
+			}
+		}
+		
+		prompt = fmt.Sprintf(`Provide a direct answer to the user's request.
+
+User Question: %s
+
+Please provide a clear, helpful response.
+
+Notice:
+- Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
+- This is an independent question, focus only on the current request
+`,
+			lastUserMessage,
+		)
+	} else {
+		// 使用完整的对话上下文
+		prompt = fmt.Sprintf(`Provide a direct answer to the user's request.
 
 User Intent: %s
 Context: %s
@@ -50,9 +82,10 @@ Please provide a clear, helpful response.
 Notice:
 - Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
 `,
-		state.ConversationContext.UserIntent,
-		state.ConversationContext.ContextSummary,
-	)
+			state.ConversationContext.UserIntent,
+			state.ConversationContext.ContextSummary,
+		)
+	}
 
 	return &schema.Message{
 		Role:    schema.User,
@@ -68,27 +101,42 @@ func buildPlanCreationPrompt(state *MultiAgentState, config *MultiAgentConfig) *
 
 	planningPrompt := config.Host.Planning.PlanningPrompt
 
-	// 构建原始消息上下文
-	originalContext := ""
-	if len(state.OriginalMessages) > 0 {
-		originalContext = "Original Messages:\n"
-		for i, msg := range state.OriginalMessages {
-			originalContext += fmt.Sprintf("%d. %s: %s\n", i+1, msg.Role, msg.Content)
+	// 根据IsIndependentTopic决定是否包含历史上下文
+	var originalContext, executionContext string
+	
+	if !state.ConversationContext.IsIndependentTopic {
+		// 构建原始消息上下文
+		if len(state.OriginalMessages) > 0 {
+			originalContext = "Original Messages:\n"
+			for i, msg := range state.OriginalMessages {
+				originalContext += fmt.Sprintf("%d. %s: %s\n", i+1, msg.Role, msg.Content)
+			}
+			originalContext += "\n"
 		}
-		originalContext += "\n"
-	}
 
-	// 构建执行历史上下文
-	executionContext := ""
-	if len(state.ExecutionHistory) > 0 {
-		executionContext = "Previous Execution History:\n"
-		for i, record := range state.ExecutionHistory {
-			executionContext += fmt.Sprintf("%d. Step: %s, Action: %s, Status: %s\n", i+1, record.StepID, record.Action, record.Status)
-			if record.Error != "" {
-				executionContext += fmt.Sprintf("   Error: %s\n", record.Error)
+		// 构建执行历史上下文
+		if len(state.ExecutionHistory) > 0 {
+			executionContext = "Previous Execution History:\n"
+			for i, record := range state.ExecutionHistory {
+				executionContext += fmt.Sprintf("%d. Step: %s, Action: %s, Status: %s\n", i+1, record.StepID, record.Action, record.Status)
+				if record.Error != "" {
+					executionContext += fmt.Sprintf("   Error: %s\n", record.Error)
+				}
+			}
+			executionContext += "\n"
+		}
+	} else {
+		// 对于独立话题，只获取最后一条用户消息
+		if len(state.OriginalMessages) > 0 {
+			for i := len(state.OriginalMessages) - 1; i >= 0; i-- {
+				if state.OriginalMessages[i].Role == schema.User {
+					originalContext = "Current User Question:\n" + state.OriginalMessages[i].Content + "\n\n"
+					break
+				}
 			}
 		}
-		executionContext += "\n"
+		// 独立话题不包含执行历史
+		executionContext = ""
 	}
 
 	prompt := fmt.Sprintf(`Create a detailed execution plan for the following task.
@@ -160,31 +208,46 @@ func buildSpecialistPrompt(specialist *Specialist, step *PlanStep, state *MultiA
 		doneSteps += fmt.Sprintf("%d. %s\n", idx+1, step.Content)
 	}
 
-	// 构建原始消息上下文
-	originalContext := ""
-	if len(state.OriginalMessages) > 0 {
-		originalContext = "Original Messages:\n"
-		for i, msg := range state.OriginalMessages {
-			originalContext += fmt.Sprintf("%d. %s: %s\n", i+1, msg.Role, msg.Content)
+	// 根据IsIndependentTopic决定是否包含历史上下文
+	var originalContext, executionContext string
+	
+	if !state.ConversationContext.IsIndependentTopic {
+		// 构建原始消息上下文
+		if len(state.OriginalMessages) > 0 {
+			originalContext = "Original Messages:\n"
+			for i, msg := range state.OriginalMessages {
+				originalContext += fmt.Sprintf("%d. %s: %s\n", i+1, msg.Role, msg.Content)
+			}
+			originalContext += "\n"
 		}
-		originalContext += "\n"
-	}
 
-	// 构建执行历史上下文
-	executionContext := ""
-	if len(state.ExecutionHistory) > 0 {
-		executionContext = "Execution History:\n"
-		for i, record := range state.ExecutionHistory {
-			executionContext += fmt.Sprintf("%d. Step: %s, Action: %s, Status: %s", i+1, record.StepID, record.Action, record.Status)
-			if record.Output != nil {
-				executionContext += fmt.Sprintf(", Output: %s", record.Output.Content)
+		// 构建执行历史上下文
+		if len(state.ExecutionHistory) > 0 {
+			executionContext = "Execution History:\n"
+			for i, record := range state.ExecutionHistory {
+				executionContext += fmt.Sprintf("%d. Step: %s, Action: %s, Status: %s", i+1, record.StepID, record.Action, record.Status)
+				if record.Output != nil {
+					executionContext += fmt.Sprintf(", Output: %s", record.Output.Content)
+				}
+				executionContext += "\n"
+				if record.Error != "" {
+					executionContext += fmt.Sprintf("   Error: %s\n", record.Error)
+				}
 			}
 			executionContext += "\n"
-			if record.Error != "" {
-				executionContext += fmt.Sprintf("   Error: %s\n", record.Error)
+		}
+	} else {
+		// 对于独立话题，只获取最后一条用户消息
+		if len(state.OriginalMessages) > 0 {
+			for i := len(state.OriginalMessages) - 1; i >= 0; i-- {
+				if state.OriginalMessages[i].Role == schema.User {
+					originalContext = "Current User Question:\n" + state.OriginalMessages[i].Content + "\n\n"
+					break
+				}
 			}
 		}
-		executionContext += "\n"
+		// 独立话题不包含执行历史
+		executionContext = ""
 	}
 
 	// Build specialist prompt
@@ -400,30 +463,49 @@ func buildFinalAnswerPrompt(state *MultiAgentState) *schema.Message {
 	// Build prompt for final answer generation
 	content := "Please organize and summarize the following execution results based on the planned steps. Do NOT provide additional analysis or new answers beyond what has been executed:\n\n"
 
-	// Add original messages context
-	if len(state.OriginalMessages) > 0 {
-		content += "Original Messages:\n"
-		for i, msg := range state.OriginalMessages {
-			content += fmt.Sprintf("%d. %s: %s\n", i+1, msg.Role, msg.Content)
+	// 根据IsIndependentTopic决定是否包含历史上下文
+	var originalContext, executionContext string
+	
+	if !state.ConversationContext.IsIndependentTopic {
+		// Add original messages context
+		if len(state.OriginalMessages) > 0 {
+			originalContext = "Original Messages:\n"
+			for i, msg := range state.OriginalMessages {
+				originalContext += fmt.Sprintf("%d. %s: %s\n", i+1, msg.Role, msg.Content)
+			}
+			originalContext += "\n"
 		}
-		content += "\n"
+
+		// Add execution history
+		if len(state.ExecutionHistory) > 0 {
+			executionContext = "Complete Execution History:\n"
+			for i, record := range state.ExecutionHistory {
+				executionContext += fmt.Sprintf("%d. Step: %s, Action: %s, Status: %s\n", i+1, record.StepID, record.Action, record.Status)
+				if record.Output != nil {
+					executionContext += fmt.Sprintf("   Output: %s\n", record.Output.Content)
+				}
+				if record.Error != "" {
+					executionContext += fmt.Sprintf("   Error: %s\n", record.Error)
+				}
+				executionContext += fmt.Sprintf("   Duration: %v\n", record.Duration)
+			}
+			executionContext += "\n"
+		}
+	} else {
+		// 对于独立话题，只获取最后一条用户消息
+		if len(state.OriginalMessages) > 0 {
+			for i := len(state.OriginalMessages) - 1; i >= 0; i-- {
+				if state.OriginalMessages[i].Role == schema.User {
+					originalContext = "Current User Question:\n" + state.OriginalMessages[i].Content + "\n\n"
+					break
+				}
+			}
+		}
+		// 独立话题不包含执行历史
+		executionContext = ""
 	}
 
-	// Add execution history
-	if len(state.ExecutionHistory) > 0 {
-		content += "Complete Execution History:\n"
-		for i, record := range state.ExecutionHistory {
-			content += fmt.Sprintf("%d. Step: %s, Action: %s, Status: %s\n", i+1, record.StepID, record.Action, record.Status)
-			if record.Output != nil {
-				content += fmt.Sprintf("   Output: %s\n", record.Output.Content)
-			}
-			if record.Error != "" {
-				content += fmt.Sprintf("   Error: %s\n", record.Error)
-			}
-			content += fmt.Sprintf("   Duration: %v\n", record.Duration)
-		}
-		content += "\n"
-	}
+	content += originalContext + executionContext
 
 	// Add execution plan if available
 	if state.CurrentPlan != nil {

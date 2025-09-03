@@ -222,7 +222,7 @@ func (cm *ContextManager) getConversationContext(ctx context.Context, parentMsgI
 	}
 
 	// 获取最近的对话历史，用于问题拆解和结论生成的对话框交互
-	recentMessages, err := cm.getRecentNodeConversation(ctx, parentMsgID, 10)
+	recentMessages, err := cm.getRecentNodeConversation(ctx, parentMsgID, 100)
 	if err != nil {
 		return nil, err
 	}
@@ -253,6 +253,10 @@ func (cm *ContextManager) getRecentNodeConversation(ctx context.Context, parentM
 	for i, msg := range messages {
 		if i >= limit {
 			break
+		}
+		// 只需要text类型的消息
+		if msg.MessageType != model.MsgTypeText {
+			continue
 		}
 		content := msg.Content.String()
 		if content == "" {
