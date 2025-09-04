@@ -7,16 +7,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Save, RotateCcw, Trash2, Play } from 'lucide-react';
+import { Save, RotateCcw, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { DependencyContext } from './dependency-context';
-import { getUnmetDependenciesMessage, checkAllDependenciesMet } from '@/utils/dependency-utils';
+import { checkAllDependenciesMet } from '@/utils/dependency-utils';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
-import { CustomNodeModel, DependentContext, NodeContextItem } from '@/types/node';
+import { CustomNodeModel, DependentContext } from '@/types/node';
 import { resetNodeContext, updateNode, updateNodeContext } from '@/api/node';
 
 interface InfoTabProps {

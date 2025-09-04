@@ -54,6 +54,7 @@ func (h *ConversationAnalyzerHandler) PreHandler(ctx context.Context, input []*s
 // PostHandler processes conversation analysis results
 func (h *ConversationAnalyzerHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	// Parse conversation context from LLM response
+	fmt.Printf("conversationAnalyze.Content: %s\n", output.Content)
 	context, err := h.parseConversationContext(output.Content)
 	if err != nil {
 		// Record execution error
@@ -142,9 +143,9 @@ func (h *ComplexityBranchHandler) Evaluate(ctx context.Context, state *MultiAgen
 	}
 
 	switch state.ConversationContext.Complexity {
-	case TaskComplexitySimple, TaskComplexityModerate:
+	case TaskComplexitySimple:
 		return directAnswerNodeKey, nil
-	case TaskComplexityComplex, TaskComplexityVeryComplex:
+	case TaskComplexityModerate, TaskComplexityComplex, TaskComplexityVeryComplex:
 		return planCreationNodeKey, nil
 	default:
 		return directAnswerNodeKey, nil

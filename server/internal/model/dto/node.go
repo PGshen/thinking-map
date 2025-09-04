@@ -63,6 +63,11 @@ type NodeListResponse struct {
 	Nodes []NodeResponse `json:"nodes"`
 }
 
+// ExecutableNodesResponse represents the response for executable nodes
+type ExecutableNodesResponse struct {
+	NodeIDs []string `json:"nodeIDs"`
+}
+
 // modelToNodeResponse 将model.ThinkingNode转为dto.NodeResponse
 func ToNodeResponse(n *model.ThinkingNode) NodeResponse {
 	return NodeResponse{

@@ -49,6 +49,72 @@ func (s *NodeService) GetNode(ctx context.Context, nodeID string) (*dto.NodeResp
 	return &resp, nil
 }
 
+// GetExecutableNodes 获取下一个可执行节点
+func (s *NodeService) GetExecutableNodes(ctx context.Context, mapID string) (*dto.ExecutableNodesResponse, error) {
+	// 获取该map下的所有节点
+	nodes, err := s.nodeRepo.FindByMapID(ctx, mapID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 构建节点ID到节点的映射，避免重复查询
+	nodeMap := make(map[string]*model.ThinkingNode)
+	for _, node := range nodes {
+		nodeMap[node.ID] = node
+	}
+
+	// 构建父节点ID到子节点列表的映射
+	childrenMap := make(map[string][]*model.ThinkingNode)
+	for _, node := range nodes {
+		if node.ParentID != "" && node.ParentID != uuid.Nil.String() {
+			childrenMap[node.ParentID] = append(childrenMap[node.ParentID], node)
+		}
+	}
+
+	var executableNodeIDs []string
+	for _, node := range nodes {
+		// 检查节点状态是否为pending（可执行）
+		if node.Status == "pending" || node.Status == "initial" {
+			// 检查节点的依赖是否都已完成
+			canExecute := true
+			for _, depID := range node.Dependencies {
+				// 从映射中查找依赖节点
+				depNode, exists := nodeMap[depID]
+				if !exists {
+					// 依赖节点不存在，跳过
+					continue
+				}
+				// 如果依赖节点未完成，则当前节点不可执行
+				if depNode.Status != "completed" {
+					canExecute = false
+					break
+				}
+			}
+
+			// 检查节点的子节点是否都已完成
+			if canExecute {
+				// 从映射中获取子节点列表
+				childNodes := childrenMap[node.ID]
+				// 检查所有子节点是否都已完成
+				for _, childNode := range childNodes {
+					if childNode.Status != "completed" {
+						canExecute = false
+						break
+					}
+				}
+			}
+
+			if canExecute {
+				executableNodeIDs = append(executableNodeIDs, node.ID)
+			}
+		}
+	}
+
+	return &dto.ExecutableNodesResponse{
+		NodeIDs: executableNodeIDs,
+	}, nil
+}
+
 func (s *NodeService) GetNodeContext(ctx *gin.Context, node *model.ThinkingNode) model.DependentContext {
 	// 获取节点上下文，parentProblem是所有祖先节点的问题和目标，subProblem是所有直接子节点的问题、目标和结论
 	ancestor := node.Context.Ancestor

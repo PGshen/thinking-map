@@ -44,7 +44,7 @@ Remember:
 
 func buildDirectAnswerPrompt(state *MultiAgentState) *schema.Message {
 	var prompt string
-	
+
 	// 如果是独立话题，不引用历史上下文
 	if state.ConversationContext.IsIndependentTopic {
 		// 获取最后一条用户消息作为当前问题
@@ -57,7 +57,7 @@ func buildDirectAnswerPrompt(state *MultiAgentState) *schema.Message {
 				}
 			}
 		}
-		
+
 		prompt = fmt.Sprintf(`Provide a direct answer to the user's request.
 
 User Question: %s
@@ -67,6 +67,7 @@ Please provide a clear, helpful response.
 Notice:
 - Reply in the same language as the user's question (Chinese for Chinese questions, English for English questions)
 - This is an independent question, focus only on the current request
+- When the user requests to decompose the problem and there are relevant tools available, use it.
 `,
 			lastUserMessage,
 		)
@@ -103,7 +104,7 @@ func buildPlanCreationPrompt(state *MultiAgentState, config *MultiAgentConfig) *
 
 	// 根据IsIndependentTopic决定是否包含历史上下文
 	var originalContext, executionContext string
-	
+
 	if !state.ConversationContext.IsIndependentTopic {
 		// 构建原始消息上下文
 		if len(state.OriginalMessages) > 0 {
@@ -210,7 +211,7 @@ func buildSpecialistPrompt(specialist *Specialist, step *PlanStep, state *MultiA
 
 	// 根据IsIndependentTopic决定是否包含历史上下文
 	var originalContext, executionContext string
-	
+
 	if !state.ConversationContext.IsIndependentTopic {
 		// 构建原始消息上下文
 		if len(state.OriginalMessages) > 0 {
@@ -465,7 +466,7 @@ func buildFinalAnswerPrompt(state *MultiAgentState) *schema.Message {
 
 	// 根据IsIndependentTopic决定是否包含历史上下文
 	var originalContext, executionContext string
-	
+
 	if !state.ConversationContext.IsIndependentTopic {
 		// Add original messages context
 		if len(state.OriginalMessages) > 0 {
