@@ -32,7 +32,7 @@ export interface CustomNodeModel {
   nodeType: string;
   question: string;
   target: string;
-  status: 'initial' | 'pending' | 'running' | 'completed' | 'error';
+  status: 'initial' | 'pending' | 'in_decomposition' | 'in_conclusion' | 'completed' | 'error';
   context?: DependentContext;
   decomposition?: Decomposition;
   conclusion?: Conclusion;
@@ -100,6 +100,12 @@ export interface NodeResponse {
   updatedAt: string;
 }
 
+// 可执行节点响应类型
+export interface ExecutableNodes {
+  nodeIDs: string[];
+  suggestedNodeID: string;
+}
+
 // 创建节点请求参数
 export interface CreateNodeRequest {
   mapID: string;
@@ -134,3 +140,4 @@ export type UpdateNodeResponse = ApiResponse<NodeResponse>;
 export type DeleteNodeResponse = ApiResponse<null>;
 export type UpdateNodeContextResponse = ApiResponse<NodeResponse>;
 export type ResetNodeContextResponse = ApiResponse<NodeResponse>;
+export type ExecutableNodeResponse = ApiResponse<ExecutableNodes>;

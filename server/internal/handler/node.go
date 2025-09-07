@@ -309,8 +309,8 @@ func (h *NodeHandler) GetNodeMessages(c *gin.Context) {
 	})
 }
 
-// GetExecutableNodes handles retrieving executable nodes in a map
-func (h *NodeHandler) GetExecutableNodes(c *gin.Context) {
+// ExecutableNodes handles retrieving executable nodes in a map
+func (h *NodeHandler) ExecutableNodes(c *gin.Context) {
 	mapID := c.Param("mapID")
 	if mapID == "" {
 		c.JSON(http.StatusBadRequest, dto.Response{
@@ -323,8 +323,11 @@ func (h *NodeHandler) GetExecutableNodes(c *gin.Context) {
 		return
 	}
 
+	// 获取当前节点ID（可选参数）
+	nodeID := c.Query("nodeID")
+
 	// 调用service层获取可执行节点
-	resp, err := h.NodeService.GetExecutableNodes(c.Request.Context(), mapID)
+	resp, err := h.NodeService.ExecutableNodes(c.Request.Context(), mapID, nodeID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,

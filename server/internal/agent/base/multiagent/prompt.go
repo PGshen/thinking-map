@@ -42,7 +42,7 @@ Remember:
 	}
 }
 
-func buildDirectAnswerPrompt(state *MultiAgentState) *schema.Message {
+func buildDirectAnswerPrompt(state *MultiAgentState) []*schema.Message {
 	var prompt string
 
 	// 如果是独立话题，不引用历史上下文
@@ -71,6 +71,12 @@ Notice:
 `,
 			lastUserMessage,
 		)
+		return []*schema.Message{
+			{
+				Role:    schema.User,
+				Content: prompt,
+			},
+		}
 	} else {
 		// 使用完整的对话上下文
 		prompt = fmt.Sprintf(`Provide a direct answer to the user's request.
@@ -86,11 +92,10 @@ Notice:
 			state.ConversationContext.UserIntent,
 			state.ConversationContext.ContextSummary,
 		)
-	}
-
-	return &schema.Message{
-		Role:    schema.User,
-		Content: prompt,
+		return append(state.OriginalMessages, &schema.Message{
+			Role:    schema.User,
+			Content: prompt,
+		})
 	}
 }
 

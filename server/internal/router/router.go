@@ -86,7 +86,6 @@ func SetupRouter(
 				maps.PUT("/:mapID", middleware.MapOwnershipMiddleware(mapRepo), mapHandler.UpdateMap)
 				maps.DELETE("/:mapID", middleware.MapOwnershipMiddleware(mapRepo), mapHandler.DeleteMap)
 				maps.GET("/:mapID", middleware.MapOwnershipMiddleware(mapRepo), mapHandler.GetMap)
-				maps.GET("/:mapID/executable-nodes", middleware.MapOwnershipMiddleware(mapRepo), nodeHandler.GetExecutableNodes)
 			}
 
 			// Node routes
@@ -94,6 +93,7 @@ func SetupRouter(
 			{
 				nodes.GET("", middleware.MapOwnershipMiddleware(mapRepo), nodeHandler.ListNodes)
 				nodes.POST("", nodeHandler.CreateNode)
+				nodes.GET("/executable-nodes", middleware.MapOwnershipMiddleware(mapRepo), nodeHandler.ExecutableNodes)
 				nodes.PUT("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.UpdateNode)
 				nodes.DELETE("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.DeleteNode)
 				nodes.PUT("/:nodeID/context", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.UpdateNodeContext)

@@ -39,11 +39,12 @@ const (
 
 // 思维节点状态
 const (
-	NodeStatusInitial   = "initial"   // 初始
-	NodeStatusPending   = "pending"   // 待执行
-	NodeStatusRunning   = "running"   // 执行中
-	NodeStatusCompleted = "completed" // 已完成
-	NodeStatusError     = "error"     // 错误
+	NodeStatusInitial         = "initial"          // 初始
+	NodeStatusPending         = "pending"          // 待执行
+	NodeStatusInDecomposition = "in_decomposition" // 拆解中
+	NodeStatusInConclusion    = "in_conclusion"    // 结论中
+	NodeStatusCompleted       = "completed"        // 已完成
+	NodeStatusError           = "error"            // 错误
 )
 
 // 节点详情类型

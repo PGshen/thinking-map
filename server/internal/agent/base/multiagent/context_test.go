@@ -30,9 +30,9 @@ func TestIsIndependentTopicContextControl(t *testing.T) {
 		state.ConversationContext.IsIndependentTopic = false
 		message := buildDirectAnswerPrompt(state)
 		assert.NotNil(t, message)
-		
+
 		// 应该包含完整的上下文信息
-		assert.True(t, contains(message.Content, "测试意图") && contains(message.Content, "测试摘要"), "应该包含用户意图和上下文摘要")
+		assert.True(t, contains(message[0].Content, "测试意图") && contains(message[0].Content, "测试摘要"), "应该包含用户意图和上下文摘要")
 	})
 
 	t.Run("DirectAnswer_WithoutContext", func(t *testing.T) {
@@ -40,9 +40,9 @@ func TestIsIndependentTopicContextControl(t *testing.T) {
 		state.ConversationContext.IsIndependentTopic = true
 		message := buildDirectAnswerPrompt(state)
 		assert.NotNil(t, message)
-		
+
 		// 应该只包含当前用户问题
-		assert.True(t, contains(message.Content, "当前问题") && !contains(message.Content, "历史问题1"), "应该只包含当前用户问题，不包含历史对话")
+		assert.True(t, contains(message[0].Content, "当前问题") && !contains(message[0].Content, "历史问题1"), "应该只包含当前用户问题，不包含历史对话")
 	})
 
 	t.Run("PlanCreation_WithContext", func(t *testing.T) {
@@ -51,7 +51,7 @@ func TestIsIndependentTopicContextControl(t *testing.T) {
 		config := &MultiAgentConfig{}
 		message := buildPlanCreationPrompt(state, config)
 		assert.NotNil(t, message)
-		
+
 		// 应该包含原始消息和执行历史
 		assert.True(t, contains(message.Content, "历史问题1"), "应该包含原始消息历史")
 		assert.True(t, contains(message.Content, "step1"), "应该包含执行历史")
@@ -63,7 +63,7 @@ func TestIsIndependentTopicContextControl(t *testing.T) {
 		config := &MultiAgentConfig{}
 		message := buildPlanCreationPrompt(state, config)
 		assert.NotNil(t, message)
-		
+
 		// 应该只包含当前用户问题，不包含历史
 		assert.True(t, contains(message.Content, "当前问题"), "应该包含当前用户问题")
 		assert.False(t, contains(message.Content, "step1"), "不应该包含执行历史")
@@ -72,11 +72,11 @@ func TestIsIndependentTopicContextControl(t *testing.T) {
 
 // 辅助函数：检查字符串是否包含子字符串
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || 
-		(len(s) > len(substr) && 
-			(s[:len(substr)] == substr || 
-			 s[len(s)-len(substr):] == substr || 
-			 containsInMiddle(s, substr))))
+	return len(s) >= len(substr) && (s == substr ||
+		(len(s) > len(substr) &&
+			(s[:len(substr)] == substr ||
+				s[len(s)-len(substr):] == substr ||
+				containsInMiddle(s, substr))))
 }
 
 func containsInMiddle(s, substr string) bool {

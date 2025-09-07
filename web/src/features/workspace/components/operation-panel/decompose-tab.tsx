@@ -17,6 +17,8 @@ import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/c
 import { getMessages, decomposition } from '@/api/node';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
 import { MessageActionEvent, MessageNoticeEvent, MessagePlanEvent, MessageTextEvent, MessageThoughtEvent } from '@/types/sse';
+import { Button } from '@/components/ui/button';
+import { useExecutableNodes } from '@/features/workspace/hooks/use-executable-nodes';
 
 interface DecomposeTabProps {
   nodeID: string;
@@ -29,6 +31,7 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
   const [isDecomposed, setIsDecomposed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const { fetchExecutableNodes } = useExecutableNodes();
 
   const { actions } = useWorkspaceStore();
 
@@ -244,7 +247,13 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
     };
 
     initializeDecomposition();
-  }, []);
+  }, [nodeID]);
+
+  // 下一步
+  const nextStep = () => {
+    // 获取可执行节点和建议节点
+    fetchExecutableNodes(nodeID);
+  }
 
   // 提交
   const handleSubmit = (inputValue: string, newIsDecomposed?: boolean) => {
@@ -321,14 +330,24 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
         >
           <ChatInputTextArea variant='unstyled' placeholder="Type a message..." />
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => nextStep()}
+              className="rounded-full! cursor-pointer"
+            >
+              下一步
+            </Button>
             {/* 拆解识别按钮 */}
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => handleSubmit("")}
-              className="px-3 py-1.5 bg-primary cursor-pointer text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5 shrink-0"
+              className="rounded-full! cursor-pointer"
             >
               <GitBranch className="w-3 h-3" />
-              拆解识别
-            </button>
+              拆解分析
+            </Button>
             <ChatInputSubmit />
           </div>
         </ChatInput>

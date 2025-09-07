@@ -273,7 +273,7 @@ func (s *DecompositionService) Decompose(ctx *gin.Context, contextInfo *ContextI
 		userID:     userID,
 		msgManager: s.msgManager,
 	}
-	specialistMessageHandler := &specialistMessageHandler{
+	reasoningMessageHandler := &reasoningMessageHandler{
 		mapID:      contextInfo.MapInfo.ID,
 		nodeID:     contextInfo.NodeInfo.ID,
 		userID:     userID,
@@ -298,12 +298,12 @@ func (s *DecompositionService) Decompose(ctx *gin.Context, contextInfo *ContextI
 	// 5. 执行意图识别
 	options := []base.AgentOption{
 		multiagent.WithConversationAnalyzer(analyzerMessageHandler),
-		multiagent.WithDirectAnswerHandler(generalMessageHandler),
+		multiagent.WithDirectAnswerHandler(reasoningMessageHandler),
 		multiagent.WithFinalAnswerHandler(generalMessageHandler),
 		multiagent.WithPlanHandler(planMessageHandler),
-		multiagent.WithSpecialistHandler("DecompositionDecisionAgent", specialistMessageHandler),
-		multiagent.WithSpecialistHandler("ProblemDecompositionAgent", specialistMessageHandler),
-		multiagent.WithSpecialistHandler("general_specialist", specialistMessageHandler),
+		multiagent.WithSpecialistHandler("DecompositionDecisionAgent", reasoningMessageHandler),
+		multiagent.WithSpecialistHandler("ProblemDecompositionAgent", reasoningMessageHandler),
+		multiagent.WithSpecialistHandler("general_specialist", reasoningMessageHandler),
 	}
 	opts := base.GetComposeOptions(options...)
 	opts = append(opts, compose.WithCallbacks(callback.LogCbHandler))
@@ -460,7 +460,7 @@ outer:
 					break outer
 				}
 			}
-			// fmt.Print(chunk.Content)
+			fmt.Print(chunk.Content)
 			// sse 事件
 			sseBroker.PublishToSession(m.mapID, sse.Event{
 				ID:   m.nodeID,
@@ -478,19 +478,19 @@ outer:
 	return ctx, nil
 }
 
-type specialistMessageHandler struct {
+type reasoningMessageHandler struct {
 	mapID      string
 	nodeID     string
 	userID     string
 	msgManager *global.MessageManager
 }
 
-func (m *specialistMessageHandler) OnMessage(ctx context.Context, message *schema.Message) (context.Context, error) {
+func (m *reasoningMessageHandler) OnMessage(ctx context.Context, message *schema.Message) (context.Context, error) {
 	// 用不上，空实现
 	return ctx, nil
 }
 
-func (m *specialistMessageHandler) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
+func (m *reasoningMessageHandler) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
 	thoughtMessageID := uuid.NewString()
 	finalAnswerMessageID := uuid.NewString()
 	sseBroker := global.GetBroker()

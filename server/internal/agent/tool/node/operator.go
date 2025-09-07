@@ -364,7 +364,7 @@ func SetNodeDependenciesFunc(ctx context.Context, req *SetNodeDependenciesReques
 func CreateNodeTool() (tool.InvokableTool, error) {
 	tool := utils.NewTool(&schema.ToolInfo{
 		Name: "createNode",
-		Desc: "创建新的思维导图节点",
+		Desc: "创建新的思维导图节点，用于基于思维导图拆解子问题",
 		ParamsOneOf: schema.NewParamsOneOfByParams(
 			map[string]*schema.ParameterInfo{
 				"nodeType": {
@@ -400,7 +400,7 @@ func CreateNodeTool() (tool.InvokableTool, error) {
 func UpdateNodeTool() (tool.InvokableTool, error) {
 	tool := utils.NewTool(&schema.ToolInfo{
 		Name: "updateNode",
-		Desc: "更新现有思维导图节点的信息",
+		Desc: "更新现有思维导图节点的信息，用于基于思维导图拆解子问题",
 		ParamsOneOf: schema.NewParamsOneOfByParams(
 			map[string]*schema.ParameterInfo{
 				"nodeID": {
@@ -434,7 +434,7 @@ func UpdateNodeTool() (tool.InvokableTool, error) {
 func DeleteNodeTool() (tool.InvokableTool, error) {
 	tool := utils.NewTool(&schema.ToolInfo{
 		Name: "deleteNode",
-		Desc: "删除指定的思维导图节点",
+		Desc: "删除指定的思维导图节点，用于基于思维导图拆解子问题",
 		ParamsOneOf: schema.NewParamsOneOfByParams(
 			map[string]*schema.ParameterInfo{
 				"nodeID": {
@@ -452,7 +452,7 @@ func DeleteNodeTool() (tool.InvokableTool, error) {
 func SetNodeDependenciesTool() (tool.InvokableTool, error) {
 	tool := utils.NewTool(&schema.ToolInfo{
 		Name: "setNodeDependencies",
-		Desc: "设置思维导图节点的依赖关系，支持新增或删除依赖",
+		Desc: "设置思维导图节点的依赖关系，支持新增或删除依赖，用于基于思维导图拆解子问题",
 		ParamsOneOf: schema.NewParamsOneOfByParams(
 			map[string]*schema.ParameterInfo{
 				"nodeID": {

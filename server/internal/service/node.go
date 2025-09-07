@@ -49,8 +49,8 @@ func (s *NodeService) GetNode(ctx context.Context, nodeID string) (*dto.NodeResp
 	return &resp, nil
 }
 
-// GetExecutableNodes 获取下一个可执行节点
-func (s *NodeService) GetExecutableNodes(ctx context.Context, mapID string) (*dto.ExecutableNodesResponse, error) {
+// ExecutableNodes 获取下一个可执行节点
+func (s *NodeService) ExecutableNodes(ctx context.Context, mapID, nodeID string) (*dto.ExecutableNodesResponse, error) {
 	// 获取该map下的所有节点
 	nodes, err := s.nodeRepo.FindByMapID(ctx, mapID)
 	if err != nil {
@@ -71,10 +71,14 @@ func (s *NodeService) GetExecutableNodes(ctx context.Context, mapID string) (*dt
 		}
 	}
 
+	// 1. 找到所有可执行节点
 	var executableNodeIDs []string
+	var nodesToUpdate []*model.ThinkingNode
+
+	// 处理节点状态流转
 	for _, node := range nodes {
-		// 检查节点状态是否为pending（可执行）
-		if node.Status == "pending" || node.Status == "initial" {
+		// 3.2 当节点可执行时，变更为pending
+		if node.Status == comm.NodeStatusInitial {
 			// 检查节点的依赖是否都已完成
 			canExecute := true
 			for _, depID := range node.Dependencies {
@@ -85,33 +89,119 @@ func (s *NodeService) GetExecutableNodes(ctx context.Context, mapID string) (*dt
 					continue
 				}
 				// 如果依赖节点未完成，则当前节点不可执行
-				if depNode.Status != "completed" {
+				if depNode.Status != comm.NodeStatusCompleted {
 					canExecute = false
 					break
 				}
 			}
 
-			// 检查节点的子节点是否都已完成
 			if canExecute {
-				// 从映射中获取子节点列表
-				childNodes := childrenMap[node.ID]
-				// 检查所有子节点是否都已完成
+				// 将节点状态更新为pending
+				node.Status = comm.NodeStatusPending
+				nodesToUpdate = append(nodesToUpdate, node)
+			}
+		}
+
+		// 3.4 当节点开始总结时，变更为in_conclusion
+		if node.Status == comm.NodeStatusInDecomposition {
+			// 检查所有子节点是否都已完成
+			allChildrenCompleted := true
+			childNodes := childrenMap[node.ID]
+			if len(childNodes) > 0 {
 				for _, childNode := range childNodes {
-					if childNode.Status != "completed" {
-						canExecute = false
+					if childNode.Status != comm.NodeStatusCompleted {
+						allChildrenCompleted = false
 						break
 					}
 				}
-			}
 
-			if canExecute {
-				executableNodeIDs = append(executableNodeIDs, node.ID)
+				if allChildrenCompleted {
+					// 将节点状态更新为in_conclusion
+					node.Status = comm.NodeStatusInConclusion
+					nodesToUpdate = append(nodesToUpdate, node)
+				}
 			}
 		}
 	}
 
+	// 收集所有可执行的节点
+	for _, node := range nodes {
+		if node.Status == comm.NodeStatusPending {
+			executableNodeIDs = append(executableNodeIDs, node.ID)
+		}
+	}
+
+	// 批量更新节点状态
+	for _, node := range nodesToUpdate {
+		if err := s.nodeRepo.Update(ctx, node); err != nil {
+			return nil, err
+		}
+	}
+
+	// 2. 根据深度优先遍历算法，找到最建议执行的下一个节点
+	var suggestedNodeID string
+	if nodeID != "" {
+		currentNode, exists := nodeMap[nodeID]
+		if exists {
+			// 当前节点状态
+			switch currentNode.Status {
+			case comm.NodeStatusCompleted:
+				// 如果当前节点已完成，优先检查兄弟节点
+				if currentNode.ParentID != "" && currentNode.ParentID != uuid.Nil.String() {
+					parentNode, parentExists := nodeMap[currentNode.ParentID]
+					if parentExists {
+						siblings := childrenMap[parentNode.ID]
+						// 查找未完成的兄弟节点
+						for _, sibling := range siblings {
+							if sibling.ID != currentNode.ID && sibling.Status == comm.NodeStatusPending {
+								suggestedNodeID = sibling.ID
+								break
+							}
+						}
+
+						// 如果没有未完成的兄弟节点，回到父节点
+						if suggestedNodeID == "" && parentNode.Status == comm.NodeStatusPending {
+							suggestedNodeID = parentNode.ID
+						}
+					}
+				}
+
+				// 如果没有找到建议节点，从所有可执行节点中选择一个
+				if suggestedNodeID == "" && len(executableNodeIDs) > 0 {
+					suggestedNodeID = executableNodeIDs[0]
+				}
+
+			case comm.NodeStatusInConclusion:
+				// 当前节点正在总结中，不建议执行其他节点
+				suggestedNodeID = nodeID
+
+			default:
+				// 检查当前节点的子节点
+				childNodes := childrenMap[currentNode.ID]
+				for _, childNode := range childNodes {
+					if childNode.Status == comm.NodeStatusPending {
+						suggestedNodeID = childNode.ID
+						break
+					}
+				}
+
+				// 如果没有可执行的子节点，则建议执行当前节点
+				if suggestedNodeID == "" && currentNode.Status == comm.NodeStatusPending {
+					suggestedNodeID = currentNode.ID
+				} else if suggestedNodeID == "" && len(executableNodeIDs) > 0 {
+					// 如果当前节点不可执行，从所有可执行节点中选择一个
+					suggestedNodeID = executableNodeIDs[0]
+				}
+			}
+		}
+	} else if len(executableNodeIDs) > 0 {
+		// 如果没有指定当前节点，从所有可执行节点中选择第一个
+		suggestedNodeID = executableNodeIDs[0]
+	}
+
 	return &dto.ExecutableNodesResponse{
-		NodeIDs: executableNodeIDs,
+		NodeIDs:         executableNodeIDs,
+		SuggestedNodeID: suggestedNodeID,
 	}, nil
 }
 

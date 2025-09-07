@@ -21,6 +21,7 @@ interface CustomNodeProps {
     isAnimating?: boolean;
     animationDuration?: number;
     animationEasing?: string;
+    isSuggested?: boolean;
   }
 }
 
@@ -91,7 +92,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
   return (
     <div
       ref={nodeRef}
-      className={`rounded-lg shadow-lg bg-white border ${data.status === 'initial' ? 'border-dashed' : ''} px-3 py-2.5 min-w-[280px] max-w-[360px] select-none ${data.isAnimating ? '' : 'transition-all duration-200'} hover:shadow-xl ${data.selected ? 'ring-1 ring-blue-400' : ''}`}
+      className={`rounded-lg shadow-lg bg-white border ${data.status === 'initial' ? 'border-dashed' : ''} px-3 py-2.5 min-w-[280px] max-w-[360px] select-none ${data.isAnimating ? '' : 'transition-all duration-200'} hover:shadow-xl ${data.selected ? 'ring-1 ring-blue-400' : ''} ${data.isSuggested ? 'ring-2 ring-yellow-400 shadow-yellow-100' : ''}`}
       style={animationStyle}
       onClick={() => data.onSelect?.(data.id)}
       onDoubleClick={() => data.onDoubleClick?.(data.id)}

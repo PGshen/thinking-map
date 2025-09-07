@@ -32,6 +32,7 @@ import { useWorkspaceData } from '@/features/workspace/hooks/use-workspace-data'
 import { useNodeSelection } from '@/features/workspace/hooks/use-node-selection';
 import { useNodeOperations } from '@/features/workspace/hooks/use-node-operations';
 import { useAutoLayout } from '@/features/workspace/hooks/use-auto-layout';
+import { useExecutableNodes } from '@/features/workspace/hooks/use-executable-nodes';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
 import { SSEStatusIndicator } from '@/components/sse-status-indicator';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,7 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
   const { handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu } = useNodeSelection();
   const { handleNodeEdit, handleNodeDelete, handleAddChild, handleNodeUpdateID } = useNodeOperations();
   const { isLayouting, applyAutoLayout, layoutConfig, updateLayoutConfig, finishAnimation } = useAutoLayout();
+  const { fetchExecutableNodes } = useExecutableNodes();
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);

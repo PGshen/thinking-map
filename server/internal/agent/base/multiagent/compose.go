@@ -86,19 +86,40 @@ func NewMultiAgent(ctx context.Context, config *MultiAgentConfig, agentOptions .
 	}, map[string]bool{directAnswerNodeKey: true, planCreationNodeKey: true})
 
 	// Add direct answer node for simple tasks
-	err = graph.AddChatModelNode(directAnswerNodeKey, config.Host.Model,
-		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
-			// Build direct answer prompt
-			prompt := buildDirectAnswerPrompt(state)
-			return []*schema.Message{prompt}, nil
-		}),
-		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
-			state.FinalAnswer = output
-			state.IsCompleted = true
-			return output, nil
-		}),
-		compose.WithNodeName("direct_answer"),
-	)
+	// Check if ReactAgent is available, use it if available, otherwise use Model
+	if config.Host.ReactAgent != nil {
+		// Use ReactAgent for direct answer
+		err = graph.AddGraphNode(directAnswerNodeKey, config.Host.ReactAgent.Graph,
+			compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
+				// Build direct answer prompt
+				prompt := buildDirectAnswerPrompt(state)
+				return prompt, nil
+			}),
+			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
+				state.FinalAnswer = output
+				state.IsCompleted = true
+				fmt.Printf("direct answer (react): %s", output.Content)
+				return output, nil
+			}),
+			compose.WithNodeName("direct_answer"),
+		)
+	} else {
+		// Use Model for direct answer
+		err = graph.AddChatModelNode(directAnswerNodeKey, config.Host.Model,
+			compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
+				// Build direct answer prompt
+				prompt := buildDirectAnswerPrompt(state)
+				return prompt, nil
+			}),
+			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
+				state.FinalAnswer = output
+				state.IsCompleted = true
+				fmt.Printf("direct answer (model): %s", output.Content)
+				return output, nil
+			}),
+			compose.WithNodeName("direct_answer"),
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to add direct answer node: %w", err)
 	}

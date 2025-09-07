@@ -52,7 +52,7 @@ func WithConversationAnalyzer(handler MessageHandler) base.AgentOption {
 
 // WithDirectAnswerHandler 为直接回答节点添加消息处理器
 func WithDirectAnswerHandler(handler MessageHandler) base.AgentOption {
-	return createMessageHandlerOption(handler, directAnswerNodeKey)
+	return createMessageHandlerOption(handler, directAnswerNodeKey, "reasoning")
 }
 
 // WithPlanCreationHandler 为计划创建节点添加消息处理器

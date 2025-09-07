@@ -25,6 +25,12 @@ func BuildDecompositionAgent(ctx context.Context, option ...base.AgentOption) (c
 		return nil, err
 	}
 	cm, _ = cm.WithTools(toolInfos)
+	allTools := []tool.BaseTool{}
+	nodeTools, err := node.GetAllNodeTools()
+	if err != nil {
+		return nil, err
+	}
+	allTools = append(allTools, nodeTools...)
 
 	// 创建拆解决策Agent specialist
 	decompositionDecisionAgent, err := buildDecompositionDecisionAgent(ctx, option...)
@@ -38,12 +44,24 @@ func BuildDecompositionAgent(ctx context.Context, option ...base.AgentOption) (c
 		return nil, err
 	}
 
+	// react
+	reactAgent, err := react.NewAgent(ctx, react.ReactAgentConfig{
+		ToolCallingModel: cm,
+		ToolsConfig: compose.ToolsNodeConfig{
+			Tools: allTools,
+		},
+	}, option...)
+	if err != nil {
+		return nil, err
+	}
+
 	// 配置MultiAgent
 	config := &multiagent.MultiAgentConfig{
 		Name:        "DecompositionAgent",
 		Description: "负责问题拆解的多智能体系统",
 		Host: multiagent.Host{
-			Model: cm,
+			Model:      cm,
+			ReactAgent: reactAgent,
 			Planning: multiagent.PlanningConfig{
 				PlanningPrompt: buildPlanningPrompt(),
 			},
@@ -127,7 +145,7 @@ func buildProblemDecompositionAgent(ctx context.Context, option ...base.AgentOpt
 
 	return &multiagent.Specialist{
 		Name:        "ProblemDecompositionAgent",
-		IntendedUse: "基于拆解策略将复杂问题分解为可管理的子问题，创建子问题节点并根据需要设置依赖关系以标识子问题节点之间执行先后关系",
+		IntendedUse: "基于拆解策略将复杂问题分解为可管理的子问题，使用思维导图工具来创建子问题节点，根据需要设置依赖关系以标识子问题节点之间执行先后关系",
 		// ChatModel:    cm,
 		SystemPrompt: buildProblemDecompositionPrompt(),
 		ReactAgent:   agent,

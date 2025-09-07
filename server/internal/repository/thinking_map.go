@@ -63,7 +63,7 @@ func (r *thinkingMapRepository) List(ctx context.Context, userID string, status 
 		return nil, 0, err
 	}
 	offset := (page - 1) * limit
-	if err := dbQuery.Offset(offset).Limit(limit).Find(&maps).Error; err != nil {
+	if err := dbQuery.Offset(offset).Limit(limit).Order("created_at DESC").Find(&maps).Error; err != nil {
 		return nil, 0, err
 	}
 
