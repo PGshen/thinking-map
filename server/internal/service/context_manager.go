@@ -222,7 +222,7 @@ func (cm *ContextManager) getConversationContext(ctx context.Context, parentMsgI
 	}
 
 	// 获取最近的对话历史，用于问题拆解和结论生成的对话框交互
-	recentMessages, err := cm.getRecentNodeConversation(ctx, parentMsgID, 10)
+	recentMessages, err := cm.getRecentNodeConversation(ctx, parentMsgID, 100)
 	if err != nil {
 		return nil, err
 	}
@@ -254,6 +254,10 @@ func (cm *ContextManager) getRecentNodeConversation(ctx context.Context, parentM
 		if i >= limit {
 			break
 		}
+		// 只需要text类型的消息
+		if msg.MessageType != model.MsgTypeText {
+			continue
+		}
 		content := msg.Content.String()
 		if content == "" {
 			continue
@@ -283,64 +287,76 @@ func (cm *ContextManager) FormatContextForAgent(contextInfo *ContextInfo) string
 		return ""
 	}
 
-	// 添加导图信息
-	prompt := fmt.Sprintf(`导图信息：
-- 标题：%s
-- 问题：%s
-- 目标：%s
-`,
+	// 构建任务背景和目标说明
+	prompt := fmt.Sprintf(`# 任务背景
+你是一个智能思维导图助手，专门帮助用户通过思维导图的方式分析和解决复杂问题。
+
+## 总体任务
+- 核心目标：帮助用户通过结构化思维导图解决问题
+- 工作方式：将复杂问题分解为多个子问题，逐步分析和解决
+- 输出要求：提供清晰的分析思路、具体的解决方案和可执行的建议
+
+## 当前导图概览
+- 导图标题：%s
+- 核心问题：%s
+- 最终目标：%s`,
 		contextInfo.MapInfo.Title,
 		contextInfo.MapInfo.Problem,
 		contextInfo.MapInfo.Target)
 
 	if len(contextInfo.MapInfo.Constraints) > 0 {
-		prompt += fmt.Sprintf("- 约束条件：%v\n", contextInfo.MapInfo.Constraints)
+		prompt += fmt.Sprintf("\n- 约束条件：%v", contextInfo.MapInfo.Constraints)
 	}
 
-	// 添加当前节点信息
-	prompt += fmt.Sprintf(`当前节点信息：
-- 问题：%s
-- 目标：%s
-- 状态：%s
-`,
+	// 添加当前节点的具体任务
+	prompt += fmt.Sprintf("\n\n"+`## 当前节点任务
+你现在需要专注于解决以下具体问题：
+- 节点问题：%s
+- 节点目标：%s
+- 当前状态：%s
+
+**你的任务是：**
+1. 深入分析当前节点的问题
+2. 结合已有的上下文信息提供解决方案`,
 		contextInfo.NodeInfo.Question,
 		contextInfo.NodeInfo.Target,
 		contextInfo.NodeInfo.Status)
 
-	// 添加祖先节点上下文
+	// 添加祖先节点上下文（问题分解路径）
 	if len(contextInfo.AncestorsContext) > 0 {
-		prompt += "\n祖先节点上下文：\n"
+		prompt += "\n\n## 问题分解路径（祖先节点）\n以下是从根问题到当前问题的分解路径，帮助你理解问题的层次结构：\n"
 		for i, ancestor := range contextInfo.AncestorsContext {
-			prompt += fmt.Sprintf("%d. 问题：%s，目标：%s，结论：%s，状态：%s\n",
+			prompt += fmt.Sprintf("%d. **问题**：%s\n   **目标**：%s\n   **结论**：%s\n   **状态**：%s\n\n",
 				i+1, ancestor.Question, ancestor.Target, ancestor.Conclusion, ancestor.Status)
 		}
 	}
 
-	// 添加依赖节点上下文
+	// 添加依赖节点上下文（前置条件）
 	if len(contextInfo.DependencyContext) > 0 {
-		prompt += "\n依赖节点上下文：\n"
+		prompt += "\n## 前置依赖信息\n以下节点的结果是解决当前问题的重要依据：\n"
 		for i, dep := range contextInfo.DependencyContext {
-			prompt += fmt.Sprintf("%d. 问题：%s，目标：%s，结论：%s，状态：%s\n",
+			prompt += fmt.Sprintf("%d. **问题**：%s\n   **目标**：%s\n   **结论**：%s\n   **状态**：%s\n\n",
 				i+1, dep.Question, dep.Target, dep.Conclusion, dep.Status)
 		}
 	}
 
-	// 添加子节点上下文
+	// 添加子节点上下文（已有分解）
 	if len(contextInfo.ChildrenContext) > 0 {
-		prompt += "\n子节点上下文：\n"
+		prompt += "\n## 已有子问题分解\n当前问题已经分解出以下子问题，请参考其进展：\n"
 		for i, child := range contextInfo.ChildrenContext {
-			prompt += fmt.Sprintf("%d. 问题：%s，目标：%s，结论：%s，状态：%s\n",
+			prompt += fmt.Sprintf("%d. **问题**：%s\n   **目标**：%s\n   **结论**：%s\n   **状态**：%s\n\n",
 				i+1, child.Question, child.Target, child.Conclusion, child.Status)
 		}
 	}
 
 	// 添加对话历史上下文
 	if len(contextInfo.ConversationContext) > 0 {
-		prompt += "\n对话历史：\n"
+		prompt += "\n## 对话历史\n以下是与用户的历史对话，包含重要的讨论内容：\n"
 		for _, msg := range contextInfo.ConversationContext {
-			prompt += fmt.Sprintf("%s: %s\n", msg.Role, msg.Content)
+			prompt += fmt.Sprintf("**%s**: %s\n\n", msg.Role, msg.Content)
 		}
 	}
+
 	return prompt
 }
 

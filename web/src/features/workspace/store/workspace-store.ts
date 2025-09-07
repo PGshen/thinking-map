@@ -37,6 +37,8 @@ interface WorkspaceState {
   // 节点和边数据
   nodes: Node<CustomNodeModel>[];
   edges: Edge[];
+  suggestedNodeID: string | null; // 建议执行的节点ID
+  executableNodeIDs: string[]; // 可执行节点ID列表
   
   // 思维导图信息
   mapID: string | null;
@@ -86,6 +88,10 @@ interface WorkspaceActions {
   selectNode: (nodeID: string | null) => void;
   setEditing: (nodeID: string | null) => void;
   clearSelection: () => void;
+  
+  // 可执行节点操作
+  setExecutableNodes: (nodeIDs: string[], suggestedNodeID: string) => void;
+  setSuggestedNode: (nodeID: string | null) => void;
 
   // 节点拆解操作
   updateNodeDecomposition: (nodeID: string, updates: Partial<Decomposition>) => void;
@@ -135,6 +141,8 @@ const initialState: WorkspaceState = {
   // 节点和边数据
   nodes: [],
   edges: [],
+  suggestedNodeID: null,
+  executableNodeIDs: [],
   
   // 思维导图信息
   mapID: null,
@@ -662,6 +670,45 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
             }),
             false,
             'updateSettings'
+          );
+        },
+        
+        // 可执行节点操作
+        setExecutableNodes: (nodeIDs: string[], suggestedNodeID: string | null) => {
+          set(
+            (state) => ({
+              executableNodeIDs: nodeIDs,
+              suggestedNodeID: suggestedNodeID,
+              // 更新节点数据，为建议节点添加标记
+              nodes: state.nodes.map((node) => ({
+                ...node,
+                data: {
+                  ...node.data,
+                  status: 'pending',
+                  isSuggested: node.id === suggestedNodeID
+                }
+              }))
+            }),
+            false,
+            'setExecutableNodes'
+          );
+        },
+        
+        setSuggestedNode: (nodeID: string | null) => {
+          set(
+            (state) => ({
+              suggestedNodeID: nodeID,
+              // 更新节点数据，为建议节点添加标记
+              nodes: state.nodes.map((node) => ({
+                ...node,
+                data: {
+                  ...node.data,
+                  isSuggested: node.id === nodeID
+                }
+              }))
+            }),
+            false,
+            'setSuggestedNode'
           );
         },
         

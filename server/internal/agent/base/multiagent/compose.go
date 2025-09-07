@@ -86,19 +86,38 @@ func NewMultiAgent(ctx context.Context, config *MultiAgentConfig, agentOptions .
 	}, map[string]bool{directAnswerNodeKey: true, planCreationNodeKey: true})
 
 	// Add direct answer node for simple tasks
-	err = graph.AddChatModelNode(directAnswerNodeKey, config.Host.Model,
-		compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
-			// Build direct answer prompt
-			prompt := buildDirectAnswerPrompt(state)
-			return []*schema.Message{prompt}, nil
-		}),
-		compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
-			state.FinalAnswer = output
-			state.IsCompleted = true
-			return output, nil
-		}),
-		compose.WithNodeName("direct_answer"),
-	)
+	// Check if ReactAgent is available, use it if available, otherwise use Model
+	if config.Host.ReactAgent != nil {
+		// Use ReactAgent for direct answer
+		err = graph.AddGraphNode(directAnswerNodeKey, config.Host.ReactAgent.Graph,
+			compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
+				// Build direct answer prompt
+				prompt := buildDirectAnswerPrompt(state)
+				return prompt, nil
+			}),
+			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
+				state.FinalAnswer = output
+				state.IsCompleted = true
+				return output, nil
+			}),
+			compose.WithNodeName("direct_answer"),
+		)
+	} else {
+		// Use Model for direct answer
+		err = graph.AddChatModelNode(directAnswerNodeKey, config.Host.Model,
+			compose.WithStatePreHandler(func(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
+				// Build direct answer prompt
+				prompt := buildDirectAnswerPrompt(state)
+				return prompt, nil
+			}),
+			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
+				state.FinalAnswer = output
+				state.IsCompleted = true
+				return output, nil
+			}),
+			compose.WithNodeName("direct_answer"),
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to add direct answer node: %w", err)
 	}
@@ -270,7 +289,7 @@ func NewMultiAgent(ctx context.Context, config *MultiAgentConfig, agentOptions .
 	graph.AddEdge(finalAnswerNodeKey, compose.END)
 
 	// Compile the graph
-	runnable, err := graph.Compile(ctx)
+	runnable, err := graph.Compile(ctx, compose.WithMaxRunSteps(config.MaxRounds))
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile graph: %w", err)
 	}

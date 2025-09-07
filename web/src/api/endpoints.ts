@@ -28,6 +28,7 @@ export const API_ENDPOINTS = {
   NODE: {
     CREATE: `${API_BASE}/v1/maps/:mapID/nodes`,
     GET: `${API_BASE}/v1/maps/:mapID/nodes`,
+    EXECUTABLE_NODES: `${API_BASE}/v1/maps/:mapID/nodes/executable-nodes`,
     UPDATE: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID`,
     DELETE: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID`,
     CONTEXT: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID/context`,

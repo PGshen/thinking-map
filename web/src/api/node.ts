@@ -16,7 +16,8 @@ import type {
   UpdateNodeResponse,
   UpdateNodeContextResponse,
   DeleteNodeResponse,
-  ResetNodeContextResponse
+  ResetNodeContextResponse,
+  ExecutableNodeResponse
 } from '@/types/node';
 import { MessageListResponse, MessageResponse } from '@/types/message';
 import { ApiResponse } from '@/types/response';
@@ -49,6 +50,13 @@ export async function resetNodeContext(mapID: string, nodeID: string): Promise<R
 // 删除节点
 export async function deleteNode(mapID: string, nodeID: string): Promise<DeleteNodeResponse> {
   return del(API_ENDPOINTS.NODE.DELETE.replace(':mapID', mapID).replace(':nodeID', nodeID));
+}
+
+// 可执行节点
+export async function executableNodes(mapID: string, nodeID?: string): Promise<ExecutableNodeResponse> {
+  const url = API_ENDPOINTS.NODE.EXECUTABLE_NODES.replace(':mapID', mapID);
+  const params = nodeID ? { nodeID } : undefined;
+  return get(url, { params });
 }
 
 // 查询消息列表

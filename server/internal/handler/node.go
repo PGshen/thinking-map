@@ -268,41 +268,18 @@ func (h *NodeHandler) GetNodeMessages(c *gin.Context) {
 		})
 		return
 	}
-	node, err := h.NodeService.GetNode(c.Request.Context(), nodeID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.Response{
-			Code:      http.StatusBadRequest,
-			Message:   "node not found",
-			Data:      nil,
-			Timestamp: time.Now(),
-			RequestID: uuid.New().String(),
-		})
-		return
-	}
+
+	// 获取查询参数
 	conversationType := c.Query("conversationType")
 	if conversationType == "" {
-		c.JSON(http.StatusBadRequest, dto.Response{
-			Code:      http.StatusBadRequest,
-			Message:   "conversationType is required",
-			Data:      nil,
-			Timestamp: time.Now(),
-			RequestID: uuid.New().String(),
-		})
-		return
+		conversationType = "decomposition" // 默认为分解对话
 	}
-	var lastMessageID string
-	var conversationID string
-	switch conversationType {
-	case dto.ConversationTypeDecomposition:
-		lastMessageID = node.Decomposition.LastMessageID
-		conversationID = node.Decomposition.ConversationID
-	case dto.ConversationTypeConclusion:
-		lastMessageID = node.Conclusion.LastMessageID
-		conversationID = node.Conclusion.ConversationID
-	default:
+
+	// 验证conversationType
+	if conversationType != "decomposition" && conversationType != "conclusion" {
 		c.JSON(http.StatusBadRequest, dto.Response{
 			Code:      http.StatusBadRequest,
-			Message:   "conversationType is invalid",
+			Message:   "invalid conversationType, must be 'decomposition' or 'conclusion'",
 			Data:      nil,
 			Timestamp: time.Now(),
 			RequestID: uuid.New().String(),
@@ -310,7 +287,8 @@ func (h *NodeHandler) GetNodeMessages(c *gin.Context) {
 		return
 	}
 
-	messages, err := global.GetMessageManager().GetMessageChain(c.Request.Context(), lastMessageID, conversationID)
+	// 调用全局消息管理器获取消息
+	messages, err := global.GetMessageManager().GetNodeMessages(c.Request.Context(), nodeID, conversationType)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,
@@ -321,10 +299,50 @@ func (h *NodeHandler) GetNodeMessages(c *gin.Context) {
 		})
 		return
 	}
+
 	c.JSON(http.StatusOK, dto.Response{
 		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      messages,
+		Timestamp: time.Now(),
+		RequestID: uuid.New().String(),
+	})
+}
+
+// ExecutableNodes handles retrieving executable nodes in a map
+func (h *NodeHandler) ExecutableNodes(c *gin.Context) {
+	mapID := c.Param("mapID")
+	if mapID == "" {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "map ID is required",
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+
+	// 获取当前节点ID（可选参数）
+	nodeID := c.Query("nodeID")
+
+	// 调用service层获取可执行节点
+	resp, err := h.NodeService.ExecutableNodes(c.Request.Context(), mapID, nodeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
+		Message:   "success",
+		Data:      resp,
 		Timestamp: time.Now(),
 		RequestID: uuid.New().String(),
 	})

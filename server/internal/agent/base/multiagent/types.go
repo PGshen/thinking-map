@@ -80,12 +80,13 @@ const (
 
 // ConversationContext contains conversation analysis results
 type ConversationContext struct {
-	UserIntent      string            `json:"userIntent"`
-	RelevantHistory []*schema.Message `json:"relevantHistory"`
-	KeyTopics       []string          `json:"keyTopics"`
-	ContextSummary  string            `json:"contextSummary"`
-	Complexity      TaskComplexity    `json:"complexity"`
-	Metadata        map[string]any    `json:"metadata,omitempty"`
+	IsIndependentTopic bool              `json:"isIndependentTopic"`
+	UserIntent         string            `json:"userIntent"`
+	RelevantHistory    []*schema.Message `json:"relevantHistory"`
+	KeyTopics          []string          `json:"keyTopics"`
+	ContextSummary     string            `json:"contextSummary"`
+	Complexity         TaskComplexity    `json:"complexity"`
+	Metadata           map[string]any    `json:"metadata,omitempty"`
 }
 
 // ExecutionRecord represents a single execution step record

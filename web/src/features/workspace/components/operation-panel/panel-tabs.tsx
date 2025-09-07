@@ -7,7 +7,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Info, GitBranch, CheckCircle, X } from 'lucide-react';
+import { Info, CheckCircle, X, Bot } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InfoTab } from './info-tab';
 import { DecomposeTab } from './decompose-tab';
@@ -37,9 +37,8 @@ export function PanelTabs({ nodeID }: PanelTabsProps) {
   // 根据节点状态判断Tab可用性
   const nodeData = currentNode.data;
   const status = nodeData?.status || 'pending';
-  const canDecompose = status === 'pending' || status === 'running';
-  const canConclude = status === 'completed' ||
-    (status === 'running' && !canDecompose);
+  const canDecompose = status === 'pending';
+  const canConclude = status === 'pending';
 
   return (
     <div className="h-full flex flex-col">
@@ -56,8 +55,8 @@ export function PanelTabs({ nodeID }: PanelTabsProps) {
               disabled={!canDecompose}
               className="flex items-center gap-2 cursor-pointer"
             >
-              <GitBranch className="w-4 h-4" />
-              <span className="hidden sm:inline">拆解</span>
+              <Bot className="w-4 h-4" />
+              <span className="hidden sm:inline">对话</span>
             </TabsTrigger>
             <TabsTrigger
               value="conclusion"

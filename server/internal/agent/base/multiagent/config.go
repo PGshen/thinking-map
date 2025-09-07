@@ -25,6 +25,7 @@ type PlanningConfig struct {
 // Host represents the host agent configuration
 type Host struct {
 	Model        model.ToolCallingChatModel `yaml:"model" json:"model"`
+	ReactAgent   *react.ReactAgent          `yaml:"react_agent" json:"react_agent"`
 	SystemPrompt string                     `yaml:"system_prompt" json:"system_prompt"`
 	Prompts      map[string]string          `yaml:"prompts,omitempty" json:"prompts,omitempty"`
 	Thinking     ThinkingConfig             `yaml:"thinking" json:"thinking"`
@@ -88,6 +89,10 @@ func (config *MultiAgentConfig) Validate() error {
 		if specialist.ChatModel == nil && (specialist.Invokable == nil || specialist.Streamable == nil) && specialist.ReactAgent == nil {
 			return fmt.Errorf("specialist %s has no model, invokable, streamable, or react agent configured", specialist.Name)
 		}
+	}
+
+	if config.MaxRounds == 0 {
+		config.MaxRounds = 30
 	}
 
 	return nil

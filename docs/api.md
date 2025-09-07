@@ -553,11 +553,8 @@ Response 200 OK:
   "requestID": "uuid"
 }
 
-
-#### 6.3.4 节点详情接口
-```yaml
-# 获取节点详情
-GET /api/v1/{mapID}/nodes/{nodeID}/details
+# 获取下一个可执行节点
+GET /api/v1/maps/{mapID}/executable-nodes
 Authorization: Bearer <token>
 
 Response 200 OK:
@@ -565,136 +562,11 @@ Response 200 OK:
   "code": 200,
   "message": "success",
   "data": {
-    "details": [
-      {
-        "id": "uuid",
-        "nodeID": "uuid",
-        "detailType": "string",
-        "content": {
-          "context": [
-            {
-              "nodeID": "uuid",
-              "type": "string",
-              "question": "string",
-              "target": "string",
-              "conclusion": "string"
-            }
-          ],
-          "question": "string",
-          "target": "string",
-          "message": [[1,2],[3,4]],
-          "decomposeResult": [
-            {
-              "question": "string",
-              "target": "string"
-            }
-          ],
-          "conclusion": "string"
-        },
-        "status": 1,
-        "metadata": {},
-        "createdAt": "2024-01-01T00:00:00Z",
-        "updatedAt": "2024-01-01T00:00:00Z"
-      }
-    ]
+    "nodeIDs": ["uuid"]
   },
   "timestamp": "2024-01-01T00:00:00Z",
   "requestID": "uuid"
 }
-
-# 创建节点详情
-POST /api/v1/{mapID}/nodes/{nodeID}/details
-Authorization: Bearer <token>
-Content-Type: application/json
-
-Request:
-{
-  "detailType": "string",
-  "content": {
-    "context": [
-      {
-        "nodeID": "uuid",
-        "type": "string",
-        "question": "string",
-        "target": "string",
-        "conclusion": "string"
-      }
-    ],
-    "question": "string",
-    "target": "string",
-    "message": [[1,2],[3,4]],
-    "decomposeResult": [
-      {
-        "question": "string",
-        "target": "string"
-      }
-    ],
-    "conclusion": "string"
-  },
-  "status": 1,
-  "metadata": {}
-}
-
-Response 200 OK:
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "id": "uuid",
-    "nodeID": "uuid",
-    "detailType": "string",
-    "content": { ... },
-    "status": 1,
-    "metadata": {},
-    "createdAt": "2024-01-01T00:00:00Z",
-    "updatedAt": "2024-01-01T00:00:00Z"
-  },
-  "timestamp": "2024-01-01T00:00:00Z",
-  "requestID": "uuid"
-}
-
-# 更新节点详情
-PUT /api/v1/node-details/{detailID}
-Authorization: Bearer <token>
-Content-Type: application/json
-
-Request:
-{
-  "content": { ... },
-  "status": 1,
-  "metadata": {}
-}
-
-Response 200 OK:
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "id": "uuid",
-    "nodeID": "uuid",
-    "detailType": "string",
-    "content": { ... },
-    "status": 1,
-    "metadata": {},
-    "updatedAt": "2024-01-01T00:00:00Z"
-  },
-  "timestamp": "2024-01-01T00:00:00Z",
-  "requestID": "uuid"
-}
-
-# 删除节点详情
-DELETE /api/v1/node-details/{detailID}
-Authorization: Bearer <token>
-
-Response 200 OK:
-{
-  "code": 200,
-  "message": "success",
-  "data": null,
-  "timestamp": "2024-01-01T00:00:00Z",
-  "requestID": "uuid"
-}
-```
 
 #### 6.3.5 思考相关接口
 ```yaml

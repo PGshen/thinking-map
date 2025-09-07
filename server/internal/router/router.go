@@ -93,6 +93,7 @@ func SetupRouter(
 			{
 				nodes.GET("", middleware.MapOwnershipMiddleware(mapRepo), nodeHandler.ListNodes)
 				nodes.POST("", nodeHandler.CreateNode)
+				nodes.GET("/executable-nodes", middleware.MapOwnershipMiddleware(mapRepo), nodeHandler.ExecutableNodes)
 				nodes.PUT("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.UpdateNode)
 				nodes.DELETE("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.DeleteNode)
 				nodes.PUT("/:nodeID/context", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.UpdateNodeContext)

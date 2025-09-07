@@ -35,6 +35,17 @@ func (h *ConversationAnalyzerHandler) PreHandler(ctx context.Context, input []*s
 
 	// Set analysis state
 	state.SetExecutionStatus(ExecutionStatusAnalyzing)
+
+	// Record execution start
+	record := &ExecutionRecord{
+		StepID:    "conversation_analysis",
+		Action:    ActionTypeThink,
+		Input:     input,
+		StartTime: time.Now(),
+		Status:    ExecutionStatusStarted,
+	}
+	state.AddExecutionRecord(record)
+
 	// Build conversation analysis prompt
 	prompt := buildConversationAnalysisPrompt(input)
 	return []*schema.Message{prompt}, nil
@@ -43,24 +54,44 @@ func (h *ConversationAnalyzerHandler) PreHandler(ctx context.Context, input []*s
 // PostHandler processes conversation analysis results
 func (h *ConversationAnalyzerHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	// Parse conversation context from LLM response
+	fmt.Printf("conversationAnalyze.Content: %s\n", output.Content)
 	context, err := h.parseConversationContext(output.Content)
 	if err != nil {
+		// Record execution error
+		if len(state.ExecutionHistory) > 0 {
+			lastRecord := state.ExecutionHistory[len(state.ExecutionHistory)-1]
+			lastRecord.Status = ExecutionStatusFailed
+			lastRecord.Error = err.Error()
+			lastRecord.EndTime = time.Now()
+			lastRecord.Duration = lastRecord.EndTime.Sub(lastRecord.StartTime)
+		}
 		return nil, fmt.Errorf("failed to parse conversation context: %w", err)
 	}
 
 	// Update state using unified method
 	state.UpdateConversationContext(context)
 	state.SetExecutionStatus(ExecutionStatusPlanning)
+
+	// Record execution completion
+	if len(state.ExecutionHistory) > 0 {
+		lastRecord := state.ExecutionHistory[len(state.ExecutionHistory)-1]
+		lastRecord.Output = output
+		lastRecord.Status = ExecutionStatusCompleted
+		lastRecord.EndTime = time.Now()
+		lastRecord.Duration = lastRecord.EndTime.Sub(lastRecord.StartTime)
+	}
+
 	return output, nil
 }
 
 func (h *ConversationAnalyzerHandler) parseConversationContext(content string) (*ConversationContext, error) {
 	var result struct {
-		UserIntent     string         `json:"userIntent"`
-		KeyTopics      []string       `json:"keyTopics"`
-		ContextSummary string         `json:"contextSummary"`
-		Complexity     string         `json:"complexity"`
-		Metadata       map[string]any `json:"metadata"`
+		IsIndependentTopic bool           `json:"isIndependentTopic"`
+		UserIntent         string         `json:"userIntent"`
+		KeyTopics          []string       `json:"keyTopics"`
+		ContextSummary     string         `json:"contextSummary"`
+		Complexity         string         `json:"complexity"`
+		Metadata           map[string]any `json:"metadata"`
 	}
 
 	err := json.Unmarshal([]byte(content), &result)
@@ -84,11 +115,12 @@ func (h *ConversationAnalyzerHandler) parseConversationContext(content string) (
 	}
 
 	return &ConversationContext{
-		UserIntent:     result.UserIntent,
-		KeyTopics:      result.KeyTopics,
-		ContextSummary: result.ContextSummary,
-		Complexity:     complexity,
-		Metadata:       result.Metadata,
+		IsIndependentTopic: result.IsIndependentTopic,
+		UserIntent:         result.UserIntent,
+		KeyTopics:          result.KeyTopics,
+		ContextSummary:     result.ContextSummary,
+		Complexity:         complexity,
+		Metadata:           result.Metadata,
 	}, nil
 }
 
@@ -137,6 +169,16 @@ func (h *PlanCreationHandler) PreHandler(ctx context.Context, input []*schema.Me
 	// Set planning state
 	state.SetExecutionStatus(ExecutionStatusPlanning)
 
+	// Record execution start
+	record := &ExecutionRecord{
+		StepID:    "plan_creation",
+		Action:    ActionTypePlan,
+		Input:     input,
+		StartTime: time.Now(),
+		Status:    ExecutionStatusStarted,
+	}
+	state.AddExecutionRecord(record)
+
 	prompt := buildPlanCreationPrompt(state, h.config)
 	return []*schema.Message{prompt}, nil
 }
@@ -146,12 +188,34 @@ func (h *PlanCreationHandler) PostHandler(ctx context.Context, output *schema.Me
 	// Parse task plan from LLM response
 	plan, err := h.parseTaskPlan(output.Content)
 	if err != nil {
+		// Record execution error
+		if len(state.ExecutionHistory) > 0 {
+			lastRecord := state.ExecutionHistory[len(state.ExecutionHistory)-1]
+			if lastRecord.StepID == "plan_creation" {
+				lastRecord.Status = ExecutionStatusFailed
+				lastRecord.Error = err.Error()
+				lastRecord.EndTime = time.Now()
+				lastRecord.Duration = lastRecord.EndTime.Sub(lastRecord.StartTime)
+			}
+		}
 		return nil, fmt.Errorf("failed to parse task plan: %w", err)
 	}
 
 	// Update state using unified methods
 	state.SetCurrentPlan(plan)
 	state.SetExecutionStatus(ExecutionStatusExecuting)
+
+	// Record execution completion
+	if len(state.ExecutionHistory) > 0 {
+		lastRecord := state.ExecutionHistory[len(state.ExecutionHistory)-1]
+		if lastRecord.StepID == "plan_creation" {
+			lastRecord.Output = output
+			lastRecord.Status = ExecutionStatusCompleted
+			lastRecord.EndTime = time.Now()
+			lastRecord.Duration = lastRecord.EndTime.Sub(lastRecord.StartTime)
+		}
+	}
+
 	return output, nil
 }
 
@@ -225,6 +289,19 @@ func (h *SpecialistHandler) PreHandler(ctx context.Context, input []*schema.Mess
 		return nil, fmt.Errorf("no current step found for specialist %s", h.specialist.Name)
 	}
 
+	// Create execution record at start
+	record := &ExecutionRecord{
+		StepID:    state.CurrentStep,
+		Action:    ActionTypeExecute,
+		Input:     input,
+		StartTime: time.Now(),
+		Status:    ExecutionStatusRunning,
+	}
+	state.AddExecutionRecord(record)
+
+	// Update step status to in progress
+	currentStep.Status = StepStatusRunning
+
 	// Build specialist prompt
 	prompt := buildSpecialistPrompt(h.specialist, currentStep, state)
 	return prompt, nil
@@ -248,15 +325,21 @@ func (h *SpecialistHandler) PostHandler(ctx context.Context, output *schema.Mess
 	// Update state using unified method
 	state.UpdateSpecialistResult(h.specialist.Name, result)
 
-	// Create execution record
-	record := &ExecutionRecord{
-		StepID:    state.CurrentStep,
-		Action:    ActionTypeExecute,
-		Output:    output,
-		StartTime: time.Now(),
-		Status:    ExecutionStatusCompleted,
+	// Update the existing execution record
+	if len(state.ExecutionHistory) > 0 {
+		// Find the most recent record for this step
+		for i := len(state.ExecutionHistory) - 1; i >= 0; i-- {
+			record := state.ExecutionHistory[i]
+			if record.StepID == state.CurrentStep && record.Action == ActionTypeExecute {
+				// Update the existing record
+				record.Output = output
+				record.EndTime = time.Now()
+				record.Duration = record.EndTime.Sub(record.StartTime)
+				record.Status = ExecutionStatusCompleted
+				break
+			}
+		}
 	}
-	state.AddExecutionRecord(record)
 
 	// Update step status
 	currentStep.Status = StepStatusCompleted
@@ -299,20 +382,9 @@ func (h *PlanExecutionHandler) Execute(ctx context.Context, input *schema.Messag
 
 	// Mark step as executing
 	nextStep.Status = StepStatusRunning
-	now := time.Now()
 
 	// Update current step using unified method
 	state.SetCurrentStep(nextStep.ID)
-
-	// Create execution record
-	record := &ExecutionRecord{
-		StepID:    nextStep.ID,
-		Action:    ActionTypeExecute,
-		Output:    input,
-		StartTime: now,
-		Status:    ExecutionStatusStarted,
-	}
-	state.AddExecutionRecord(record)
 
 	return &schema.Message{
 		Role:    schema.Assistant,
@@ -482,11 +554,44 @@ func NewFeedbackProcessorHandler(config *MultiAgentConfig) *FeedbackProcessorHan
 func (h *FeedbackProcessorHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 	// Set feedback processing state
 	state.SetExecutionStatus(ExecutionStatusRunning)
+
+	// Create execution record for feedback processing
+	record := &ExecutionRecord{
+		StepID:    "feedback_processing",
+		Action:    ActionTypeReflect,
+		Input:     input,
+		StartTime: time.Now(),
+		Status:    ExecutionStatusRunning,
+	}
+	state.AddExecutionRecord(record)
+
 	return buildFeedbackPrompt(state), nil
 }
 
 func (h *FeedbackProcessorHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	err := h.processFeedbackResult(output, state)
+
+	// Update the existing execution record
+	if len(state.ExecutionHistory) > 0 {
+		// Find the most recent feedback processing record
+		for i := len(state.ExecutionHistory) - 1; i >= 0; i-- {
+			record := state.ExecutionHistory[i]
+			if record.StepID == "feedback_processing" && record.Action == ActionTypeReflect {
+				// Update the existing record
+				record.Output = output
+				record.EndTime = time.Now()
+				record.Duration = record.EndTime.Sub(record.StartTime)
+				if err != nil {
+					record.Status = ExecutionStatusFailed
+					record.Error = err.Error()
+				} else {
+					record.Status = ExecutionStatusCompleted
+				}
+				break
+			}
+		}
+	}
+
 	if err != nil {
 		return output, err
 	}
@@ -544,6 +649,11 @@ func (h *ReflectionBranchHandler) evaluateReflectionDecision(state *MultiAgentSt
 			// 如果计划已经执行完毕，那么就不能再到planExecutionNode,而是应该到finalAnswerNode
 			state.SetExecutionStatus(ExecutionStatusCompleted)
 			decision = toFinalAnswerNodeKey
+			// 最后计划步骤状态更新为完成
+			currentStep := findCurrentStep(state)
+			if currentStep != nil {
+				currentStep.Status = StepStatusCompleted
+			}
 		}
 	}()
 
@@ -610,11 +720,44 @@ func NewPlanUpdateHandler(config *MultiAgentConfig) *PlanUpdateHandler {
 func (h *PlanUpdateHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
 	// Set plan update state
 	state.SetExecutionStatus(ExecutionStatusPlanning)
+
+	// Create execution record for plan update
+	record := &ExecutionRecord{
+		StepID:    "plan_update",
+		Action:    ActionTypePlan,
+		Input:     input,
+		StartTime: time.Now(),
+		Status:    ExecutionStatusRunning,
+	}
+	state.AddExecutionRecord(record)
+
 	return buildPlanUpdatePrompt(state), nil
 }
 
 func (h *PlanUpdateHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	err := h.processPlanUpdate(output, state)
+
+	// Update the existing execution record
+	if len(state.ExecutionHistory) > 0 {
+		// Find the most recent plan update record
+		for i := len(state.ExecutionHistory) - 1; i >= 0; i-- {
+			record := state.ExecutionHistory[i]
+			if record.StepID == "plan_update" && record.Action == ActionTypePlan {
+				// Update the existing record
+				record.Output = output
+				record.EndTime = time.Now()
+				record.Duration = record.EndTime.Sub(record.StartTime)
+				if err != nil {
+					record.Status = ExecutionStatusFailed
+					record.Error = err.Error()
+				} else {
+					record.Status = ExecutionStatusCompleted
+				}
+				break
+			}
+		}
+	}
+
 	if err != nil {
 		return output, err
 	}
@@ -1001,6 +1144,16 @@ func NewFinalAnswerHandler(config *MultiAgentConfig) *FinalAnswerHandler {
 }
 
 func (h *FinalAnswerHandler) PreHandler(ctx context.Context, input []*schema.Message, state *MultiAgentState) ([]*schema.Message, error) {
+	// Record execution start
+	record := &ExecutionRecord{
+		StepID:    "final_answer",
+		Action:    ActionTypeAnswer,
+		Input:     input,
+		StartTime: time.Now(),
+		Status:    ExecutionStatusStarted,
+	}
+	state.AddExecutionRecord(record)
+
 	// Build final answer prompt
 	prompt := buildFinalAnswerPrompt(state)
 	return []*schema.Message{prompt}, nil
@@ -1009,5 +1162,17 @@ func (h *FinalAnswerHandler) PreHandler(ctx context.Context, input []*schema.Mes
 func (h *FinalAnswerHandler) PostHandler(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 	state.FinalAnswer = output
 	state.IsCompleted = true
+
+	// Update execution record to completed status
+	if len(state.ExecutionHistory) > 0 {
+		lastRecord := state.ExecutionHistory[len(state.ExecutionHistory)-1]
+		if lastRecord.StepID == "final_answer" {
+			lastRecord.Output = output
+			lastRecord.Status = ExecutionStatusCompleted
+			lastRecord.EndTime = time.Now()
+			lastRecord.Duration = lastRecord.EndTime.Sub(lastRecord.StartTime)
+		}
+	}
+
 	return output, nil
 }
