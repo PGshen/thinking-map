@@ -309,7 +309,7 @@ func (cm *ContextManager) FormatContextForAgent(contextInfo *ContextInfo) string
 	}
 
 	// 添加当前节点的具体任务
-	prompt += fmt.Sprintf(`\n\n## 当前节点任务
+	prompt += fmt.Sprintf("\n\n"+`## 当前节点任务
 你现在需要专注于解决以下具体问题：
 - 节点问题：%s
 - 节点目标：%s
@@ -317,9 +317,7 @@ func (cm *ContextManager) FormatContextForAgent(contextInfo *ContextInfo) string
 
 **你的任务是：**
 1. 深入分析当前节点的问题
-2. 结合已有的上下文信息提供解决方案
-3. 如果问题复杂，建议如何进一步分解
-4. 提供具体可行的下一步行动建议`,
+2. 结合已有的上下文信息提供解决方案`,
 		contextInfo.NodeInfo.Question,
 		contextInfo.NodeInfo.Target,
 		contextInfo.NodeInfo.Status)
@@ -359,7 +357,6 @@ func (cm *ContextManager) FormatContextForAgent(contextInfo *ContextInfo) string
 		}
 	}
 
-	prompt += "\n---\n\n请基于以上信息，为当前节点提供深入的分析和具体的解决建议。"
 	return prompt
 }
 

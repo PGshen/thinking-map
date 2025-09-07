@@ -372,7 +372,7 @@ func (m *analyzerMessageHandler) OnStreamMessage(ctx context.Context, sr *schema
 		msgReq := dto.CreateMessageRequest{
 			ID:          messageID,
 			UserID:      m.userID,
-			MessageType: model.MsgTypeText,
+			MessageType: model.MsgTypeThought,
 			Role:        schema.Assistant,
 			Content: model.MessageContent{
 				Text: userIntent.String(),

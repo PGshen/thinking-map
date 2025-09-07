@@ -98,7 +98,6 @@ func NewMultiAgent(ctx context.Context, config *MultiAgentConfig, agentOptions .
 			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 				state.FinalAnswer = output
 				state.IsCompleted = true
-				fmt.Printf("direct answer (react): %s", output.Content)
 				return output, nil
 			}),
 			compose.WithNodeName("direct_answer"),
@@ -114,7 +113,6 @@ func NewMultiAgent(ctx context.Context, config *MultiAgentConfig, agentOptions .
 			compose.WithStatePostHandler(func(ctx context.Context, output *schema.Message, state *MultiAgentState) (*schema.Message, error) {
 				state.FinalAnswer = output
 				state.IsCompleted = true
-				fmt.Printf("direct answer (model): %s", output.Content)
 				return output, nil
 			}),
 			compose.WithNodeName("direct_answer"),

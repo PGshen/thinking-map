@@ -98,7 +98,7 @@ export const useAutoLayout = (): UseAutoLayoutReturn => {
       const nonDependencyEdges = edges.filter(edge => edge.type !== 'dependency');
       if (nonDependencyEdges.length > 0) {
         layoutEdges = nonDependencyEdges;
-        layoutConfig.direction = layoutConfig.direction === 'TB' ? 'LR' : 'TB'; // 按依赖边的方向
+        // layoutConfig.direction = layoutConfig.direction === 'TB' ? 'LR' : 'TB'; // 按依赖边的方向
         console.log('layoutConfig.direction', layoutConfig.direction)
       }
       // 计算新的布局
