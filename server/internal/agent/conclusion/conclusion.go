@@ -275,27 +275,117 @@ func (h *AnalysisNodeHandler) PreHandler(ctx context.Context, input []*schema.Me
 }
 
 // 结论分析节点后置处理
+// 该函数负责从LLM输出中提取结论类型和生成策略，并将其保存到状态中
+// 使用关键词匹配和语义分析来确定最适合的结论类型和生成策略
 func (h *AnalysisNodeHandler) PostHandler(ctx context.Context, output *schema.Message, state *ConclusionAgentState) (*schema.Message, error) {
 	// 从输出中提取结论类型和生成策略
-	// 这里简化处理，实际应用中可能需要更复杂的解析逻辑
-	content := output.Content
+	// 转换为小写以便不区分大小写进行匹配
+	content := strings.ToLower(output.Content)
 
-	// 简单解析，实际应用中可能需要更复杂的解析逻辑
-	if strings.Contains(content, "分析型") {
-		state.ConclusionType = "分析型"
-	} else if strings.Contains(content, "创意型") {
-		state.ConclusionType = "创意型"
-	} else if strings.Contains(content, "决策型") {
-		state.ConclusionType = "决策型"
-	} else if strings.Contains(content, "学习型") {
-		state.ConclusionType = "学习型"
-	} else {
-		// 默认为分析型
-		state.ConclusionType = "分析型"
+	// 增强的结论类型识别逻辑
+	// 使用更多关键词匹配，提高识别准确性
+	// 每种结论类型都有对应的关键词列表和策略列表
+	type conclusionTypeMatch struct {
+		type_      string   // 结论类型
+		keywords   []string // 用于识别该类型的关键词
+		strategies []string // 该类型可用的生成策略
 	}
 
-	// 提取生成策略
-	state.GenerationStrategy = "基于" + state.ConclusionType + "的生成策略"
+	// 定义各种结论类型的匹配器
+	typeMatchers := []conclusionTypeMatch{
+		{
+			type_:    "分析型",
+			keywords: []string{"分析型", "分析", "逻辑", "系统性", "结构化", "推理", "归纳", "演绎"},
+			strategies: []string{"系统分析", "逻辑推理", "数据支持", "多角度思考"},
+		},
+		{
+			type_:    "创意型",
+			keywords: []string{"创意型", "创意", "创新", "创造", "发散", "想象", "灵感", "突破"},
+			strategies: []string{"发散思维", "跨领域联想", "创新视角", "突破常规"},
+		},
+		{
+			type_:    "决策型",
+			keywords: []string{"决策型", "决策", "选择", "判断", "权衡", "评估", "方案", "行动"},
+			strategies: []string{"多方案对比", "利弊权衡", "风险评估", "行动计划"},
+		},
+		{
+			type_:    "学习型",
+			keywords: []string{"学习型", "学习", "教育", "知识", "理解", "掌握", "记忆", "总结"},
+			strategies: []string{"知识整合", "概念梳理", "要点提炼", "学习路径"},
+		},
+	}
+
+	// 默认为分析型
+	state.ConclusionType = "分析型"
+	bestMatchScore := 0
+	var bestMatchStrategies []string
+
+	// 遍历所有类型匹配器，找出最佳匹配
+	// 记录每种类型的匹配分数，用于调试和日志
+	typeMatchScores := make(map[string]int)
+	for _, matcher := range typeMatchers {
+		score := 0
+		matchedKeywords := []string{}
+
+		// 计算每个关键词的匹配情况
+		for _, keyword := range matcher.keywords {
+			if strings.Contains(content, keyword) {
+				score++
+				matchedKeywords = append(matchedKeywords, keyword)
+			}
+		}
+
+		typeMatchScores[matcher.type_] = score
+
+		// 更新最佳匹配
+		if score > bestMatchScore {
+			bestMatchScore = score
+			state.ConclusionType = matcher.type_
+			bestMatchStrategies = matcher.strategies
+		}
+	}
+
+	// 记录匹配分数，便于调试
+	matchScoreLog := fmt.Sprintf("结论类型匹配分数: 分析型=%d, 创意型=%d, 决策型=%d, 学习型=%d, 最终选择=%s",
+		typeMatchScores["分析型"], typeMatchScores["创意型"], typeMatchScores["决策型"], typeMatchScores["学习型"], state.ConclusionType)
+	fmt.Println(matchScoreLog)
+
+	// 从输出中提取或构建生成策略
+	// 首先尝试从输出中直接提取策略信息
+	strategyFound := false
+	if strings.Contains(content, "策略") || strings.Contains(content, "方法") {
+		// 简单提取策略描述的句子
+		sentences := strings.Split(output.Content, "。")
+		for _, sentence := range sentences {
+			if strings.Contains(sentence, "策略") || strings.Contains(sentence, "方法") {
+				state.GenerationStrategy = strings.TrimSpace(sentence)
+				strategyFound = true
+				fmt.Println("从输出中提取到策略:", state.GenerationStrategy)
+				break
+			}
+		}
+	}
+
+	// 如果没有从输出中提取到策略，则基于结论类型构建策略
+	if !strategyFound {
+		// 从最佳匹配的策略列表中选择一个
+		if len(bestMatchStrategies) > 0 {
+			// 简单起见，这里选择第一个策略
+			strategy := bestMatchStrategies[0]
+			state.GenerationStrategy = fmt.Sprintf("基于%s的%s策略", state.ConclusionType, strategy)
+			fmt.Println("基于结论类型构建策略:", state.GenerationStrategy)
+		} else {
+			// 兜底策略
+			state.GenerationStrategy = "基于" + state.ConclusionType + "的综合思考策略"
+			fmt.Println("使用兜底策略:", state.GenerationStrategy)
+		}
+	}
+
+	// 确保策略不为空，提供默认策略作为兜底方案
+	if state.GenerationStrategy == "" {
+		state.GenerationStrategy = "基于" + state.ConclusionType + "的综合思考策略"
+		fmt.Println("策略为空，使用默认策略:", state.GenerationStrategy)
+	}
 
 	return output, nil
 }

@@ -39,6 +39,10 @@
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@shadcn/ui": "^0.0.4",
+    "@tiptap/extension-bubble-menu": "^3.4.1",
+    "@tiptap/pm": "^3.4.1",
+    "@tiptap/react": "^3.4.1",
+    "@tiptap/starter-kit": "^3.4.1",
     "@types/dagre": "^0.7.53",
     "ai": "^4.3.19",
     "axios": "^1.10.0",
@@ -62,6 +66,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -70,6 +75,7 @@
     "eslint-config-prettier": "^10.1.5",
     "prettier": "^3.6.2",
     "tailwindcss": "^4",
+    "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "^1.3.4",
     "typescript": "^5"
   }

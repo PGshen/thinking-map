@@ -6,17 +6,22 @@
  */
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Save, RotateCcw, CheckCircle, AlertCircle, Clock, FileText, Download } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Save, RotateCcw, CheckCircle, AlertCircle, Clock, FileText, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/hooks/use-toast';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { toast } from 'sonner';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
+
+// Tiptap imports
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import BubbleMenu from '@tiptap/extension-bubble-menu';
 
 interface ConclusionTabProps {
   nodeID: string;
@@ -31,36 +36,166 @@ interface ExecutionLog {
   details?: string;
 }
 
+interface TextSelectionPopupProps {
+  text: string;
+  onSubmit: (text: string) => Promise<void>;
+  onClose: () => void;
+}
+
+// 文本选择弹出框组件
+function TextSelectionPopup({ text, onSubmit, onClose }: TextSelectionPopupProps) {
+  const [inputText, setInputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const handleSubmit = async () => {
+    if (!inputText.trim()) return;
+    
+    setIsLoading(true);
+    try {
+      await onSubmit(inputText);
+      setInputText('');
+      onClose();
+    } catch (error) {
+      console.error('Error processing text:', error);
+      toast.error('处理文本时出错，请重试');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  return (
+    <div className="flex flex-col p-2 gap-2 bg-white dark:bg-gray-800 border rounded-md shadow-md min-w-[200px]">
+      <div className="text-sm font-medium mb-1 truncate max-w-[200px]">
+        选中文本: {text}
+      </div>
+      <input
+        type="text"
+        value={inputText}
+        onChange={(e) => setInputText(e.target.value)}
+        placeholder="输入提示词..."
+        className="px-2 py-1 border rounded text-sm dark:bg-gray-700 dark:border-gray-600"
+        autoFocus
+      />
+      <div className="flex gap-2">
+        <Button 
+          size="sm" 
+          onClick={handleSubmit} 
+          disabled={isLoading || !inputText.trim()}
+          className="flex-1"
+        >
+          {isLoading ? '处理中...' : '提交'}
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={onClose}
+          className="flex-1"
+        >
+          取消
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   const nodeData = node.data as any;
-  const [conclusion, setConclusion] = useState(nodeData?.conclusion || '');
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
   const [executionProgress, setExecutionProgress] = useState(0);
+  const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
+  const [showTextSelectionPopup, setShowTextSelectionPopup] = useState(false);
+  const [selectionPosition, setSelectionPosition] = useState({ top: 0, left: 0 });
   
-  const { toast } = useToast();
+  const editorRef = useRef<HTMLDivElement>(null);
   const { actions } = useWorkspaceStore();
 
+  // 初始化Tiptap编辑器
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: nodeData?.conclusion || '',
+    onUpdate: ({ editor }) => {
+      setHasChanges(editor.getHTML() !== (nodeData?.conclusion || ''));
+    },
+    onSelectionUpdate: ({ editor }) => {
+      const { from, to } = editor.state.selection;
+      const text = editor.state.doc.textBetween(from, to, ' ');
+      
+      if (text && text.trim()) {
+        setSelectedText(text);
+        
+        // 计算选择位置
+        if (editorRef.current) {
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const editorRect = editorRef.current.getBoundingClientRect();
+            
+            setSelectionPosition({
+              top: rect.bottom - editorRect.top,
+              left: rect.left - editorRect.left
+            });
+            
+            setShowTextSelectionPopup(true);
+          }
+        }
+      } else {
+        setShowTextSelectionPopup(false);
+      }
+    },
+    immediatelyRender: false, // 解决SSR渲染问题
+  });
+
+  // 处理文本选择后的API请求
+  const handleTextSelection = async (prompt: string) => {
+    if (!editor) return;
+    
+    const { from, to } = editor.state.selection;
+    const selectedText = editor.state.doc.textBetween(from, to, ' ');
+    
+    if (!selectedText.trim()) {
+      toast.error('请先选择文本');
+      return;
+    }
+    
+    try {
+      // TODO: 调用API处理选中的文本
+      // const response = await processSelectedText(selectedText, prompt);
+      
+      // 模拟API响应
+      const mockResponse = `基于"${prompt}"处理的结果: ${selectedText} 的分析结果`;
+      
+      // 将处理结果插入到编辑器中
+      editor
+        .chain()
+        .focus()
+        .deleteRange({ from, to })
+        .insertContent(mockResponse)
+        .run();
+        
+      toast.success('文本处理成功');
+    } catch (error) {
+      console.error('Error processing text:', error);
+      toast.error('处理文本时出错');
+    }
+  };
+  
   // 监听节点数据变化
   useEffect(() => {
-    const nodeData = node.data as any;
-    setConclusion(nodeData?.conclusion || '');
-    setHasChanges(false);
+    if (editor && nodeData) {
+      editor.commands.setContent(nodeData.conclusion || '');
+      setHasChanges(false);
+    }
     
     // 模拟加载执行日志
     const status = nodeData?.status || 'pending';
     if (status === 'running' || status === 'completed') {
       loadExecutionLogs();
     }
-  }, [node]);
-
-  // 检查是否有未保存的更改
-  useEffect(() => {
-    const nodeData = node.data as any;
-    const changed = conclusion !== (nodeData?.conclusion || '');
-    setHasChanges(changed);
-  }, [conclusion, node]);
+  }, [node, editor]);
 
   // 加载执行日志
   const loadExecutionLogs = () => {
@@ -115,12 +250,14 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   };
 
   const handleSave = async () => {
-    if (!hasChanges) return;
+    if (!hasChanges || !editor) return;
+    
+    const editorContent = editor.getHTML();
     
     setIsSaving(true);
     try {
       // TODO: 调用API保存结论
-      // await updateNodeConclusion(nodeID, conclusion);
+      // await updateNodeConclusion(nodeID, editorContent);
       
       // 更新本地状态
       const nodeData = node.data as any;
@@ -128,54 +265,31 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
       actions.updateNode(nodeID, { 
         data: {
           ...nodeData,
-          conclusion,
-          status: conclusion.trim() ? 'completed' : currentStatus
+          conclusion: editorContent,
+          status: editorContent.trim() ? 'completed' : currentStatus
         }
       });
       
-      toast({
-        title: '保存成功',
-        description: '结论已更新',
-      });
+      toast.success('结论已保存');
       
       setHasChanges(false);
     } catch (error) {
-      toast({
-        title: '保存失败',
-        description: '更新结论时出错，请重试',
-        variant: 'destructive',
-      });
+      toast.error('保存失败，请重试');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleReset = () => {
+    if (!editor) return;
+    
     const nodeData = node.data as any;
-    setConclusion(nodeData?.conclusion || '');
+    editor.commands.setContent(nodeData?.conclusion || '');
     setHasChanges(false);
   };
-
-  const handleExportLogs = () => {
-    // TODO: 实现日志导出功能
-    const logsText = executionLogs
-      .map(log => `[${log.timestamp}] ${log.type.toUpperCase()}: ${log.message}${log.details ? ` - ${log.details}` : ''}`)
-      .join('\n');
-    
-    const blob = new Blob([logsText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `execution-logs-${nodeID}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: '导出成功',
-      description: '执行日志已导出',
-    });
+  
+  const toggleLogsCollapse = () => {
+    setIsLogsCollapsed(!isLogsCollapsed);
   };
 
   // 获取日志类型图标
@@ -199,154 +313,126 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   };
 
   return (
-    <div className="h-full flex flex-col space-y-6">
-      {/* 执行状态 */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">执行状态</h3>
-          <Badge 
-            variant={(nodeData?.status || 'pending') === 'completed' ? 'default' : 'secondary'}
-            className={(nodeData?.status || 'pending') === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}
-          >
-            {(nodeData?.status || 'pending') === 'completed' ? '已完成' : '执行中'}
-          </Badge>
-        </div>
-        
-        {/* 进度条 */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>执行进度</span>
-            <span>{executionProgress}%</span>
-          </div>
-          <Progress value={executionProgress} className="w-full" />
-        </div>
-      </div>
-      
-      <Separator />
-      
-      {/* 结论编辑 */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="conclusion">执行结论</Label>
-          {(nodeData?.status || 'pending') === 'completed' && (
-            <CheckCircle className="w-5 h-5 text-green-600" />
-          )}
-        </div>
-        
-        <Textarea
-          id="conclusion"
-          value={conclusion}
-          onChange={(e) => setConclusion(e.target.value)}
-          placeholder={(nodeData?.status || 'pending') === 'running' ? '任务执行中，结论将在完成后生成...' : '请输入执行结论和总结...'}
-          className="min-h-[120px] resize-none"
-          disabled={(nodeData?.status || 'pending') === 'running'}
-        />
-        
-        {/* 保存操作 */}
-        {node.status !== 'running' && (
-          <div className="flex gap-2">
-            <Button
-              onClick={handleSave}
-              disabled={!hasChanges || isSaving}
-              className="flex-1"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              {isSaving ? '保存中...' : '保存结论'}
-            </Button>
-            
-            <Button
-              onClick={handleReset}
-              disabled={!hasChanges}
-              variant="outline"
-              className="flex-1"
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              重置
-            </Button>
-          </div>
-        )}
-      </div>
-      
-      <Separator />
-      
-      {/* 执行日志 */}
-      <div className="space-y-4 flex-1 overflow-hidden">
-        <div className="flex items-center justify-between">
-          <h4 className="font-medium">执行日志</h4>
-          {executionLogs.length > 0 && (
-            <Button
-              onClick={handleExportLogs}
-              variant="outline"
-              size="sm"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              导出
-            </Button>
-          )}
-        </div>
-        
-        {executionLogs.length > 0 ? (
-          <div className="space-y-3 max-h-[300px] overflow-y-auto">
-            {executionLogs.map((log) => (
-              <div
-                key={log.id}
-                className={`p-3 border-l-4 rounded-r-md ${getLogStyle(log.type)}`}
-              >
-                <div className="flex items-start gap-3">
-                  {getLogIcon(log.type)}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{log.message}</p>
-                      <span className="text-xs text-muted-foreground">
-                        {log.timestamp}
-                      </span>
-                    </div>
-                    {log.details && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {log.details}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  {node.status === 'pending' ? '任务尚未开始执行' : '暂无执行日志'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-      
-      {/* 子任务完成情况 */}
-      {node.children && node.children.length > 0 && (
-        <>
-          <Separator />
-          <div className="space-y-3">
-            <h4 className="font-medium">子任务完成情况</h4>
-            <div className="space-y-2">
-              {node.children.map((child: any, index: number) => (
-                <div key={child.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-                  <span className="text-sm font-medium">#{index + 1} {child.question}</span>
-                  <Badge 
-                    variant={child.status === 'completed' ? 'default' : 'secondary'}
-                    className={child.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+    <div className="h-full flex flex-col">
+      {/* 上半部分：状态和结论编辑器 */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* 结论编辑器 */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">          
+          {/* Tiptap编辑器 */}
+          <div className="flex-1 border rounded-md overflow-hidden flex flex-col relative" ref={editorRef}>
+            {editor && (
+              <>
+                {showTextSelectionPopup && selectedText && (
+                  <div 
+                    className="absolute z-10"
+                    style={{
+                      top: `${selectionPosition.top}px`,
+                      left: `${selectionPosition.left}px`,
+                    }}
                   >
-                    {child.status === 'completed' ? '已完成' : '未完成'}
-                  </Badge>
+                    <TextSelectionPopup 
+                      text={selectedText}
+                      onClose={() => setShowTextSelectionPopup(false)}
+                      onSubmit={handleTextSelection}
+                    />
+                  </div>
+                )}
+                
+                <EditorContent 
+                  editor={editor} 
+                  className="flex-1 p-3 overflow-y-auto prose prose-sm max-w-none dark:prose-invert"
+                  disabled={(nodeData?.status || 'pending') === 'running'}
+                />
+              </>
+            )}
+          </div>
+          
+          {/* 保存操作 */}
+          {node.status !== 'running' && (
+            <div className="flex gap-2 mt-3">
+              <Button
+                onClick={handleSave}
+                disabled={!hasChanges || isSaving}
+                className="flex-1"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {isSaving ? '保存中...' : '保存结论'}
+              </Button>
+              
+              <Button
+                onClick={handleReset}
+                disabled={!hasChanges}
+                variant="outline"
+                className="flex-1"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                重置
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <Separator className="my-4" />
+      
+      {/* 下半部分：吸附在底部的可折叠执行日志 */}
+      <div className="sticky bottom-0 bg-background border-t">
+        <Collapsible
+          open={!isLogsCollapsed}
+          onOpenChange={toggleLogsCollapse}
+          className="w-full"
+        >
+        <div className="flex items-center justify-between">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="flex items-center gap-1 p-0">
+              <h4 className="font-medium">执行日志</h4>
+              {isLogsCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+        
+        <CollapsibleContent className="mt-2">
+          {executionLogs.length > 0 ? (
+            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+              {executionLogs.map((log) => (
+                <div
+                  key={log.id}
+                  className={`p-3 border-l-4 rounded-r-md ${getLogStyle(log.type)}`}
+                >
+                  <div className="flex items-start gap-3">
+                    {getLogIcon(log.type)}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">{log.message}</p>
+                        <span className="text-xs text-muted-foreground">
+                          {log.timestamp}
+                        </span>
+                      </div>
+                      {log.details && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {log.details}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-        </>
-      )}
+          ) : (
+            <Card>
+              <CardContent className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {node.status === 'pending' ? '任务尚未开始执行' : '暂无执行日志'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
+      </div>
     </div>
   );
 }
