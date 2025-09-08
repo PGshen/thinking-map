@@ -6,22 +6,17 @@
  */
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Save, RotateCcw, CheckCircle, AlertCircle, Clock, FileText, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Save, RotateCcw, CheckCircle, AlertCircle, Clock, FileText, ChevronDown, ChevronUp, Edit, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 
-// Tiptap imports
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import BubbleMenu from '@tiptap/extension-bubble-menu';
+// 导入新的Notion编辑器
+import EditorClient from '@/components/editor-client';
 
 interface ConclusionTabProps {
   nodeID: string;
@@ -36,67 +31,7 @@ interface ExecutionLog {
   details?: string;
 }
 
-interface TextSelectionPopupProps {
-  text: string;
-  onSubmit: (text: string) => Promise<void>;
-  onClose: () => void;
-}
 
-// 文本选择弹出框组件
-function TextSelectionPopup({ text, onSubmit, onClose }: TextSelectionPopupProps) {
-  const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const handleSubmit = async () => {
-    if (!inputText.trim()) return;
-    
-    setIsLoading(true);
-    try {
-      await onSubmit(inputText);
-      setInputText('');
-      onClose();
-    } catch (error) {
-      console.error('Error processing text:', error);
-      toast.error('处理文本时出错，请重试');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  return (
-    <div className="flex flex-col p-2 gap-2 bg-white dark:bg-gray-800 border rounded-md shadow-md min-w-[200px]">
-      <div className="text-sm font-medium mb-1 truncate max-w-[200px]">
-        选中文本: {text}
-      </div>
-      <input
-        type="text"
-        value={inputText}
-        onChange={(e) => setInputText(e.target.value)}
-        placeholder="输入提示词..."
-        className="px-2 py-1 border rounded text-sm dark:bg-gray-700 dark:border-gray-600"
-        autoFocus
-      />
-      <div className="flex gap-2">
-        <Button 
-          size="sm" 
-          onClick={handleSubmit} 
-          disabled={isLoading || !inputText.trim()}
-          className="flex-1"
-        >
-          {isLoading ? '处理中...' : '提交'}
-        </Button>
-        <Button 
-          size="sm" 
-          variant="outline" 
-          onClick={onClose}
-          className="flex-1"
-        >
-          取消
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   const nodeData = node.data as any;
@@ -105,88 +40,22 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
   const [executionProgress, setExecutionProgress] = useState(0);
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
-  const [selectedText, setSelectedText] = useState('');
-  const [showTextSelectionPopup, setShowTextSelectionPopup] = useState(false);
-  const [selectionPosition, setSelectionPosition] = useState({ top: 0, left: 0 });
-  
-  const editorRef = useRef<HTMLDivElement>(null);
+  const [editorContent, setEditorContent] = useState(nodeData?.conclusion || '');
+  const [isEditing, setIsEditing] = useState(true);
   const { actions } = useWorkspaceStore();
 
-  // 初始化Tiptap编辑器
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: nodeData?.conclusion || '',
-    onUpdate: ({ editor }) => {
-      setHasChanges(editor.getHTML() !== (nodeData?.conclusion || ''));
-    },
-    onSelectionUpdate: ({ editor }) => {
-      const { from, to } = editor.state.selection;
-      const text = editor.state.doc.textBetween(from, to, ' ');
-      
-      if (text && text.trim()) {
-        setSelectedText(text);
-        
-        // 计算选择位置
-        if (editorRef.current) {
-          const selection = window.getSelection();
-          if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            const editorRect = editorRef.current.getBoundingClientRect();
-            
-            setSelectionPosition({
-              top: rect.bottom - editorRect.top,
-              left: rect.left - editorRect.left
-            });
-            
-            setShowTextSelectionPopup(true);
-          }
-        }
-      } else {
-        setShowTextSelectionPopup(false);
-      }
-    },
-    immediatelyRender: false, // 解决SSR渲染问题
-  });
+  // 处理编辑器内容变化
+  const handleEditorChange = useCallback((content: string) => {
+    setEditorContent(content);
+    setHasChanges(content !== (nodeData?.conclusion || ''));
+  }, [nodeData?.conclusion]);
 
-  // 处理文本选择后的API请求
-  const handleTextSelection = async (prompt: string) => {
-    if (!editor) return;
-    
-    const { from, to } = editor.state.selection;
-    const selectedText = editor.state.doc.textBetween(from, to, ' ');
-    
-    if (!selectedText.trim()) {
-      toast.error('请先选择文本');
-      return;
-    }
-    
-    try {
-      // TODO: 调用API处理选中的文本
-      // const response = await processSelectedText(selectedText, prompt);
-      
-      // 模拟API响应
-      const mockResponse = `基于"${prompt}"处理的结果: ${selectedText} 的分析结果`;
-      
-      // 将处理结果插入到编辑器中
-      editor
-        .chain()
-        .focus()
-        .deleteRange({ from, to })
-        .insertContent(mockResponse)
-        .run();
-        
-      toast.success('文本处理成功');
-    } catch (error) {
-      console.error('Error processing text:', error);
-      toast.error('处理文本时出错');
-    }
-  };
+
   
   // 监听节点数据变化
   useEffect(() => {
-    if (editor && nodeData) {
-      editor.commands.setContent(nodeData.conclusion || '');
+    if (nodeData) {
+      setEditorContent(nodeData.conclusion || '');
       setHasChanges(false);
     }
     
@@ -195,7 +64,7 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
     if (status === 'running' || status === 'completed') {
       loadExecutionLogs();
     }
-  }, [node, editor]);
+  }, [node]);
 
   // 加载执行日志
   const loadExecutionLogs = () => {
@@ -250,9 +119,7 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   };
 
   const handleSave = async () => {
-    if (!hasChanges || !editor) return;
-    
-    const editorContent = editor.getHTML();
+    if (!hasChanges) return;
     
     setIsSaving(true);
     try {
@@ -281,10 +148,8 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   };
 
   const handleReset = () => {
-    if (!editor) return;
-    
     const nodeData = node.data as any;
-    editor.commands.setContent(nodeData?.conclusion || '');
+    setEditorContent(nodeData?.conclusion || '');
     setHasChanges(false);
   };
   
@@ -318,45 +183,29 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* 结论编辑器 */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">          
-          {/* Tiptap编辑器 */}
-          <div className="flex-1 border rounded-md overflow-hidden flex flex-col relative" ref={editorRef}>
-            {editor && (
-              <>
-                {showTextSelectionPopup && selectedText && (
-                  <div 
-                    className="absolute z-10"
-                    style={{
-                      top: `${selectionPosition.top}px`,
-                      left: `${selectionPosition.left}px`,
-                    }}
-                  >
-                    <TextSelectionPopup 
-                      text={selectedText}
-                      onClose={() => setShowTextSelectionPopup(false)}
-                      onSubmit={handleTextSelection}
-                    />
-                  </div>
-                )}
-                
-                <EditorContent 
-                  editor={editor} 
-                  className="flex-1 p-3 overflow-y-auto prose prose-sm max-w-none dark:prose-invert"
-                  disabled={(nodeData?.status || 'pending') === 'running'}
-                />
-              </>
-            )}
+          {/* Notion风格编辑器 */}
+          <div className="flex-1 mt-1 border rounded-md overflow-hidden">
+            <EditorClient
+              initContent={editorContent}
+              placeholder="请输入结论..."
+              onChange={handleEditorChange}
+              editable={isEditing && (nodeData?.status || 'pending') !== 'running'}
+              className={`min-h-[200px] ${isEditing ? 'p-4' : 'px-2 py-4'}`}
+              hideToolbar={!isEditing}
+              isEditing={isEditing}
+            />
           </div>
           
           {/* 保存操作 */}
           {node.status !== 'running' && (
             <div className="flex gap-2 mt-3">
               <Button
-                onClick={handleSave}
-                disabled={!hasChanges || isSaving}
-                className="flex-1"
+                onClick={() => setIsEditing(!isEditing)}
+                variant={isEditing ? "default" : "outline"}
+                size="sm"
               >
-                <Save className="w-4 h-4 mr-2" />
-                {isSaving ? '保存中...' : '保存结论'}
+                {isEditing ? <Eye className="w-4 h-4 mr-2" /> : <Edit className="w-4 h-4 mr-2" />}
+                {isEditing ? '预览' : '编辑'}
               </Button>
               
               <Button
@@ -364,9 +213,20 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
                 disabled={!hasChanges}
                 variant="outline"
                 className="flex-1"
+                size="sm"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 重置
+              </Button>
+
+              <Button
+                onClick={handleSave}
+                disabled={!hasChanges || isSaving}
+                className="flex-1"
+                size="sm"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {isSaving ? '保存中...' : '保存结论'}
               </Button>
             </div>
           )}

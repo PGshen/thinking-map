@@ -130,3 +130,16 @@
 .react-flow__node.animating {
   transition: var(--rf-node-transition, transform 500ms cubic-bezier(0.4, 0, 0.2, 1));
 }
+
+/* ProseMirror编辑器自定义内边距 */
+.prosemirror-custom-padding.editing-mode .ProseMirror {
+  padding-left: 80px !important;
+  padding-right: 16px !important;
+  padding-top: 16px !important;
+}
+
+.prosemirror-custom-padding.preview-mode .ProseMirror {
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  padding-top: 16px !important;
+}
