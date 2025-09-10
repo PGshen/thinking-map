@@ -143,3 +143,11 @@
   padding-right: 16px !important;
   padding-top: 16px !important;
 }
+
+/* ProseMirror编辑器文字换行控制 */
+.prosemirror-custom-padding .ProseMirror {
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  word-wrap: break-word !important;
+  white-space: pre-wrap !important;
+}

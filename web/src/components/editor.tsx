@@ -99,12 +99,19 @@ function Editor({ initContent, placeholder, onChange, editable = true, className
   const [content, setContent] = useState(initContent)
   const [theme, setTheme] = useState('light')
 
-  const onValueChange = useCallback(
+  const debouncedOnChange = useCallback(
     debounce((value: any) => {
-      setContent(value)
       onChange?.(value)
     }, 300),
     [onChange],
+  )
+
+  const onValueChange = useCallback(
+    (value: any) => {
+      setContent(value)
+      debouncedOnChange(value)
+    },
+    [debouncedOnChange],
   )
   locale.setLang('zh_CN')
 
