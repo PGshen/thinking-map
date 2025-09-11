@@ -2,7 +2,7 @@
 
 /* eslint-disable unicorn/no-null */
 /* eslint-disable quotes */
-import { useCallback, useState } from "react"
+import { useCallback, useState, useEffect } from "react"
 
 import RichTextEditor, { BaseKit } from "reactjs-tiptap-editor"
 
@@ -113,7 +113,10 @@ function Editor({ initContent, placeholder, onChange, editable = true, className
     },
     [debouncedOnChange],
   )
-  locale.setLang('zh_CN')
+
+  useEffect(() => {
+    locale.setLang('zh_CN')
+  }, [initContent])
 
   return (
     <main>

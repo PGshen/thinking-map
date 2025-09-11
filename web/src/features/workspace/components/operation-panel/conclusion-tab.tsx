@@ -40,8 +40,8 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
   const [executionProgress, setExecutionProgress] = useState(0);
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
-  const [editorContent, setEditorContent] = useState(nodeData?.conclusion || '');
-  const [isEditing, setIsEditing] = useState(true);
+  const [editorContent, setEditorContent] = useState(nodeData?.conclusion?.content || '');
+  const [isEditing, setIsEditing] = useState(false);
   const { actions } = useWorkspaceStore();
 
   // 处理编辑器内容变化
@@ -55,7 +55,7 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   // 监听节点数据变化
   useEffect(() => {
     if (nodeData) {
-      setEditorContent(nodeData.conclusion || '');
+      setEditorContent(nodeData.conclusion?.content || '');
       setHasChanges(false);
     }
     
@@ -132,7 +132,10 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
       actions.updateNode(nodeID, { 
         data: {
           ...nodeData,
-          conclusion: editorContent,
+          conclusion: {
+            ...nodeData?.conclusion,
+            content: editorContent,
+          },
           status: editorContent.trim() ? 'completed' : currentStatus
         }
       });
@@ -149,7 +152,7 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
 
   const handleReset = () => {
     const nodeData = node.data as any;
-    setEditorContent(nodeData?.conclusion || '');
+    setEditorContent(nodeData?.conclusion?.content || '');
     setHasChanges(false);
   };
   
