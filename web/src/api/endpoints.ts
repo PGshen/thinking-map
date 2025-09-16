@@ -17,6 +17,7 @@ export const API_ENDPOINTS = {
     REPEAT: `${API_BASE}/v1/thinking/repeat`,
     UNDERSTANDING: `${API_BASE}/v1/thinking/understanding`,
     DECOMPOSITION: `${API_BASE}/v1/thinking/decomposition`,
+    CONCLUSION: `${API_BASE}/v1/thinking/conclusion`,
   },
   MAP: {
     CREATE: `${API_BASE}/v1/maps`,

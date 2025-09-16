@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
+import { conclusion } from '@/api/node';
 
 // 导入新的Notion编辑器
 import EditorClient from '@/components/editor-client';
@@ -37,6 +38,7 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   const nodeData = node.data as any;
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
   const [executionProgress, setExecutionProgress] = useState(0);
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
@@ -155,6 +157,55 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
     setEditorContent(nodeData?.conclusion?.content || '');
     setHasChanges(false);
   };
+
+  // 开始结论生成
+  const handleStartConclusion = async () => {
+    if (!nodeID) {
+      toast.error('请先选择一个节点');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      // 更新节点状态为运行中
+      const nodeData = node.data as any;
+      actions.updateNode(nodeID, { 
+        data: {
+          ...nodeData,
+          status: 'in_conclusion'
+        }
+      });
+
+      // 调用结论生成API
+        const response = await conclusion(nodeID, editorContent, '请基于当前内容生成结论');
+      
+      if (response.code === 200) {
+        toast.success('结论生成成功');
+        // 加载执行日志
+        loadExecutionLogs();
+      } else {
+        toast.error(response.message || '结论生成失败');
+        actions.updateNode(nodeID, { 
+          data: {
+            ...nodeData,
+            status: 'error'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('结论生成失败:', error);
+      toast.error('结论生成失败');
+      const nodeData = node.data as any;
+      actions.updateNode(nodeID, { 
+        data: {
+          ...nodeData,
+          status: 'error'
+        }
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
   
   const toggleLogsCollapse = () => {
     setIsLogsCollapsed(!isLogsCollapsed);
@@ -210,6 +261,8 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
                 {isEditing ? <Eye className="w-4 h-4 mr-2" /> : <Edit className="w-4 h-4 mr-2" />}
                 {isEditing ? '预览' : '编辑'}
               </Button>
+
+              // 开始结论按钮
               
               <Button
                 onClick={handleReset}
@@ -220,6 +273,17 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 重置
+              </Button>
+
+              <Button
+                onClick={handleStartConclusion}
+                disabled={isGenerating || !nodeID}
+                variant="default"
+                className="flex-1"
+                size="sm"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                {isGenerating ? '生成中...' : '开始结论'}
               </Button>
 
               <Button

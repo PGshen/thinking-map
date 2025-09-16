@@ -50,6 +50,7 @@ func SetupRouter(
 	contextManager := service.NewContextManager(nodeRepo, mapRepo, messageRepo)
 	understandingService := service.NewUnderstandingService(messageRepo, nodeRepo)
 	decompositionService := service.NewDecompositionService(contextManager, nodeRepo)
+	conclusionService := service.NewConclusionService(contextManager, nodeRepo)
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -57,6 +58,7 @@ func SetupRouter(
 	nodeHandler := handler.NewNodeHandler(nodeService)
 	understandingHandler := thinkinghandler.NewUnderstandingHandler(understandingService)
 	decompositionHandler := thinkinghandler.NewDecompositionHandler(decompositionService)
+	conclusionHandler := thinkinghandler.NewConclusionHandler(conclusionService)
 	repeaterHandler := thinkinghandler.NewRepeaterHandler()
 
 	// 使用全局 broker
@@ -107,6 +109,7 @@ func SetupRouter(
 				thinking.POST("/understanding", thinkinghandler.NewStreamReply(understandingHandler))
 				// thinking.POST("/decomposition", thinkinghandler.NewStreamReply(decompositionHandler))
 				thinking.POST("/decomposition", decompositionHandler.Handle)
+				thinking.POST("/conclusion", conclusionHandler.Handle)
 				thinking.POST("/repeat", thinkinghandler.NewStreamReply(repeaterHandler))
 			}
 

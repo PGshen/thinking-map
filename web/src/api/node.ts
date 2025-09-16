@@ -76,3 +76,12 @@ export async function decomposition(nodeID: string, clarification: string, isDec
     isDecomposed,
   });
 }
+
+// 结论
+export async function conclusion(nodeID: string, reference: string, instruction: string): Promise<ApiResponse<any>> {
+  return post(API_ENDPOINTS.THINKING.CONCLUSION, {
+    nodeID,
+    reference,
+    instruction,
+  });
+}
