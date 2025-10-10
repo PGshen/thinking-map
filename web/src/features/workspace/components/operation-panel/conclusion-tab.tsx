@@ -261,8 +261,6 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
                 {isEditing ? <Eye className="w-4 h-4 mr-2" /> : <Edit className="w-4 h-4 mr-2" />}
                 {isEditing ? '预览' : '编辑'}
               </Button>
-
-              // 开始结论按钮
               
               <Button
                 onClick={handleReset}

@@ -2,6 +2,7 @@ package conclusion
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -36,15 +37,18 @@ type ConclusionAgentState struct {
 	NodeID    string
 
 	// 结论分析结果
-	ConclusionType     string // 结论类型：分析型/创意型/决策型/学习型
-	GenerationStrategy string // 生成策略
+	AnalysisResult     *ConclusionAnalysisResult // 结构化的分析结果
+	ConclusionType     string                    // 结论类型：分析型/创意型/决策型/学习型
+	GenerationStrategy string                    // 生成策略
 
 	// 结论内容
 	InitialConclusion *schema.Message // 初步结论
 	FinalConclusion   *schema.Message // 最终结论
 
-	// 用户反馈
-	UserFeedback *schema.Message // 用户对结论的反馈
+	// 用户反馈和局部优化
+	UserFeedback         *schema.Message           // 用户对结论的反馈
+	LocalOptimizationReq *LocalOptimizationRequest // 局部优化请求
+	ReferencedContent    string                    // 用户引用的具体内容
 
 	// 流程控制
 	IsFirstRun  bool // 是否首次运行
@@ -199,6 +203,20 @@ func BuildConclusionAgent(ctx context.Context, option ...base.AgentOption) (comp
 						Content: input.Instruction,
 					}
 				}
+
+				// 设置引用内容
+				if input.Reference != "" {
+					state.ReferencedContent = input.Reference
+				}
+
+				// 创建局部优化请求
+				if input.Instruction != "" || input.Reference != "" {
+					state.LocalOptimizationReq = &LocalOptimizationRequest{
+						TargetContent: input.Reference,
+						Instruction:   input.Instruction,
+						Context:       input.Conclusion, // 可以根据需要从其他地方获取上下文
+					}
+				}
 			}
 			return nil
 		})
@@ -275,117 +293,72 @@ func (h *AnalysisNodeHandler) PreHandler(ctx context.Context, input []*schema.Me
 }
 
 // 结论分析节点后置处理
-// 该函数负责从LLM输出中提取结论类型和生成策略，并将其保存到状态中
-// 使用关键词匹配和语义分析来确定最适合的结论类型和生成策略
+// 该函数负责从LLM输出中解析JSON格式的分析结果，并将其保存到状态中
 func (h *AnalysisNodeHandler) PostHandler(ctx context.Context, output *schema.Message, state *ConclusionAgentState) (*schema.Message, error) {
-	// 从输出中提取结论类型和生成策略
-	// 转换为小写以便不区分大小写进行匹配
-	content := strings.ToLower(output.Content)
+	// 从输出中提取JSON内容
+	content := output.Content
+	start := strings.Index(content, "{")
+	end := strings.LastIndex(content, "}")
 
-	// 增强的结论类型识别逻辑
-	// 使用更多关键词匹配，提高识别准确性
-	// 每种结论类型都有对应的关键词列表和策略列表
-	type conclusionTypeMatch struct {
-		type_      string   // 结论类型
-		keywords   []string // 用于识别该类型的关键词
-		strategies []string // 该类型可用的生成策略
+	if start == -1 || end == -1 || start >= end {
+		// 如果没有找到有效的JSON，使用默认值
+		fmt.Println("警告：未找到有效的JSON格式，使用默认分析结果")
+		state.AnalysisResult = &ConclusionAnalysisResult{
+			ConclusionType:     "分析型",
+			GenerationStrategy: "基于分析型的综合思考策略",
+			Reasoning:          "无法解析分析结果，使用默认配置",
+			Confidence:         0.5,
+		}
+		state.ConclusionType = state.AnalysisResult.ConclusionType
+		state.GenerationStrategy = state.AnalysisResult.GenerationStrategy
+		return output, nil
 	}
 
-	// 定义各种结论类型的匹配器
-	typeMatchers := []conclusionTypeMatch{
-		{
-			type_:    "分析型",
-			keywords: []string{"分析型", "分析", "逻辑", "系统性", "结构化", "推理", "归纳", "演绎"},
-			strategies: []string{"系统分析", "逻辑推理", "数据支持", "多角度思考"},
-		},
-		{
-			type_:    "创意型",
-			keywords: []string{"创意型", "创意", "创新", "创造", "发散", "想象", "灵感", "突破"},
-			strategies: []string{"发散思维", "跨领域联想", "创新视角", "突破常规"},
-		},
-		{
-			type_:    "决策型",
-			keywords: []string{"决策型", "决策", "选择", "判断", "权衡", "评估", "方案", "行动"},
-			strategies: []string{"多方案对比", "利弊权衡", "风险评估", "行动计划"},
-		},
-		{
-			type_:    "学习型",
-			keywords: []string{"学习型", "学习", "教育", "知识", "理解", "掌握", "记忆", "总结"},
-			strategies: []string{"知识整合", "概念梳理", "要点提炼", "学习路径"},
-		},
-	}
+	jsonStr := content[start : end+1]
 
-	// 默认为分析型
-	state.ConclusionType = "分析型"
-	bestMatchScore := 0
-	var bestMatchStrategies []string
-
-	// 遍历所有类型匹配器，找出最佳匹配
-	// 记录每种类型的匹配分数，用于调试和日志
-	typeMatchScores := make(map[string]int)
-	for _, matcher := range typeMatchers {
-		score := 0
-		matchedKeywords := []string{}
-
-		// 计算每个关键词的匹配情况
-		for _, keyword := range matcher.keywords {
-			if strings.Contains(content, keyword) {
-				score++
-				matchedKeywords = append(matchedKeywords, keyword)
-			}
+	// 解析JSON结果
+	var analysisResult ConclusionAnalysisResult
+	if err := json.Unmarshal([]byte(jsonStr), &analysisResult); err != nil {
+		// JSON解析失败，使用默认值
+		fmt.Printf("警告：JSON解析失败: %v，使用默认分析结果\n", err)
+		state.AnalysisResult = &ConclusionAnalysisResult{
+			ConclusionType:     "分析型",
+			GenerationStrategy: "基于分析型的综合思考策略",
+			Reasoning:          "JSON解析失败，使用默认配置",
+			Confidence:         0.5,
+		}
+	} else {
+		// 验证结论类型是否有效
+		validTypes := map[string]bool{
+			"分析型": true,
+			"创意型": true,
+			"决策型": true,
+			"学习型": true,
 		}
 
-		typeMatchScores[matcher.type_] = score
-
-		// 更新最佳匹配
-		if score > bestMatchScore {
-			bestMatchScore = score
-			state.ConclusionType = matcher.type_
-			bestMatchStrategies = matcher.strategies
+		if !validTypes[analysisResult.ConclusionType] {
+			fmt.Printf("警告：无效的结论类型 '%s'，使用默认类型\n", analysisResult.ConclusionType)
+			analysisResult.ConclusionType = "分析型"
 		}
-	}
 
-	// 记录匹配分数，便于调试
-	matchScoreLog := fmt.Sprintf("结论类型匹配分数: 分析型=%d, 创意型=%d, 决策型=%d, 学习型=%d, 最终选择=%s",
-		typeMatchScores["分析型"], typeMatchScores["创意型"], typeMatchScores["决策型"], typeMatchScores["学习型"], state.ConclusionType)
-	fmt.Println(matchScoreLog)
-
-	// 从输出中提取或构建生成策略
-	// 首先尝试从输出中直接提取策略信息
-	strategyFound := false
-	if strings.Contains(content, "策略") || strings.Contains(content, "方法") {
-		// 简单提取策略描述的句子
-		sentences := strings.Split(output.Content, "。")
-		for _, sentence := range sentences {
-			if strings.Contains(sentence, "策略") || strings.Contains(sentence, "方法") {
-				state.GenerationStrategy = strings.TrimSpace(sentence)
-				strategyFound = true
-				fmt.Println("从输出中提取到策略:", state.GenerationStrategy)
-				break
-			}
+		// 确保必要字段不为空
+		if analysisResult.GenerationStrategy == "" {
+			analysisResult.GenerationStrategy = "基于" + analysisResult.ConclusionType + "的综合思考策略"
 		}
-	}
 
-	// 如果没有从输出中提取到策略，则基于结论类型构建策略
-	if !strategyFound {
-		// 从最佳匹配的策略列表中选择一个
-		if len(bestMatchStrategies) > 0 {
-			// 简单起见，这里选择第一个策略
-			strategy := bestMatchStrategies[0]
-			state.GenerationStrategy = fmt.Sprintf("基于%s的%s策略", state.ConclusionType, strategy)
-			fmt.Println("基于结论类型构建策略:", state.GenerationStrategy)
-		} else {
-			// 兜底策略
-			state.GenerationStrategy = "基于" + state.ConclusionType + "的综合思考策略"
-			fmt.Println("使用兜底策略:", state.GenerationStrategy)
+		if analysisResult.Confidence <= 0 || analysisResult.Confidence > 1 {
+			analysisResult.Confidence = 0.8
 		}
+
+		state.AnalysisResult = &analysisResult
 	}
 
-	// 确保策略不为空，提供默认策略作为兜底方案
-	if state.GenerationStrategy == "" {
-		state.GenerationStrategy = "基于" + state.ConclusionType + "的综合思考策略"
-		fmt.Println("策略为空，使用默认策略:", state.GenerationStrategy)
-	}
+	// 更新状态中的结论类型和生成策略
+	state.ConclusionType = state.AnalysisResult.ConclusionType
+	state.GenerationStrategy = state.AnalysisResult.GenerationStrategy
+
+	fmt.Printf("结论分析结果: 类型=%s, 策略=%s, 置信度=%.2f\n",
+		state.ConclusionType, state.GenerationStrategy, state.AnalysisResult.Confidence)
 
 	return output, nil
 }
@@ -441,28 +414,61 @@ func (h *RefinementNodeHandler) PreHandler(ctx context.Context, input []*schema.
 	// 构建优化提示词
 	systemMsg := schema.SystemMessage(buildConclusionRefinementPrompt())
 
-	// 构建消息列表，包含初步结论和用户反馈
+	// 构建消息列表
 	messages := []*schema.Message{systemMsg}
 
-	// 添加初步结论
+	// 构建局部优化的用户消息
+	var userContent strings.Builder
+
+	// 添加现有结论
 	if state.InitialConclusion != nil {
-		// 将初步结论转换为助手消息
-		initialConclusionMsg := schema.AssistantMessage(state.InitialConclusion.Content, nil)
-		messages = append(messages, initialConclusionMsg)
+		userContent.WriteString("现有结论：\n")
+		userContent.WriteString(state.InitialConclusion.Content)
+		userContent.WriteString("\n\n")
 	}
 
-	// 添加用户反馈
-	if state.UserFeedback != nil {
-		messages = append(messages, state.UserFeedback)
+	// 添加优化指令
+	var optimizationInstruction string
+	if state.LocalOptimizationReq != nil && state.LocalOptimizationReq.Instruction != "" {
+		optimizationInstruction = state.LocalOptimizationReq.Instruction
+	} else if state.UserFeedback != nil {
+		optimizationInstruction = state.UserFeedback.Content
 	} else if len(input) > 0 {
-		// 如果没有保存的用户反馈，但有输入，则使用最后一条输入作为用户反馈
+		optimizationInstruction = input[len(input)-1].Content
 		state.UserFeedback = input[len(input)-1]
-		messages = append(messages, state.UserFeedback)
 	} else {
-		// 如果既没有保存的用户反馈，也没有输入，则使用默认提示
-		userMsg := schema.UserMessage("请优化上述结论，使其更加清晰、准确和实用。")
-		messages = append(messages, userMsg)
+		optimizationInstruction = "请对结论进行优化，使其更加清晰、准确和实用。"
 	}
+
+	userContent.WriteString("优化指令：\n")
+	userContent.WriteString(optimizationInstruction)
+	userContent.WriteString("\n\n")
+
+	// 添加引用内容
+	var referencedContent string
+	if state.LocalOptimizationReq != nil && state.LocalOptimizationReq.TargetContent != "" {
+		referencedContent = state.LocalOptimizationReq.TargetContent
+	} else if state.ReferencedContent != "" {
+		referencedContent = state.ReferencedContent
+	}
+
+	if referencedContent != "" {
+		userContent.WriteString("引用内容：\n")
+		userContent.WriteString(referencedContent)
+		userContent.WriteString("\n\n")
+	}
+
+	// 添加上下文信息
+	if state.LocalOptimizationReq != nil && state.LocalOptimizationReq.Context != "" {
+		userContent.WriteString("上下文信息：\n")
+		userContent.WriteString(state.LocalOptimizationReq.Context)
+		userContent.WriteString("\n\n")
+	}
+
+	userContent.WriteString("请根据以上信息进行精准的局部优化，输出完整的优化后结论。")
+
+	userMsg := schema.UserMessage(userContent.String())
+	messages = append(messages, userMsg)
 
 	return messages, nil
 }

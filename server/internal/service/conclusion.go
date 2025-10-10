@@ -12,7 +12,6 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/PGshen/thinking-map/server/internal/repository"
 	"github.com/cloudwego/eino/compose"
-	"github.com/cloudwego/eino/schema"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -51,15 +50,11 @@ func (s *ConclusionService) GenerateConclusion(ctx *gin.Context, req dto.Conclus
 	ctx.Set("nodeID", req.NodeID)
 
 	// 2. 构建用户消息
-	//  2.1 上下文消息
-	ctxMsg := schema.UserMessage(s.contextManager.FormatContextForAgent(contextInfo))
-	messages := []*schema.Message{ctxMsg}
 
 	userMessage := &conclusion.UserMessage{
 		Reference:   req.Reference,
 		Instruction: req.Instruction,
 		Conclusion:  initConclusion,
-		History:     messages,
 	}
 	return s.Conclude(ctx, contextInfo, userMessage)
 }
