@@ -50,7 +50,7 @@ func SetupRouter(
 	contextManager := service.NewContextManager(nodeRepo, mapRepo, messageRepo)
 	understandingService := service.NewUnderstandingService(messageRepo, nodeRepo)
 	decompositionService := service.NewDecompositionService(contextManager, nodeRepo)
-	conclusionService := service.NewConclusionService(contextManager, nodeRepo)
+	conclusionService := service.NewConclusionV3Service(contextManager, nodeRepo)
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -109,7 +109,7 @@ func SetupRouter(
 				thinking.POST("/understanding", thinkinghandler.NewStreamReply(understandingHandler))
 				// thinking.POST("/decomposition", thinkinghandler.NewStreamReply(decompositionHandler))
 				thinking.POST("/decomposition", decompositionHandler.Handle)
-				thinking.POST("/conclusion", conclusionHandler.Handle)
+				thinking.POST("/conclusion", thinkinghandler.NewStreamReply(conclusionHandler))
 				thinking.POST("/repeat", thinkinghandler.NewStreamReply(repeaterHandler))
 			}
 

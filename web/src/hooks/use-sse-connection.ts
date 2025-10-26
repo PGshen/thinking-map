@@ -4,7 +4,7 @@ import { getToken } from '@/lib/auth';
 import API_ENDPOINTS from '@/api/endpoints';
 
 // SSE事件类型定义
-type SSEEventType = 'nodeCreated' | 'nodeUpdated' | 'nodeDeleted' | 'nodeDependenciesUpdated' | 'connection_established' | 'messageText' | 'messageThought' | 'messageNotice' | 'messageAction' | 'messagePlan' | 'error' | 'ping' | 'message';
+type SSEEventType = 'nodeCreated' | 'nodeUpdated' | 'nodeDeleted' | 'nodeDependenciesUpdated' | 'connection_established' | 'messageText' | 'messageConclusion' | 'messageThought' | 'messageNotice' | 'messageAction' | 'messagePlan' | 'error' | 'ping' | 'message';
 
 // SSE事件数据结构
 interface SSEEventData {
@@ -291,6 +291,7 @@ export function useSSEConnection({
     if (callbackIdRef.current) {
       sseManager.updateCallbacks(mapID, callbackIdRef.current, callbacksRef.current);
     }
+    // console.log("eventCallbacks", eventCallbacks)
   }, [callbacks, onOpen, onError, mapID]);
 
   const connect = useCallback(() => {

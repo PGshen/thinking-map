@@ -653,7 +653,7 @@ export class SseJsonStreamParser {
       onmessage(ev) {
         // 空格替换
         let data = ev.data;
-        data = data.replaceAll('&nbsp;', ' ');
+        data = data.replace(/&nbsp;/g, ' ');
         if(ev.event == 'json') {  // 只解析json
           parser.write(data);
         }
@@ -756,7 +756,7 @@ export class SseMarkdownStreamParser {
       onmessage(ev) {
         // 确保空字符串和换行符的正确处理
         let data = ev.data;
-        data = data.replaceAll('&nbsp;', ' ');
+        data = data.replace(/&nbsp;/g, ' ');
         if (config.message) config.message(ev);
       },
       async onopen(response) {
@@ -787,7 +787,204 @@ export class SseMarkdownStreamParser {
   }
 }
 
+/**
+ * 纯文本流解析器配置接口
+ */
+interface SseTextConfig extends Omit<SseConfig, 'message'> {
+  onText?: (text: string, fullText: string) => void; // 接收到新文本片段时的回调
+  onComplete?: (fullText: string) => void; // 文本接收完成时的回调
+  message?: (ev: EventSourceMessage) => void; // 原始消息回调
+}
+
+/**
+ * 纯文本流解析器
+ */
+export class SseTextStreamParser {
+  private abortController: AbortController | null = null;
+  private fullText: string = '';
+
+  /**
+   * 连接到 SSE 端点
+   */
+  connect(config: SseTextConfig): this;
+  connect(
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+    url: string,
+    param: Record<string, unknown>,
+    onText?: (text: string, fullText: string) => void,
+    onComplete?: (fullText: string) => void,
+    close?: () => void,
+    error?: (err: unknown) => void,
+  ): this;
+  connect(
+    methodOrConfig: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | SseTextConfig,
+    url?: string,
+    param?: Record<string, unknown>,
+    onText?: (text: string, fullText: string) => void,
+    onComplete?: (fullText: string) => void,
+    close?: () => void,
+    error?: (err: unknown) => void,
+  ): this {
+    let config: SseTextConfig;
+    
+    if (typeof methodOrConfig === 'object') {
+      // 使用配置对象
+      config = methodOrConfig;
+    } else {
+      // 使用参数形式
+      config = {
+        method: methodOrConfig,
+        url: url!,
+        param: param!,
+        onText,
+        onComplete,
+        close,
+        error,
+      };
+    }
+
+    const token = getToken();
+    this.abortController = new AbortController();
+    this.fullText = ''; // 重置累积文本
+
+    // 处理 GET 请求的参数
+    const finalUrl = config.method === 'GET' && config.param
+      ? `${config.url}${config.url.includes('?') ? '&' : '?'}${new URLSearchParams(config.param as Record<string, string>)}`
+      : config.url;
+
+    fetchEventSource(finalUrl, {
+      method: config.method || 'POST',
+      headers: {
+        'Accept': 'text/event-stream;charset=UTF-8',
+        'Cache-Control': 'no-cache',
+        Authorization: token ? `Bearer ${token}` : '',
+        'Content-Type': 'application/json',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
+        'Sec-Fetch-Dest': 'empty',
+      },
+      // 只在非 GET 请求时添加 body
+      ...(config.method !== 'GET' && config.param ? { body: JSON.stringify(config.param) } : {}),
+      signal: this.abortController.signal,
+      onmessage: (ev) => {
+        // 处理接收到的文本数据
+        let data = ev.data;
+        
+        // 处理特殊字符
+        data = data.replace(/&nbsp;/g, ' ');
+        
+        // 累积文本
+        this.fullText += data;
+        
+        // 调用文本回调
+        if (config.onText) {
+          config.onText(data, this.fullText);
+        }
+        
+        // 调用原始消息回调
+        if (config.message) {
+          config.message(ev);
+        }
+      },
+      async onopen(response) {
+        if (!response.ok || response.headers.get('content-type') !== EventStreamContentType) {
+          throw new Error('SSE connection failed');
+        }
+      },
+      onclose: () => {
+        // 连接关闭时调用完成回调
+        if (config.onComplete) {
+          config.onComplete(this.fullText);
+        }
+        if (config.close) {
+          config.close();
+        }
+      },
+      onerror: (err) => {
+        console.error('SSE Error:', err);
+        if (config.error) {
+          config.error(err);
+        }
+      }
+    });
+    
+    return this;
+  }
+
+  /**
+   * 断开连接
+   */
+  disconnect(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+  }
+
+  /**
+   * 获取当前累积的完整文本
+   */
+  getFullText(): string {
+    return this.fullText;
+  }
+
+  /**
+   * 清空累积的文本
+   */
+  clearText(): void {
+    this.fullText = '';
+  }
+}
+
 // 使用示例
+/**
+ * 演示如何使用纯文本流解析器
+ */
+function demoTextStreamParser(): void {
+  const textParser = new SseTextStreamParser();
+  
+  // 方式1：使用配置对象
+  textParser.connect({
+    method: 'POST',
+    url: '/api/stream/text',
+    param: { prompt: 'Hello, world!' },
+    onText: (newText, fullText) => {
+      console.log('新文本片段:', newText);
+      console.log('完整文本:', fullText);
+    },
+    onComplete: (fullText) => {
+      console.log('文本接收完成:', fullText);
+    },
+    close: () => {
+      console.log('连接已关闭');
+    },
+    error: (err) => {
+      console.error('连接错误:', err);
+    }
+  });
+  
+  // 方式2：使用参数形式
+  // textParser.connect(
+  //   'POST',
+  //   '/api/stream/text',
+  //   { prompt: 'Hello, world!' },
+  //   (newText, fullText) => console.log('新文本:', newText),
+  //   (fullText) => console.log('完成:', fullText),
+  //   () => console.log('关闭'),
+  //   (err) => console.error('错误:', err)
+  // );
+  
+  // 获取当前累积的文本
+  setTimeout(() => {
+    console.log('当前文本:', textParser.getFullText());
+  }, 5000);
+  
+  // 10秒后断开连接
+  setTimeout(() => {
+    textParser.disconnect();
+  }, 10000);
+}
+
 function demoWithSSE(): void {
   const jsonStream = new SseJsonStreamParser(true);
   

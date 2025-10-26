@@ -194,6 +194,52 @@ func (s *MessageManager) SaveDecompositionMessage(ctx context.Context, nodeID st
 	return msg, nil
 }
 
+// SaveConclusionMessage 保存结论消息（使用事务和行级锁解决并发问题）
+func (s *MessageManager) SaveConclusionMessage(ctx context.Context, nodeID string, req dto.CreateMessageRequest) (*dto.MessageResponse, error) {
+	// 使用数据库事务确保操作的原子性
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", tx.Error)
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
+	// 1. 使用行级锁获取节点，防止并发修改
+	node, err := s.nodeRepo.FindByIDForUpdate(ctx, tx, nodeID)
+	if err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to get node with lock: %w", err)
+	}
+
+	// 2. 获取当前节点的最后消息ID作为新消息的父ID
+	lastMessageID := node.Conclusion.LastMessageID
+	req.ParentID = lastMessageID
+
+	// 3. 在事务中创建新消息
+	msg, err := s.CreateMessageInTx(ctx, tx, req.UserID, req)
+	if err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to create message in transaction: %w", err)
+	}
+
+	// 4. 在事务中更新节点的最后消息ID
+	if err := s.LinkMessageToNodeInTx(ctx, tx, nodeID, msg.ID, msg.ConversationID, dto.ConversationTypeConclusion); err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to link message to node in transaction: %w", err)
+	}
+
+	// 5. 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return msg, nil
+}
+
 func (s *MessageManager) SaveStreamMessage(ctx *gin.Context, sr *schema.StreamReader[*schema.Message], ID, parentID string) {
 	useID := ctx.GetString("user_id")
 

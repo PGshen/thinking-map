@@ -41,6 +41,14 @@ export interface MessageActionEvent {
   timestamp: string;
 }
 
+export interface MessageConclusionEvent {
+  nodeID: string;
+  messageID: string;
+  message: string;
+  mode: 'generate' | 'optimize';
+  timestamp: string;
+}
+
 export interface MessageTextEvent {
   nodeID: string;
   messageID: string;

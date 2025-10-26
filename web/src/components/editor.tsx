@@ -2,7 +2,7 @@
 
 /* eslint-disable unicorn/no-null */
 /* eslint-disable quotes */
-import { useCallback, useState, useEffect } from "react"
+import { useCallback, useState, useEffect, useRef } from "react"
 
 import RichTextEditor, { BaseKit } from "reactjs-tiptap-editor"
 
@@ -25,6 +25,7 @@ import { Strike } from "reactjs-tiptap-editor/strike";
 import { Table } from "reactjs-tiptap-editor/table";
 import { TaskList } from "reactjs-tiptap-editor/tasklist";
 import { SlashCommand } from 'reactjs-tiptap-editor/slashcommand';
+import { Markdown } from 'tiptap-markdown';
 
 import "reactjs-tiptap-editor/style.css"
 import "prism-code-editor-lightweight/layout.css";
@@ -74,6 +75,14 @@ const createExtensions = (placeholder?: string) => [
   }),
   CodeBlock,
   Table,
+  Markdown.configure({
+    html: true, // 允许 HTML 输入/输出
+    tightLists: true, // Markdown 输出中 <li> 内没有 <p>
+    linkify: false, // 从 "https://..." 文本创建链接
+    breaks: false, // Markdown 输入中的换行符转换为 <br>
+    transformPastedText: true, // 允许粘贴 markdown 文本
+    transformCopiedText: true, // 复制的文本转换为 markdown
+  }),
 ]
 
 function debounce(func: any, wait: number) {
@@ -96,8 +105,19 @@ interface EditorProps {
 }
 
 function Editor({ initContent, placeholder, onChange, editable = true, className, hideToolbar = false, isEditing = true }: EditorProps) {
-  const [content, setContent] = useState(initContent)
   const [theme, setTheme] = useState('light')
+  
+  // 使用 initContent 的内容和长度作为 key，确保内容变化时重新渲染
+  const editorKey = useRef(0)
+  const prevContent = useRef(initContent)
+  
+  // 当 initContent 改变时，更新 key 来强制重新渲染
+  useEffect(() => {
+    if (prevContent.current !== initContent) {
+      editorKey.current += 1
+      prevContent.current = initContent
+    }
+  }, [initContent])
 
   const debouncedOnChange = useCallback(
     debounce((value: any) => {
@@ -108,7 +128,6 @@ function Editor({ initContent, placeholder, onChange, editable = true, className
 
   const onValueChange = useCallback(
     (value: any) => {
-      setContent(value)
       debouncedOnChange(value)
     },
     [debouncedOnChange],
@@ -116,15 +135,15 @@ function Editor({ initContent, placeholder, onChange, editable = true, className
 
   useEffect(() => {
     locale.setLang('zh_CN')
-  }, [initContent])
+  }, [])
 
   return (
     <main>
       <div>
-
         <RichTextEditor
+          key={editorKey.current}
           output="html"
-          content={content as any}
+          content={initContent as any}
           onChangeContent={onValueChange}
           extensions={createExtensions(placeholder)}
           dark={theme === 'dark'}

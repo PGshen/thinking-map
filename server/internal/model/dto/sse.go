@@ -22,6 +22,7 @@ const (
 	NodeDependenciesUpdatedEventType = "nodeDependenciesUpdated"
 	ThinkingProgressEventType        = "thinkingProgress"
 	MessageTextEventType             = "messageText"
+	MessageConclusionEventType       = "messageConclusion"
 	MessageThoughtEventType          = "messageThought"
 	MessageNoticeEventType           = "messageNotice"
 	MessageActionEventType           = "messageAction"

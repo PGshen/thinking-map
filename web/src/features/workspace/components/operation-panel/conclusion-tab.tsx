@@ -6,8 +6,8 @@
  */
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Save, RotateCcw, CheckCircle, AlertCircle, Clock, FileText, ChevronDown, ChevronUp, Edit, Eye } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Save, RotateCcw, CheckCircle, AlertCircle, Clock, FileText, ChevronDown, ChevronUp, Edit, Eye, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,9 +15,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from 'sonner';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { conclusion } from '@/api/node';
+import { SseTextStreamParser } from '@/lib/sse-parser';
+import { getMessages, decomposition } from '@/api/node';
 
 // 导入新的Notion编辑器
 import EditorClient from '@/components/editor-client';
+import { MessageResponse, MessageType, MessageContent } from '@/types/message';
+import { MessageConclusionEvent, MessageTextEvent, MessageThoughtEvent } from '@/types/sse';
+import { useSSEConnection } from '@/hooks/use-sse-connection';
 
 interface ConclusionTabProps {
   nodeID: string;
@@ -36,19 +41,37 @@ interface ExecutionLog {
 
 export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   const nodeData = node.data as any;
+  const { mapID } = useWorkspaceStore();
+  const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
-  const [executionProgress, setExecutionProgress] = useState(0);
-  const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
-  const [editorContent, setEditorContent] = useState(nodeData?.conclusion?.content || '');
+  const [content, setContent] = useState(nodeData?.conclusion?.content || '');
+  const [instruction, setInstruction] = useState('');
+  const [reference, setReference] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  // optimize 模式的流式处理状态
+  const [optimizeState, setOptimizeState] = useState<{
+    isOptimizing: boolean;
+    originalContent: string;
+    referenceStartIndex: number;
+    referenceEndIndex: number;
+    accumulatedOptimizedContent: string;
+  }>({
+    isOptimizing: false,
+    originalContent: '',
+    referenceStartIndex: -1,
+    referenceEndIndex: -1,
+    accumulatedOptimizedContent: ''
+  });
   const { actions } = useWorkspaceStore();
+
+  // optimize 流式处理结束检测
+  const optimizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 处理编辑器内容变化
   const handleEditorChange = useCallback((content: string) => {
-    setEditorContent(content);
+    setContent(content);
     setHasChanges(content !== (nodeData?.conclusion || ''));
   }, [nodeData?.conclusion]);
 
@@ -57,68 +80,210 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   // 监听节点数据变化
   useEffect(() => {
     if (nodeData) {
-      setEditorContent(nodeData.conclusion?.content || '');
+      setContent(nodeData.conclusion?.content || '');
       setHasChanges(false);
-    }
-    
-    // 模拟加载执行日志
-    const status = nodeData?.status || 'pending';
-    if (status === 'running' || status === 'completed') {
-      loadExecutionLogs();
     }
   }, [node]);
 
-  // 加载执行日志
-  const loadExecutionLogs = () => {
-    // TODO: 从API获取真实的执行日志
-    const mockLogs: ExecutionLog[] = [
-      {
-        id: '1',
-        timestamp: '2025-01-27 10:30:00',
-        type: 'info',
-        message: '开始执行任务',
-        details: '初始化执行环境'
-      },
-      {
-        id: '2',
-        timestamp: '2025-01-27 10:30:15',
-        type: 'info',
-        message: '分析问题要素',
-        details: '正在分析问题的核心组成部分'
-      },
-      {
-        id: '3',
-        timestamp: '2025-01-27 10:31:20',
-        type: 'success',
-        message: '问题分析完成',
-        details: '已识别出3个关键要素'
-      },
-      {
-        id: '4',
-        timestamp: '2025-01-27 10:32:10',
-        type: 'info',
-        message: '制定解决方案',
-        details: '基于分析结果制定可行方案'
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (optimizeTimeoutRef.current) {
+        clearTimeout(optimizeTimeoutRef.current);
       }
-    ];
-    
-    const nodeData = node.data as any;
-    const status = nodeData?.status || 'pending';
-    if (status === 'completed') {
-      mockLogs.push({
-        id: '5',
-        timestamp: '2025-01-27 10:35:00',
-        type: 'success',
-        message: '任务执行完成',
-        details: '所有子任务已成功完成'
-      });
-      setExecutionProgress(100);
-    } else {
-      setExecutionProgress(75);
-    }
-    
-    setExecutionLogs(mockLogs);
+    };
+  }, []);
+
+  // 通用消息处理函数
+  const handleMessageEvent = <T extends { messageID: string; timestamp: string }>(
+    data: T,
+    messageType: MessageType,
+    contentUpdater: (data: T, existingContent?: MessageContent, mode?: string) => Partial<MessageContent>
+  ) => {
+    setMessages(prevMessages => {
+      const existingMessageIndex = prevMessages.findIndex(msg => msg.id === data.messageID);
+      let updatedMessages: MessageResponse[];
+
+      if (existingMessageIndex !== -1) {
+        // 消息已存在，更新内容
+        updatedMessages = [...prevMessages];
+        const existingMessage = updatedMessages[existingMessageIndex];
+        const mode = 'mode' in data ? (data as any).mode : undefined;
+        
+        const updatedContent = contentUpdater(data, existingMessage.content, mode);
+        
+        updatedMessages[existingMessageIndex] = {
+          ...existingMessage,
+          content: {
+            ...existingMessage.content,
+            ...updatedContent
+          },
+          updatedAt: data.timestamp
+        };
+      } else {
+        // 消息不存在，创建新消息
+        const newContent = contentUpdater(data);
+        const newMessage: MessageResponse = {
+          id: data.messageID,
+          messageType,
+          role: 'assistant',
+          content: newContent,
+          createdAt: data.timestamp,
+          updatedAt: data.timestamp
+        };
+
+        updatedMessages = [...prevMessages, newMessage];
+      }
+
+      return updatedMessages;
+    });
   };
+
+  // 处理消息文本或思考事件
+  const handleMessageThoughtEvent = (
+    data: MessageThoughtEvent, 
+    messageType: 'thought'
+  ) => {
+    if (data.message == "") {
+      return;
+    }
+    handleMessageEvent(data, messageType, (eventData, existingContent, mode) => {
+      if (mode === 'replace') {
+        // 替换模式：直接替换文本内容
+        return {
+          [messageType]: eventData.message
+        };
+      } else if (mode === 'append') {
+        // 追加模式：在现有文本后追加
+        const currentText = existingContent?.[messageType] || '';
+        return {
+          [messageType]: currentText + eventData.message
+        };
+      } else {
+        // 默认为替换模式
+        return {
+          [messageType]: eventData.message
+        };
+      }
+    });
+  };
+
+  // 处理结论消息
+  const handleMessageConclusionEvent = (data: MessageConclusionEvent) => {
+    if (data.mode === 'generate') {
+      // generate 模式：累积接收到的字符到结论 content
+      setContent((prevContent: string) => prevContent + data.message)
+    } else if (data.mode === 'optimize') {
+      // optimize 模式：流式处理优化内容
+      
+      // 清除之前的超时定时器
+      if (optimizeTimeoutRef.current) {
+        clearTimeout(optimizeTimeoutRef.current);
+      }
+      
+      setOptimizeState((prevState) => {
+        if (!prevState.isOptimizing) {
+          // 第一次接收到 optimize 消息，初始化状态
+          const currentContent = content;
+          if (reference && reference.trim() !== '') {
+            const referenceStartIndex = currentContent.indexOf(reference);
+            if (referenceStartIndex !== -1) {
+              const referenceEndIndex = referenceStartIndex + reference.length;
+              const newAccumulatedContent = data.message;
+              
+              // 立即更新 content
+              const beforeReference = currentContent.substring(0, referenceStartIndex);
+              const afterReference = currentContent.substring(referenceEndIndex);
+              const newContent = beforeReference + newAccumulatedContent + afterReference;
+              setContent(newContent);
+              
+              return {
+                isOptimizing: true,
+                originalContent: currentContent,
+                referenceStartIndex,
+                referenceEndIndex,
+                accumulatedOptimizedContent: newAccumulatedContent
+              };
+            }
+          }
+          // 如果没有找到 reference，则直接追加
+          setContent((prevContent: string) => prevContent + data.message);
+          return prevState;
+        } else {
+          // 后续消息，累积优化内容并更新 content
+          const newAccumulatedContent = prevState.accumulatedOptimizedContent + data.message;
+          
+          // 更新 content
+          const beforeReference = prevState.originalContent.substring(0, prevState.referenceStartIndex);
+          const afterReference = prevState.originalContent.substring(prevState.referenceEndIndex);
+          const newContent = beforeReference + newAccumulatedContent + afterReference;
+          setContent(newContent);
+          
+          return {
+            ...prevState,
+            accumulatedOptimizedContent: newAccumulatedContent
+          };
+        }
+      });
+
+      // 设置新的超时定时器，在 1 秒后重置 optimize 状态
+      optimizeTimeoutRef.current = setTimeout(() => {
+        setOptimizeState((prevState) => {
+          if (prevState.isOptimizing) {
+            // 更新 reference 为最终的优化内容
+            setReference(prevState.accumulatedOptimizedContent);
+            
+            return {
+              isOptimizing: false,
+              originalContent: '',
+              referenceStartIndex: -1,
+              referenceEndIndex: -1,
+              accumulatedOptimizedContent: ''
+            };
+          }
+          return prevState;
+        });
+      }, 1000);
+    } else {
+      // 其他模式：追加到内容末尾
+      setContent((prevContent: string) => prevContent + "\n" + data.message)
+    }
+  }
+
+  const sseCallbacks =  React.useMemo(() => {
+    if (!mapID) return [];
+
+    return [
+      {
+        eventType: 'messageConclusion' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as MessageConclusionEvent;
+            handleMessageConclusionEvent(data);
+          } catch (error) {
+            console.error('解析messageConclusion事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'messageThought' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as MessageThoughtEvent;
+            handleMessageThoughtEvent(data, 'thought');
+          } catch (error) {
+            console.error('解析messageThought事件失败:', error, event.data);
+          }
+        }
+      },
+    ]
+  }, [mapID])
+
+  // 在组件顶层调用useSSEConnection
+  useSSEConnection({
+    mapID: mapID || '',
+    callbacks: sseCallbacks
+  });
 
   const handleSave = async () => {
     if (!hasChanges) return;
@@ -136,9 +301,9 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
           ...nodeData,
           conclusion: {
             ...nodeData?.conclusion,
-            content: editorContent,
+            content: content,
           },
-          status: editorContent.trim() ? 'completed' : currentStatus
+          status: content.trim() ? 'completed' : currentStatus
         }
       });
       
@@ -154,8 +319,24 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
 
   const handleReset = () => {
     const nodeData = node.data as any;
-    setEditorContent(nodeData?.conclusion?.content || '');
+    setContent(nodeData?.conclusion?.content || '');
     setHasChanges(false);
+  };
+
+  // 停止结论生成
+  const handleStopConclusion = () => {
+    setIsGenerating(false);
+    
+    // 更新节点状态
+    const nodeData = node.data as any;
+    actions.updateNode(nodeID, { 
+      data: {
+        ...nodeData,
+        status: 'pending'
+      }
+    });
+    
+    toast.info('结论生成已停止');
   };
 
   // 开始结论生成
@@ -166,198 +347,107 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
     }
 
     setIsGenerating(true);
+    
     try {
-      // 更新节点状态为运行中
-      const nodeData = node.data as any;
-      actions.updateNode(nodeID, { 
-        data: {
-          ...nodeData,
-          status: 'in_conclusion'
+      conclusion(nodeID, reference, instruction).then(res => {
+        console.log("res", res)
+        if (res.code !== 200) {
+          console.error('启动结论生成失败:', res.message);
+          toast.error('启动结论生成失败');
+          
+          setIsGenerating(false);
         }
-      });
-
-      // 调用结论生成API
-        const response = await conclusion(nodeID, editorContent, '请基于当前内容生成结论');
-      
-      if (response.code === 200) {
-        toast.success('结论生成成功');
-        // 加载执行日志
-        loadExecutionLogs();
-      } else {
-        toast.error(response.message || '结论生成失败');
-        actions.updateNode(nodeID, { 
-          data: {
-            ...nodeData,
-            status: 'error'
-          }
-        });
-      }
+      }).finally(() => {
+        setIsGenerating(false);
+        setReference('')
+        setInstruction('')
+      })
     } catch (error) {
-      console.error('结论生成失败:', error);
-      toast.error('结论生成失败');
-      const nodeData = node.data as any;
-      actions.updateNode(nodeID, { 
-        data: {
-          ...nodeData,
-          status: 'error'
-        }
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-  
-  const toggleLogsCollapse = () => {
-    setIsLogsCollapsed(!isLogsCollapsed);
-  };
-
-  // 获取日志类型图标
-  const getLogIcon = (type: string) => {
-    switch (type) {
-      case 'success': return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'warning': return <AlertCircle className="w-4 h-4 text-yellow-600" />;
-      case 'error': return <AlertCircle className="w-4 h-4 text-red-600" />;
-      default: return <Clock className="w-4 h-4 text-blue-600" />;
-    }
-  };
-
-  // 获取日志类型样式
-  const getLogStyle = (type: string) => {
-    switch (type) {
-      case 'success': return 'border-l-green-500 bg-green-50';
-      case 'warning': return 'border-l-yellow-500 bg-yellow-50';
-      case 'error': return 'border-l-red-500 bg-red-50';
-      default: return 'border-l-blue-500 bg-blue-50';
+      console.error('启动结论生成失败:', error);
+      toast.error('启动结论生成失败');
     }
   };
 
   return (
-    <div className="h-full flex flex-col">
-      {/* 上半部分：状态和结论编辑器 */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* 结论编辑器 */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">          
-          {/* Notion风格编辑器 */}
-          <div className="flex-1 mt-1 border rounded-md overflow-hidden">
-            <EditorClient
-              initContent={editorContent}
-              placeholder="请输入结论..."
-              onChange={handleEditorChange}
-              editable={isEditing && (nodeData?.status || 'pending') !== 'running'}
-              className={`min-h-[200px] ${isEditing ? 'p-4' : 'px-2 py-4'}`}
-              hideToolbar={!isEditing}
-              isEditing={isEditing}
-            />
-          </div>
-          
-          {/* 保存操作 */}
-          {node.status !== 'running' && (
-            <div className="flex gap-2 mt-3">
-              <Button
-                onClick={() => setIsEditing(!isEditing)}
-                variant={isEditing ? "default" : "outline"}
-                size="sm"
-              >
-                {isEditing ? <Eye className="w-4 h-4 mr-2" /> : <Edit className="w-4 h-4 mr-2" />}
-                {isEditing ? '预览' : '编辑'}
-              </Button>
-              
-              <Button
-                onClick={handleReset}
-                disabled={!hasChanges}
-                variant="outline"
-                className="flex-1"
-                size="sm"
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                重置
-              </Button>
+    <div className="h-full pt-1 relative">
+      {/* 内容区域：结论编辑器 */}
+      <div className="h-full pb-20 overflow-auto">
+        {/* Notion风格编辑器 */}
+        <div className="h-full border rounded-md overflow-auto">
+          <EditorClient
+            initContent={content}
+            placeholder="请输入结论..."
+            onChange={handleEditorChange}
+            editable={isEditing && (nodeData?.status || 'pending') !== 'running'}
+            className={`h-full ${isEditing ? 'p-4' : 'px-2 py-4'}`}
+            hideToolbar={!isEditing}
+            isEditing={isEditing}
+          />
+        </div>
+      </div>
 
+      {/* 日志区域：展示思考过程 */}
+      
+      {/* 固定在底部的操作按钮区域 */}
+      {node.status !== 'running' && (
+        <div className="absolute bottom-0 left-0 right-0 pb-1 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex gap-2 p-3">
+            <Button
+              onClick={() => setIsEditing(!isEditing)}
+              variant={isEditing ? "default" : "outline"}
+              size="sm"
+              className="cursor-pointer"
+            >
+              {isEditing ? <Eye className="w-4 h-4 mr-2" /> : <Edit className="w-4 h-4 mr-2" />}
+              {isEditing ? '预览' : '编辑'}
+            </Button>
+            
+            <Button
+              onClick={handleReset}
+              disabled={!hasChanges}
+              variant="outline"
+              className="flex-1 cursor-pointer"
+              size="sm"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              重置
+            </Button>
+
+            {isGenerating ? (
+              <Button
+                onClick={handleStopConclusion}
+                variant="destructive"
+                className="flex-1 cursor-pointer"
+                size="sm"
+              >
+                <Square className="w-4 h-4 mr-2" />
+                停止生成
+              </Button>
+            ) : (
               <Button
                 onClick={handleStartConclusion}
-                disabled={isGenerating || !nodeID}
+                disabled={!nodeID}
                 variant="default"
-                className="flex-1"
+                className="flex-1 cursor-pointer"
                 size="sm"
               >
                 <CheckCircle className="w-4 h-4 mr-2" />
-                {isGenerating ? '生成中...' : '开始结论'}
+                开始结论
               </Button>
+            )}
 
-              <Button
-                onClick={handleSave}
-                disabled={!hasChanges || isSaving}
-                className="flex-1"
-                size="sm"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {isSaving ? '保存中...' : '保存结论'}
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-      
-      <Separator className="my-4" />
-      
-      {/* 下半部分：吸附在底部的可折叠执行日志 */}
-      <div className="sticky bottom-0 bg-background border-t">
-        <Collapsible
-          open={!isLogsCollapsed}
-          onOpenChange={toggleLogsCollapse}
-          className="w-full"
-        >
-        <div className="flex items-center justify-between">
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="flex items-center gap-1 p-0">
-              <h4 className="font-medium">执行日志</h4>
-              {isLogsCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges || isSaving}
+              className="flex-1 cursor-pointer"
+              size="sm"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {isSaving ? '保存中...' : '保存结论'}
             </Button>
-          </CollapsibleTrigger>
+          </div>
         </div>
-        
-        <CollapsibleContent className="mt-2">
-          {executionLogs.length > 0 ? (
-            <div className="space-y-3 max-h-[300px] overflow-y-auto">
-              {executionLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className={`p-3 border-l-4 rounded-r-md ${getLogStyle(log.type)}`}
-                >
-                  <div className="flex items-start gap-3">
-                    {getLogIcon(log.type)}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">{log.message}</p>
-                        <span className="text-xs text-muted-foreground">
-                          {log.timestamp}
-                        </span>
-                      </div>
-                      {log.details && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {log.details}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="flex items-center justify-center py-8">
-                <div className="text-center">
-                  <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    {node.status === 'pending' ? '任务尚未开始执行' : '暂无执行日志'}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </CollapsibleContent>
-      </Collapsible>
-      </div>
+      )}
     </div>
   );
 }

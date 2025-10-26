@@ -93,7 +93,7 @@ export function PanelTabs({ nodeID }: PanelTabsProps) {
           </TabsContent>
 
           <TabsContent value="conclusion" className="h-full m-0 p-0 overflow-x-auto overflow-y-auto">
-            <div className="px-4 min-w-fit">
+            <div className="h-full px-4 min-w-fit">
               <ConclusionTab nodeID={nodeID} node={currentNode} />
             </div>
           </TabsContent>
