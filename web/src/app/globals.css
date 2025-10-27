@@ -151,3 +151,13 @@
   word-wrap: break-word !important;
   white-space: pre-wrap !important;
 }
+
+/* 移除RichTextEditor的圆角样式 */
+.richtext-rounded-\[0\.5rem\] {
+  border-radius: 0 !important;
+}
+
+/* 也可以通过更通用的选择器来移除圆角 */
+.richtext-w-full {
+  border-radius: 0 !important;
+}

@@ -85,3 +85,15 @@ export async function conclusion(nodeID: string, reference: string, instruction:
     instruction,
   });
 }
+
+// 保存结论
+export async function saveNodeConclusion(mapID: string, nodeID: string, content: string): Promise<ApiResponse<any>> {
+  return put(API_ENDPOINTS.NODE.CONCLUSION_SAVE.replace(':mapID', mapID).replace(':nodeID', nodeID), {
+    content,
+  });
+}
+
+// 重置结论
+export async function resetNodeConclusion(mapID: string, nodeID: string): Promise<ApiResponse<any>> {
+  return put(API_ENDPOINTS.NODE.CONCLUSION_RESET.replace(':mapID', mapID).replace(':nodeID', nodeID));
+}

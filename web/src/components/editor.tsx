@@ -39,9 +39,9 @@ const createExtensions = (placeholder?: string) => [
       showOnlyCurrent: true,
       placeholder: placeholder || '开始输入...',
     },
-    characterCount: {
-      limit: 50_000,
-    },
+    // characterCount: {
+    //   limit: 50_000,
+    // },
   }),
   SlashCommand,
   History,
@@ -82,7 +82,7 @@ const createExtensions = (placeholder?: string) => [
     breaks: false, // Markdown 输入中的换行符转换为 <br>
     transformPastedText: true, // 允许粘贴 markdown 文本
     transformCopiedText: true, // 复制的文本转换为 markdown
-  }),
+  }) as any,
 ]
 
 function debounce(func: any, wait: number) {
@@ -107,17 +107,30 @@ interface EditorProps {
 function Editor({ initContent, placeholder, onChange, editable = true, className, hideToolbar = false, isEditing = true }: EditorProps) {
   const [theme, setTheme] = useState('light')
   
-  // 使用 initContent 的内容和长度作为 key，确保内容变化时重新渲染
-  const editorKey = useRef(0)
-  const prevContent = useRef(initContent)
+  // 内容版本控制
+  const [internalContent, setInternalContent] = useState(initContent || '')
+  const lastExternalContent = useRef(initContent || '')
+  const lastInternalContent = useRef(initContent || '')
+  const editorKey = useRef(Math.random().toString(36).substr(2, 9))
   
-  // 当 initContent 改变时，更新 key 来强制重新渲染
+  // 检测外部内容变化
+  const hasExternalChange = initContent !== lastExternalContent.current
+  
+  // 当外部内容发生变化时，同步到内部状态
   useEffect(() => {
-    if (prevContent.current !== initContent) {
-      editorKey.current += 1
-      prevContent.current = initContent
+    if (hasExternalChange) {
+      const newContent = initContent || ''
+      lastExternalContent.current = newContent
+      
+      // 只有当内部内容与新的外部内容不同时才更新
+      if (internalContent !== newContent) {
+        setInternalContent(newContent)
+        lastInternalContent.current = newContent
+        // 强制重新渲染编辑器以同步内容
+        editorKey.current = Math.random().toString(36).substr(2, 9)
+      }
     }
-  }, [initContent])
+  }, [initContent, internalContent, hasExternalChange])
 
   const debouncedOnChange = useCallback(
     debounce((value: any) => {
@@ -128,7 +141,14 @@ function Editor({ initContent, placeholder, onChange, editable = true, className
 
   const onValueChange = useCallback(
     (value: any) => {
-      debouncedOnChange(value)
+      // 更新内部状态
+      setInternalContent(value)
+      lastInternalContent.current = value
+      
+      // 只有当内容真正发生变化时才触发onChange
+      if (value !== lastExternalContent.current) {
+        debouncedOnChange(value)
+      }
     },
     [debouncedOnChange],
   )
@@ -143,7 +163,7 @@ function Editor({ initContent, placeholder, onChange, editable = true, className
         <RichTextEditor
           key={editorKey.current}
           output="html"
-          content={initContent as any}
+          content={internalContent as any}
           onChangeContent={onValueChange}
           extensions={createExtensions(placeholder)}
           dark={theme === 'dark'}

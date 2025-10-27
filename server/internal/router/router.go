@@ -55,7 +55,7 @@ func SetupRouter(
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)
 	mapHandler := handler.NewMapHandler(mapService)
-	nodeHandler := handler.NewNodeHandler(nodeService)
+	nodeHandler := handler.NewNodeHandler(nodeService, conclusionService)
 	understandingHandler := thinkinghandler.NewUnderstandingHandler(understandingService)
 	decompositionHandler := thinkinghandler.NewDecompositionHandler(decompositionService)
 	conclusionHandler := thinkinghandler.NewConclusionHandler(conclusionService)
@@ -101,6 +101,8 @@ func SetupRouter(
 				nodes.PUT("/:nodeID/context", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.UpdateNodeContext)
 				nodes.PUT("/:nodeID/context/reset", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.ResetNodeContext)
 				nodes.GET("/:nodeID/messages", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.GetNodeMessages)
+				nodes.PUT("/:nodeID/conclusion", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.SaveConclusion)
+				nodes.PUT("/:nodeID/conclusion/reset", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.ResetConclusion)
 			}
 
 			// Thinking routes

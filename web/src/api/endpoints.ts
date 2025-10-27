@@ -35,6 +35,8 @@ export const API_ENDPOINTS = {
     CONTEXT: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID/context`,
     CONTEXT_RESET: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID/context/reset`,
     MESSAGES: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID/messages`,
+    CONCLUSION_SAVE: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID/conclusion`,
+    CONCLUSION_RESET: `${API_BASE}/v1/maps/:mapID/nodes/:nodeID/conclusion/reset`,
   },
   // 其他模块分组
 };

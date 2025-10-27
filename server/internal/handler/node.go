@@ -14,11 +14,15 @@ import (
 
 // NodeHandler 节点相关接口
 type NodeHandler struct {
-	NodeService *service.NodeService
+	NodeService       *service.NodeService
+	ConclusionService *service.ConclusionV3Service
 }
 
-func NewNodeHandler(nodeService *service.NodeService) *NodeHandler {
-	return &NodeHandler{NodeService: nodeService}
+func NewNodeHandler(nodeService *service.NodeService, conclusionService *service.ConclusionV3Service) *NodeHandler {
+	return &NodeHandler{
+		NodeService:       nodeService,
+		ConclusionService: conclusionService,
+	}
 }
 
 // ListNodes handles retrieving all nodes in a map
@@ -343,6 +347,87 @@ func (h *NodeHandler) ExecutableNodes(c *gin.Context) {
 		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      resp,
+		Timestamp: time.Now(),
+		RequestID: uuid.New().String(),
+	})
+}
+
+// SaveConclusion handles saving a conclusion
+func (h *NodeHandler) SaveConclusion(c *gin.Context) {
+	nodeID := c.Param("nodeID")
+	if nodeID == "" {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "node ID is required",
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+	var req dto.SaveConclusionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+
+	err := h.ConclusionService.SaveConclusion(c, nodeID, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
+		Message:   "success",
+		Data:      nil,
+		Timestamp: time.Now(),
+		RequestID: uuid.New().String(),
+	})
+}
+
+// ResetConclusion handles resetting a conclusion
+func (h *NodeHandler) ResetConclusion(c *gin.Context) {
+	nodeID := c.Param("nodeID")
+	if nodeID == "" {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "node ID is required",
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+
+	err := h.ConclusionService.ResetConclusion(c, nodeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
+		Message:   "success",
+		Data:      nil,
 		Timestamp: time.Now(),
 		RequestID: uuid.New().String(),
 	})

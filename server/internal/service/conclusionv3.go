@@ -202,3 +202,51 @@ outer:
 	}
 	return ctx, nil
 }
+
+// SaveConclusion 保存结论
+func (c *ConclusionV3Service) SaveConclusion(ctx *gin.Context, nodeID string, req dto.SaveConclusionRequest) error {
+	// 获取当前节点
+	node, err := c.nodeRepo.FindByID(ctx, nodeID)
+	if err != nil {
+		logger.Error("Failed to get node", zap.String("nodeID", nodeID), zap.Error(err))
+		return fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// 更新结论内容，保留原有的 conversationID 和 lastMessageID
+	node.Conclusion.Content = req.Content
+
+	// 更新数据库
+	if err := c.nodeRepo.Update(ctx, node); err != nil {
+		logger.Error("Failed to update node conclusion", zap.String("nodeID", nodeID), zap.Error(err))
+		return fmt.Errorf("failed to update node conclusion: %w", err)
+	}
+
+	logger.Info("Conclusion saved successfully", zap.String("nodeID", nodeID))
+	return nil
+}
+
+// ResetConclusion 重置结论
+func (c *ConclusionV3Service) ResetConclusion(ctx *gin.Context, nodeID string) error {
+	// 获取当前节点
+	node, err := c.nodeRepo.FindByID(ctx, nodeID)
+	if err != nil {
+		logger.Error("Failed to get node", zap.String("nodeID", nodeID), zap.Error(err))
+		return fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// 重置结论相关字段
+	node.Conclusion = model.Conclusion{
+		ConversationID: "",
+		LastMessageID:  "",
+		Content:        "",
+	}
+
+	// 更新数据库
+	if err := c.nodeRepo.Update(ctx, node); err != nil {
+		logger.Error("Failed to reset node conclusion", zap.String("nodeID", nodeID), zap.Error(err))
+		return fmt.Errorf("failed to reset node conclusion: %w", err)
+	}
+
+	logger.Info("Conclusion reset successfully", zap.String("nodeID", nodeID))
+	return nil
+}

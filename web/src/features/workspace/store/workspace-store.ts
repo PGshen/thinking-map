@@ -459,6 +459,33 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
             'updateNodeDecomposition'
           );
         },
+
+        updateNodeConclusion: async (nodeID: string, conclusion: Partial<Conclusion>) => {
+          set(
+            (state) => ({
+              nodes: state.nodes.map((node) => {
+                if (node.id === nodeID) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      conclusion: {
+                        content: '',
+                        lastMessageID: '',
+                        messages: [],
+                        ...node.data.conclusion,
+                        ...conclusion,
+                      },
+                    },
+                  };
+                }
+                return node;
+              }),
+            }),
+            false,
+            'updateNodeConclusion'
+          );
+        },
         
         // 边操作
         setEdges: (edges: Edge[]) => {
