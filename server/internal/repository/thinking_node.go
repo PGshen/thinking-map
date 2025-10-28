@@ -10,6 +10,7 @@ import (
 	"context"
 
 	"github.com/PGshen/thinking-map/server/internal/model"
+	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -123,5 +124,6 @@ func (r *thinkingNodeRepository) UpdateIsDecomposed(ctx context.Context, id stri
 	// Update isDecomposed field in decomposition JSONB column
 	return r.db.WithContext(ctx).Model(&model.ThinkingNode{}).
 		Where("id = ?", id).
+		UpdateColumn("status", comm.NodeStatusInDecomposition).
 		UpdateColumn("decomposition", gorm.Expr("jsonb_set(decomposition, '{isDecomposed}', ?)", isDecomposed)).Error
 }

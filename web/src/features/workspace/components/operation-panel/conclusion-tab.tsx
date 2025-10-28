@@ -7,42 +7,29 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Save, RotateCcw, CheckCircle, AlertCircle, Clock, FileText, ChevronDown, ChevronUp, Edit, Eye, Square, Brain, ChevronRight, Sparkle } from 'lucide-react';
+import { Save, RotateCcw, CheckCircle, FileText, ChevronDown, Edit, Eye, Square, Brain, ChevronRight, Sparkle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Badge } from '@/components/ui/badge';
-import { MarkdownContent } from '@/components/ui/markdown-content';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChatMessageArea } from '@/components/ui/chat-message-area';
 import { ChatMessage, ChatMessageContent } from '@/components/ui/chat-message';
 import { toast } from 'sonner';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { conclusion } from '@/api/node';
-import { SseTextStreamParser } from '@/lib/sse-parser';
-import { getMessages, decomposition, saveNodeConclusion, resetNodeConclusion } from '@/api/node';
+import { getMessages, saveNodeConclusion, resetNodeConclusion } from '@/api/node';
 
 // 导入新的Notion编辑器
 import EditorClient from '@/components/editor-client';
 import { MessageResponse, MessageType, MessageContent } from '@/types/message';
-import { MessageConclusionEvent, MessageTextEvent, MessageThoughtEvent } from '@/types/sse';
+import { MessageConclusionEvent, MessageThoughtEvent } from '@/types/sse';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
+import { CustomNodeModel } from '@/types/node';
+import { Node } from 'reactflow';
 
 interface ConclusionTabProps {
   nodeID: string;
-  node: any; // TODO: 使用正确的节点类型
+  node: Node<CustomNodeModel>;
 }
-
-interface ExecutionLog {
-  id: string;
-  timestamp: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  message: string;
-  details?: string;
-}
-
-
 
 export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
   const nodeData = node.data as any;

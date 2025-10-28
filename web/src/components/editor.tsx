@@ -2,7 +2,7 @@
 
 /* eslint-disable unicorn/no-null */
 /* eslint-disable quotes */
-import { useCallback, useState, useEffect, useRef } from "react"
+import { useCallback, useState, useEffect, useRef, useMemo } from "react"
 
 import RichTextEditor, { BaseKit } from "reactjs-tiptap-editor"
 
@@ -26,6 +26,7 @@ import { Table } from "reactjs-tiptap-editor/table";
 import { TaskList } from "reactjs-tiptap-editor/tasklist";
 import { SlashCommand } from 'reactjs-tiptap-editor/slashcommand';
 import { Markdown } from 'tiptap-markdown';
+import { renderToMarkdown } from '@tiptap/static-renderer/pm/markdown'
 
 import "reactjs-tiptap-editor/style.css"
 import "prism-code-editor-lightweight/layout.css";
@@ -106,6 +107,7 @@ interface EditorProps {
 
 function Editor({ initContent, placeholder, onChange, editable = true, className, hideToolbar = false, isEditing = true }: EditorProps) {
   const [theme, setTheme] = useState('light')
+  const extensionsList = useMemo(() => createExtensions(placeholder), [placeholder])
   
   // 内容版本控制
   const [internalContent, setInternalContent] = useState(initContent || '')
@@ -145,12 +147,23 @@ function Editor({ initContent, placeholder, onChange, editable = true, className
       setInternalContent(value)
       lastInternalContent.current = value
       
-      // 只有当内容真正发生变化时才触发onChange
-      if (value !== lastExternalContent.current) {
-        debouncedOnChange(value)
+      // 将 JSON 内容序列化为 Markdown，并仅在有实际变化时触发 onChange
+      try {
+        const markdownValue = renderToMarkdown({
+          extensions: extensionsList as any,
+          content: value,
+        })
+        if (markdownValue !== lastExternalContent.current) {
+          debouncedOnChange(markdownValue)
+        }
+      } catch (error) {
+        // 序列化失败时回退为文本
+        if (value !== lastExternalContent.current) {
+          debouncedOnChange(typeof value === 'string' ? value : JSON.stringify(value))
+        }
       }
     },
-    [debouncedOnChange],
+    [debouncedOnChange, extensionsList],
   )
 
   useEffect(() => {
@@ -162,10 +175,10 @@ function Editor({ initContent, placeholder, onChange, editable = true, className
       <div>
         <RichTextEditor
           key={editorKey.current}
-          output="html"
+          output="json"
           content={internalContent as any}
           onChangeContent={onValueChange}
-          extensions={createExtensions(placeholder)}
+          extensions={extensionsList}
           dark={theme === 'dark'}
           disabled={!editable}
           contentClass={`prosemirror-custom-padding ${isEditing ? 'editing-mode' : 'preview-mode'} ${className || ''}`}
@@ -176,21 +189,6 @@ function Editor({ initContent, placeholder, onChange, editable = true, className
             },
           }}
         />
-
-        {/* {typeof content === 'string' && (
-          <textarea
-            className="textarea"
-            readOnly
-            style={{
-              marginTop: 20,
-              height: 500,
-              width: '100%',
-              borderRadius: 4,
-              padding: 10,
-            }}
-            value={content}
-          />
-        )} */}
       </div>
     </main>
   )

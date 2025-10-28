@@ -13,6 +13,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
+	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
 	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
 	"github.com/PGshen/thinking-map/server/internal/pkg/utils"
@@ -214,6 +215,7 @@ func (c *ConclusionV3Service) SaveConclusion(ctx *gin.Context, nodeID string, re
 
 	// 更新结论内容，保留原有的 conversationID 和 lastMessageID
 	node.Conclusion.Content = req.Content
+	node.Status = comm.NodeStatusCompleted
 
 	// 更新数据库
 	if err := c.nodeRepo.Update(ctx, node); err != nil {
@@ -240,6 +242,7 @@ func (c *ConclusionV3Service) ResetConclusion(ctx *gin.Context, nodeID string) e
 		LastMessageID:  "",
 		Content:        "",
 	}
+	node.Status = comm.NodeStatusInConclusion
 
 	// 更新数据库
 	if err := c.nodeRepo.Update(ctx, node); err != nil {
