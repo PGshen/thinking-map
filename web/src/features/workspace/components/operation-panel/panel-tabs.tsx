@@ -37,8 +37,8 @@ export function PanelTabs({ nodeID }: PanelTabsProps) {
   // 根据节点状态判断Tab可用性
   const nodeData = currentNode.data;
   const status = nodeData?.status || 'pending';
-  const canDecompose = status === 'pending';
-  const canConclude = status === 'pending';
+  const canDecompose = status === 'pending' || status === 'in_decomposition' || status === 'in_conclusion';
+  const canConclude = status === 'pending' || status === 'in_conclusion';
 
   return (
     <div className="h-full flex flex-col">

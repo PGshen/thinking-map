@@ -577,7 +577,7 @@ GET /api/v1/sse/connect?map_id={map_id}
 Authorization: Bearer <token>
 
 Response 200 OK:
-event: connection_established
+event: connectionEstablished
 data: {
   "sessionID": "uuid",
   "clientID": "uuid",

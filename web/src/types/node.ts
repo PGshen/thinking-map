@@ -40,6 +40,7 @@ export interface CustomNodeModel {
   metadata?: any;
   selected?: boolean;
   isEditing?: boolean;
+  isSuggested?: boolean;
   // 交互事件（由外部注入，非持久数据）
   onEdit?: (mapID: string|null, id: string, data: Partial<CustomNodeModel>) => Promise<NodeResponse>;
   onDelete?: (mapID: string|null, id: string) => void;

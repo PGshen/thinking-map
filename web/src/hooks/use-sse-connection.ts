@@ -4,7 +4,7 @@ import { getToken } from '@/lib/auth';
 import API_ENDPOINTS from '@/api/endpoints';
 
 // SSE事件类型定义
-type SSEEventType = 'nodeCreated' | 'nodeUpdated' | 'nodeDeleted' | 'nodeDependenciesUpdated' | 'connection_established' | 'messageText' | 'messageConclusion' | 'messageThought' | 'messageNotice' | 'messageAction' | 'messagePlan' | 'error' | 'ping' | 'message';
+type SSEEventType = 'nodeCreated' | 'nodeUpdated' | 'nodeDeleted' | 'nodeDependenciesUpdated' | 'connectionEstablished' | 'messageText' | 'messageConclusion' | 'messageThought' | 'messageNotice' | 'messageAction' | 'messagePlan' | 'error' | 'ping' | 'message';
 
 // SSE事件数据结构
 interface SSEEventData {
@@ -58,7 +58,7 @@ class SSEConnectionManager {
     if (connection && !connection.abortController.signal.aborted) {
       // 复用现有连接
       connection.refCount++;
-      console.log(`SSE: Reusing existing connection for mapID ${mapID}, refCount: ${connection.refCount}`);
+      // console.log(`SSE: Reusing existing connection for mapID ${mapID}, refCount: ${connection.refCount}`);
       return { connection, callbackId };
     }
     
@@ -73,7 +73,7 @@ class SSEConnectionManager {
     };
     
     this.connections.set(mapID, connection);
-    console.log(`SSE: Created new connection for mapID ${mapID}`);
+    // console.log(`SSE: Created new connection for mapID ${mapID}`);
     
     // 建立SSE连接
     this.establishConnection(connection);
@@ -86,7 +86,7 @@ class SSEConnectionManager {
     const connection = this.connections.get(mapID);
     if (connection) {
       connection.callbacks.set(callbackId, callbacks);
-      console.log(`SSE: Registered callbacks for mapID ${mapID}, callbackId ${callbackId}`);
+      // console.log(`SSE: Registered callbacks for mapID ${mapID}, callbackId ${callbackId}`);
     }
   }
   
@@ -125,7 +125,7 @@ class SSEConnectionManager {
     if (connection) {
       connection.callbacks.delete(callbackId);
       connection.refCount--;
-      console.log(`SSE: Removed callbacks for mapID ${mapID}, callbackId ${callbackId}, refCount: ${connection.refCount}`);
+      // console.log(`SSE: Removed callbacks for mapID ${mapID}, callbackId ${callbackId}, refCount: ${connection.refCount}`);
       
       // 如果没有更多的引用，断开连接
       if (connection.refCount <= 0) {
@@ -140,7 +140,7 @@ class SSEConnectionManager {
     if (connection) {
       connection.abortController.abort();
       this.connections.delete(mapID);
-      console.log(`SSE: Disconnected connection for mapID ${mapID}`);
+      // console.log(`SSE: Disconnected connection for mapID ${mapID}`);
     }
   }
   
@@ -181,7 +181,7 @@ class SSEConnectionManager {
         async onopen(response) {
           console.log('SSE onopen called:', { status: response.status, contentType: response.headers.get('content-type') });
           if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
-            console.log('SSE connection opened successfully');
+            // console.log('SSE connection opened successfully');
             connection.isConnected = true;
             // 广播连接打开事件到所有注册的回调
             connection.callbacks.forEach((callbacks) => {
@@ -232,7 +232,7 @@ class SSEConnectionManager {
            
            // 如果连接失败，尝试重连
            if (!abortController.signal.aborted) {
-             console.log('SSE connection error, attempting to reconnect...');
+            //  console.log('SSE connection error, attempting to reconnect...');
              setTimeout(() => {
                if (!abortController.signal.aborted) {
                  sseManager.establishConnection(connection);
@@ -296,7 +296,7 @@ export function useSSEConnection({
 
   const connect = useCallback(() => {
     if (!mapID) {
-      console.log('SSE connect skipped: no mapID');
+      // console.log('SSE connect skipped: no mapID');
       return () => {};
     }
 
@@ -336,7 +336,7 @@ export function useSSEConnection({
       sseManager.removeCallbacks(mapID, callbackIdRef.current);
       callbackIdRef.current = null;
       setIsConnected(false);
-      console.log('SSE callbacks removed');
+      // console.log('SSE callbacks removed');
     }
   }, [mapID]);
 
@@ -366,12 +366,12 @@ export function useSSECallbackRegistration() {
       const callbackId = `dynamic_callback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       sseManager.registerEventCallbacks(mapID, callbackId, configs);
       
-      console.log(`SSE: Registered dynamic event callbacks for mapID ${mapID}, callbackId ${callbackId}`);
+      // console.log(`SSE: Registered dynamic event callbacks for mapID ${mapID}, callbackId ${callbackId}`);
       
       // 返回清理函数
       return () => {
         sseManager.removeCallbacks(mapID, callbackId);
-        console.log(`SSE: Removed dynamic event callbacks for mapID ${mapID}, callbackId ${callbackId}`);
+        // console.log(`SSE: Removed dynamic event callbacks for mapID ${mapID}, callbackId ${callbackId}`);
       };
     } else {
       console.warn(`SSE: No active connection found for mapID ${mapID}`);

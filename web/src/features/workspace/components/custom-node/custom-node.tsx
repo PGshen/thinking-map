@@ -6,7 +6,7 @@
  * @FilePath: /thinking-map/web/src/features/map/components/CustomNode.tsx
  */
 import React, { useState, useRef, useEffect } from 'react';
-import { HelpCircle, Search, Brain, Lightbulb, Scale } from 'lucide-react';
+import { HelpCircle, Search, Brain, Lightbulb, Scale, ChevronDown, ChevronUp } from 'lucide-react';
 import type { CustomNodeModel } from '@/types/node';
 import { NodeStatusIcon } from './node-status-icon';
 import { NodeActionButtons } from './node-action-buttons';
@@ -29,11 +29,26 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
   const { mapID } = useWorkspaceStoreData()
   const settings = useWorkspaceStore(state => state.settings)
   const nodeRef = useRef<HTMLDivElement>(null);
+  const conclusionRef = useRef<HTMLDivElement>(null);
   const [editForm, setEditForm] = useState({
     question: data.question,
     target: data.target,
     nodeType: data.nodeType
   });
+
+  // 结论折叠状态管理
+  const [isConclusionCollapsed, setIsConclusionCollapsed] = useState(true);
+  const [shouldShowCollapseButton, setShouldShowCollapseButton] = useState(false);
+
+  // 检查结论内容是否需要折叠按钮
+  useEffect(() => {
+    if (conclusionRef.current && data.conclusion?.content) {
+      const element = conclusionRef.current;
+      // 检查内容是否超过5行的高度（大约100px）
+      const maxHeight = 100; // 约5行的高度
+      setShouldShowCollapseButton(element.scrollHeight > maxHeight);
+    }
+  }, [data.conclusion?.content]);
 
   // 测量节点实际尺寸并通知布局系统
   useEffect(() => {
@@ -41,7 +56,7 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
       const { clientWidth, clientHeight } = nodeRef.current;
       data.onSizeChange(data.id, { width: clientWidth, height: clientHeight });
     }
-  }, [data.question, data.target, data.conclusion, data.isEditing, data.onSizeChange, data.id]);
+  }, [data.question, data.target, data.conclusion, data.isEditing, data.onSizeChange, data.id, isConclusionCollapsed]);
 
   const handleEdit = () => {
     data.onEdit?.(mapID, data.id, { isEditing: true });
@@ -83,6 +98,10 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
   const handleDelete = () => {
     data.onDelete?.(mapID, data.id);
   }
+
+  const toggleConclusionCollapse = () => {
+    setIsConclusionCollapsed(!isConclusionCollapsed);
+  };
 
   // 动画样式
   const animationStyle = data.isAnimating ? {
@@ -203,12 +222,47 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
               />
             </div>
             {data.status === 'completed' && data.conclusion && (
-              <div className="text-xs text-green-700 overflow-hidden leading-tight">
-                <MarkdownContent 
-                  id={'conclusion' + data.id}
-                  content={data.conclusion.content} 
-                  className="max-w-full overflow-hidden text-ellipsis line-clamp-5"
-                />
+              <div className="relative">
+                <div 
+                  ref={conclusionRef}
+                  className={`text-xs text-green-700 overflow-hidden leading-tight transition-all duration-300 ${
+                    isConclusionCollapsed ? 'max-h-[150px]' : 'max-h-none'
+                  }`}
+                  style={{
+                    maskImage: isConclusionCollapsed && shouldShowCollapseButton 
+                      ? 'linear-gradient(to bottom, black 70%, transparent 100%)' 
+                      : 'none'
+                  }}
+                >
+                  <MarkdownContent 
+                    id={'conclusion' + data.id}
+                    content={data.conclusion.content} 
+                    className={`max-w-full overflow-hidden ${
+                      isConclusionCollapsed ? 'text-ellipsis' : ''
+                    }`}
+                  />
+                </div>
+                {shouldShowCollapseButton && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleConclusionCollapse();
+                    }}
+                    className="flex items-center gap-1 mt-1 text-xs text-green-600 hover:text-green-800 transition-colors cursor-pointer"
+                  >
+                    {isConclusionCollapsed ? (
+                      <>
+                        <span>展开</span>
+                        <ChevronDown className="w-3 h-3" />
+                      </>
+                    ) : (
+                      <>
+                        <span>收起</span>
+                        <ChevronUp className="w-3 h-3" />
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             )}
           </>

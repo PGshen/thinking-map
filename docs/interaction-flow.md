@@ -178,7 +178,7 @@ GET /api/v1/sse/connect?map_id={map_id}&user_id={user_id}
 4. 监听节点变更事件
 
 SSE事件格式：
-event: connection_established
+event: connectionEstablished
 data: {
   "map_id": "思维导图ID",
   "current_status": "ready",

@@ -706,15 +706,27 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
             (state) => ({
               executableNodeIDs: nodeIDs,
               suggestedNodeID: suggestedNodeID,
-              // 更新节点数据，为建议节点添加标记
-              nodes: state.nodes.map((node) => ({
-                ...node,
-                data: {
-                  ...node.data,
-                  status: 'pending',
-                  isSuggested: node.id === suggestedNodeID
+              // 只更新可执行节点的状态和建议节点标记
+              nodes: state.nodes.map((node) => {
+                const isExecutable = nodeIDs.includes(node.id);
+                const isSuggested = node.id === suggestedNodeID;
+                
+                // 只更新需要更新的节点
+                if (isExecutable || isSuggested || node.data.isSuggested) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      // 只有可执行节点才更新状态为pending
+                      ...(isExecutable && { status: 'pending' as const }),
+                      // 更新建议节点标记
+                      isSuggested
+                    }
+                  };
                 }
-              }))
+                
+                return node;
+              })
             }),
             false,
             'setExecutableNodes'
@@ -725,14 +737,24 @@ export const useWorkspaceStore = create<WorkspaceState & { actions: WorkspaceAct
           set(
             (state) => ({
               suggestedNodeID: nodeID,
-              // 更新节点数据，为建议节点添加标记
-              nodes: state.nodes.map((node) => ({
-                ...node,
-                data: {
-                  ...node.data,
-                  isSuggested: node.id === nodeID
+              // 只更新需要更新isSuggested属性的节点
+              nodes: state.nodes.map((node) => {
+                const shouldBeSuggested = node.id === nodeID;
+                const currentlySuggested = node.data.isSuggested;
+                
+                // 只更新状态发生变化的节点
+                if (shouldBeSuggested !== currentlySuggested) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      isSuggested: shouldBeSuggested
+                    }
+                  };
                 }
-              }))
+                
+                return node;
+              })
             }),
             false,
             'setSuggestedNode'

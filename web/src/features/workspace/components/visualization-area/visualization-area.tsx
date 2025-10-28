@@ -330,13 +330,13 @@ function MapCanvas({ mapID }: VisualizationAreaProps) {
         }
       },
       {
-        eventType: 'connection_established',
+        eventType: 'connectionEstablished',
         callback: (event) => {
           try {
             const data = JSON.parse(event.data);
             handleConnectionEstablished(data);
           } catch (error) {
-            console.error('解析connection_established事件失败:', error, event.data);
+            console.error('解析connectionEstablished事件失败:', error, event.data);
           }
         }
       },
