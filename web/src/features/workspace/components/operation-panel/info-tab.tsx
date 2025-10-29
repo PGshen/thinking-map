@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { CustomNodeModel, DependentContext } from '@/types/node';
 import { resetNodeContext, updateNode, updateNodeContext } from '@/api/node';
+import { MarkdownContent } from '@/components/ui/markdown-content';
 
 interface InfoTabProps {
   nodeID: string;
@@ -197,7 +198,12 @@ export function InfoTab({ nodeID, nodeData }: InfoTabProps) {
           <div className="space-y-2">
             <Label>结论内容</Label>
             <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-800">{nodeData.conclusion.content}</p>
+              {/* <p className="text-sm text-green-800">{nodeData.conclusion.content}</p> */}
+              <MarkdownContent 
+                    id={'conclusion_info_' + nodeData.id}
+                    content={nodeData.conclusion.content} 
+                    className="text-sm text-green-800"
+                  />
             </div>
           </div>
         )}

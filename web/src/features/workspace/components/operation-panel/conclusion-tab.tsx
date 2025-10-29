@@ -368,6 +368,7 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
           ...nodeData,
           conclusion: {
             ...nodeData?.conclusion,
+            messages: messages,
             content: content,
           },
           status: content.trim() ? 'completed' : currentStatus

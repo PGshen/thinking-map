@@ -8,9 +8,11 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
+	"github.com/google/uuid"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -44,6 +46,10 @@ func (r *thinkingNodeRepository) Delete(ctx context.Context, id string) error {
 
 func (r *thinkingNodeRepository) FindByID(ctx context.Context, id string) (*model.ThinkingNode, error) {
 	var node model.ThinkingNode
+	if id == uuid.Nil.String() {
+		err := errors.New("record not found")
+		return &node, err
+	}
 	err := r.db.WithContext(ctx).Where(whereID, id).First(&node).Error
 	if err != nil {
 		return nil, err

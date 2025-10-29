@@ -214,7 +214,7 @@ func (b *Broker) PublishToClient(clientID string, event Event) error {
 // HandleSSE 处理SSE请求（Gin专用）
 func (b *Broker) HandleSSE(c *gin.Context, sessionID, clientID string) {
 	client := b.NewClient(clientID, sessionID)
-	if client == nil {
+	if client == nil || client.EventChan == nil {
 		c.JSON(http.StatusInternalServerError, dto.Response{
 			Code:      http.StatusInternalServerError,
 			Message:   "创建客户端失败",
