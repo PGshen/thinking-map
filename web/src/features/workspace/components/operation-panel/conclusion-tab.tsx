@@ -132,13 +132,13 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
    }, [nodeID]);
 
    // 使用useEffect来同步messages到workspace store，避免在渲染期间更新状态
-   useEffect(() => {
-     if (messages.length > 0) {
-       actions.updateNodeConclusion(nodeID, {
-         messages: messages,
-       });
-     }
-   }, [messages, nodeID, actions]);
+  //  useEffect(() => {
+  //    if (messages.length > 0) {
+  //      actions.updateNodeConclusion(nodeID, {
+  //        messages: messages,
+  //      });
+  //    }
+  //  }, [messages, nodeID, actions]);
 
 
   // 清理定时器

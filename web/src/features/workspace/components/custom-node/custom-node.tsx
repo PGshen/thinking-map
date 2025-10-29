@@ -5,12 +5,12 @@
  * @LastEditTime: 2025-07-07 23:52:59
  * @FilePath: /thinking-map/web/src/features/map/components/CustomNode.tsx
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { HelpCircle, Search, Brain, Lightbulb, Scale, ChevronDown, ChevronUp } from 'lucide-react';
 import type { CustomNodeModel } from '@/types/node';
 import { NodeStatusIcon } from './node-status-icon';
 import { NodeActionButtons } from './node-action-buttons';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useEdges } from 'reactflow';
 import { MarkdownContent } from '@/components/ui/markdown-content';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ interface CustomNodeProps {
 export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
   const { mapID } = useWorkspaceStoreData()
   const settings = useWorkspaceStore(state => state.settings)
+  const edges = useEdges(); // 获取当前所有边的信息
   const nodeRef = useRef<HTMLDivElement>(null);
   const conclusionRef = useRef<HTMLDivElement>(null);
   const [editForm, setEditForm] = useState({
@@ -39,6 +40,39 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
   // 结论折叠状态管理
   const [isConclusionCollapsed, setIsConclusionCollapsed] = useState(true);
   const [shouldShowCollapseButton, setShouldShowCollapseButton] = useState(false);
+
+  // 检查当前节点是否有连接
+  const nodeConnections = useMemo(() => {
+    const nodeId = data.id;
+    
+    // 检查父子关系连接
+    const hasParentTargetConnection = edges.some(edge => 
+      edge.target === nodeId && edge.type !== 'dependency'
+    );
+    const hasParentSourceConnection = edges.some(edge => 
+      edge.source === nodeId && edge.type !== 'dependency'
+    );
+    
+    // 检查依赖关系连接
+    const hasDependencyTargetConnection = edges.some(edge => 
+      edge.target === nodeId && edge.type === 'dependency'
+    );
+    const hasDependencySourceConnection = edges.some(edge => 
+      edge.source === nodeId && edge.type === 'dependency'
+    );
+    
+    return {
+      // 父子关系连接
+      hasParentTargetConnection,
+      hasParentSourceConnection,
+      hasParentConnection: hasParentTargetConnection || hasParentSourceConnection,
+      
+      // 依赖关系连接
+      hasDependencyTargetConnection,
+      hasDependencySourceConnection,
+      hasDependencyConnection: hasDependencyTargetConnection || hasDependencySourceConnection
+    };
+  }, [edges, data.id]);
 
   // 检查结论内容是否需要折叠按钮
   useEffect(() => {
@@ -118,45 +152,53 @@ export const CustomNode: React.FC<CustomNodeProps> = ({ data }) => {
       onContextMenu={e => { e.preventDefault(); data.onContextMenu?.(data.id, e); }}
     >
       {/* ReactFlow Handles for edge connection */}
-      {/* 父子关系连接点 */}
-      <Handle 
-        type="target" 
-        position={settings.layoutConfig.direction === 'TB' ? Position.Top : Position.Left} 
-        className={`!rounded-none !border-blue-500 !bg-blue-500 ${
-          settings.layoutConfig.direction === 'TB' ? '!w-2 !h-1' : '!w-1 !h-2'
-        }`}
-      />
-      <Handle 
-        type="source" 
-        position={settings.layoutConfig.direction === 'TB' ? Position.Bottom : Position.Right} 
-        className={`!rounded-none !border-blue-500 !bg-blue-500 ${
-          settings.layoutConfig.direction === 'TB' ? '!w-2 !h-1' : '!w-1 !h-2'
-        }`}
-      />
+      {/* 父子关系连接点 - 分别控制target和source的显示 */}
+      {nodeConnections.hasParentTargetConnection && (
+        <Handle 
+          type="target" 
+          position={settings.layoutConfig.direction === 'TB' ? Position.Top : Position.Left} 
+          className={`!rounded-none !border-blue-500 !bg-blue-500 ${
+            settings.layoutConfig.direction === 'TB' ? '!w-2 !h-1' : '!w-1 !h-2'
+          }`}
+        />
+      )}
+      {nodeConnections.hasParentSourceConnection && (
+        <Handle 
+          type="source" 
+          position={settings.layoutConfig.direction === 'TB' ? Position.Bottom : Position.Right} 
+          className={`!rounded-none !border-blue-500 !bg-blue-500 ${
+            settings.layoutConfig.direction === 'TB' ? '!w-2 !h-1' : '!w-1 !h-2'
+          }`}
+        />
+      )}
       
-      {/* 依赖关系连接点 */}
-      <Handle 
-        id="dependency-target"
-        type="target" 
-        position={settings.layoutConfig.direction === 'TB' ? Position.Left : Position.Top} 
-        className={`!rounded-none !border-purple-500 !bg-purple-500 !w-1 !h-1`}
-        style={{
-          left: settings.layoutConfig.direction === 'TB' ? '0px' : '50%',
-          top: settings.layoutConfig.direction === 'TB' ? '50%' : '0px'
-        }}
-      />
-      <Handle 
-        id="dependency-source"
-        type="source" 
-        position={settings.layoutConfig.direction === 'TB' ? Position.Right : Position.Bottom} 
-        className={`!rounded-none !border-purple-500 !bg-purple-500 !w-1 !h-1`}
-        style={{
-          right: settings.layoutConfig.direction === 'TB' ? '0px' : 'auto',
-          left: settings.layoutConfig.direction === 'TB' ? 'auto' : '50%',
-          bottom: settings.layoutConfig.direction === 'TB' ? 'auto' : '0px',
-          top: settings.layoutConfig.direction === 'TB' ? '50%' : 'auto'
-        }}
-      />
+      {/* 依赖关系连接点 - 分别控制target和source的显示 */}
+      {nodeConnections.hasDependencyTargetConnection && (
+        <Handle 
+          id="dependency-target"
+          type="target" 
+          position={settings.layoutConfig.direction === 'TB' ? Position.Left : Position.Top} 
+          className={`!rounded-none !border-purple-500 !bg-purple-500 !w-1 !h-1`}
+          style={{
+            left: settings.layoutConfig.direction === 'TB' ? '0px' : '50%',
+            top: settings.layoutConfig.direction === 'TB' ? '50%' : '0px'
+          }}
+        />
+      )}
+      {nodeConnections.hasDependencySourceConnection && (
+        <Handle 
+          id="dependency-source"
+          type="source" 
+          position={settings.layoutConfig.direction === 'TB' ? Position.Right : Position.Bottom} 
+          className={`!rounded-none !border-purple-500 !bg-purple-500 !w-1 !h-1`}
+          style={{
+            right: settings.layoutConfig.direction === 'TB' ? '0px' : 'auto',
+            left: settings.layoutConfig.direction === 'TB' ? 'auto' : '50%',
+            bottom: settings.layoutConfig.direction === 'TB' ? 'auto' : '0px',
+            top: settings.layoutConfig.direction === 'TB' ? '50%' : 'auto'
+          }}
+        />
+      )}
       
       {/* Header: 类型+状态 */}
       <div className="flex items-center justify-between mb-2 pb-2">
