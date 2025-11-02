@@ -115,8 +115,11 @@ function Editor({ initContent, placeholder, onChange, editable = true, className
   const lastInternalContent = useRef(initContent || '')
   const editorKey = useRef(Math.random().toString(36).substr(2, 9))
   
+  // 标记是否是内部更新触发的变化
+  const isInternalUpdate = useRef(false)
+  
   // 检测外部内容变化
-  const hasExternalChange = initContent !== lastExternalContent.current
+  const hasExternalChange = initContent !== lastExternalContent.current && !isInternalUpdate.current
   
   // 当外部内容发生变化时，同步到内部状态
   useEffect(() => {
@@ -132,10 +135,15 @@ function Editor({ initContent, placeholder, onChange, editable = true, className
         editorKey.current = Math.random().toString(36).substr(2, 9)
       }
     }
+    
+    // 重置内部更新标志
+    isInternalUpdate.current = false
   }, [initContent, internalContent, hasExternalChange])
 
   const debouncedOnChange = useCallback(
     debounce((value: any) => {
+      // 设置内部更新标志，防止onChange回调导致的重渲染
+      isInternalUpdate.current = true
       onChange?.(value)
     }, 300),
     [onChange],
@@ -154,11 +162,15 @@ function Editor({ initContent, placeholder, onChange, editable = true, className
           content: value,
         })
         if (markdownValue !== lastExternalContent.current) {
+          // 设置内部更新标志
+          isInternalUpdate.current = true
           debouncedOnChange(markdownValue)
         }
       } catch (error) {
         // 序列化失败时回退为文本
         if (value !== lastExternalContent.current) {
+          // 设置内部更新标志
+          isInternalUpdate.current = true
           debouncedOnChange(typeof value === 'string' ? value : JSON.stringify(value))
         }
       }
