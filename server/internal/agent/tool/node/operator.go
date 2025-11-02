@@ -170,6 +170,20 @@ func UpdateNodeFunc(ctx context.Context, req *UpdateNodeRequest) (*dto.NodeRespo
 			Updates: updates,
 		},
 	})
+	// 发送节点更新消息
+	global.GetBroker().PublishToSession(mapID, sse.Event{
+		ID:   uuid.NewString(),
+		Type: dto.MessageNoticeEventType,
+		Data: dto.MessageNoticeEvent{
+			NodeID:    resp.ID,
+			MessageID: uuid.NewString(),
+			Notice: model.Notice{
+				Type:    model.NoticeTypeSuccess,
+				Name:    "节点更新",
+				Content: resp.Question,
+			},
+		},
+	})
 
 	// 保存成功消息
 	global.GetMessageManager().SaveDecompositionMessage(ctx, parentID, dto.CreateMessageRequest{
@@ -222,6 +236,22 @@ func DeleteNodeFunc(ctx context.Context, req *DeleteNodeRequest) (*DeleteNodeRes
 		},
 	})
 
+	messageContent := fmt.Sprintf("节点[%s]删除成功", node.Question)
+	// 发送节点创建消息
+	global.GetBroker().PublishToSession(mapID, sse.Event{
+		ID:   uuid.NewString(),
+		Type: dto.MessageNoticeEventType,
+		Data: dto.MessageNoticeEvent{
+			NodeID:    node.ID,
+			MessageID: uuid.NewString(),
+			Notice: model.Notice{
+				Type:    model.NoticeTypeWarning,
+				Name:    "节点删除",
+				Content: messageContent,
+			},
+		},
+	})
+
 	// 保存成功消息
 	global.GetMessageManager().SaveDecompositionMessage(ctx, parentID, dto.CreateMessageRequest{
 		ID:          uuid.NewString(),
@@ -231,7 +261,7 @@ func DeleteNodeFunc(ctx context.Context, req *DeleteNodeRequest) (*DeleteNodeRes
 			Notice: model.Notice{
 				Type:    model.NoticeTypeWarning,
 				Name:    "节点删除",
-				Content: fmt.Sprintf("节点[%s]删除成功", node.Question),
+				Content: messageContent,
 			},
 		},
 	})
@@ -252,6 +282,7 @@ func SetNodeDependenciesFunc(ctx context.Context, req *SetNodeDependenciesReques
 	if nodeOperator == nil {
 		return nil, fmt.Errorf("node operator not initialized")
 	}
+	fmt.Println("SetNodeDependencies:", req.Op, req.NodeID, req.Dependencies)
 
 	// 验证操作类型
 	if req.Op != "add" && req.Op != "remove" {
@@ -464,9 +495,9 @@ func SetNodeDependenciesTool() (tool.InvokableTool, error) {
 					Type: schema.Array,
 					ElemInfo: &schema.ParameterInfo{
 						Type: schema.String,
-						Desc: "当前节点的依赖节点ID（若要执行当前节点，被依赖的节点需要先执行）",
+						Desc: "当前节点的所依赖节点ID（若要执行当前节点，被依赖的节点需要先执行）",
 					},
-					Desc:     "依赖的节点ID列表（要执行当前节点，被依赖的节点需要先执行）",
+					Desc:     "所有依赖的节点ID列表（要执行当前节点，被依赖的节点需要先执行）",
 					Required: true,
 				},
 				"op": {

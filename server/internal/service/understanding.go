@@ -70,6 +70,9 @@ func (s *UnderstandingService) Understanding(ctx *gin.Context, req dto.Understan
 
 	// 3. 调用agent理解
 	sr, err = agent.Stream(ctx, schemaMsgs, compose.WithCallbacks(callback.LogCbHandler))
+	if err != nil {
+		return
+	}
 	// 4. 保存消息
 	// 4.2 保存用户消息
 	msgRequest := dto.CreateMessageRequest{

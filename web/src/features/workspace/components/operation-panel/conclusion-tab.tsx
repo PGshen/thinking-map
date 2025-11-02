@@ -25,6 +25,7 @@ import { MessageConclusionEvent, MessageThoughtEvent } from '@/types/sse';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
 import { CustomNodeModel } from '@/types/node';
 import { Node } from 'reactflow';
+import { MarkdownContent } from '@/components/ui/markdown-content';
 
 interface ConclusionTabProps {
   nodeID: string;
@@ -436,6 +437,8 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
     }
 
     setIsGenerating(true);
+    // 切换到预览状态
+    setIsEditing(false);
     
     try {
       conclusion(nodeID, reference, instruction).then(res => {
@@ -522,15 +525,25 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
           
           <TabsContent value="conclusion" className="flex-1 ml-2 mt-0 data-[state=inactive]:hidden">
             <div className="h-full overflow-auto">
-              <EditorClient
-                initContent={content}
-                placeholder="请输入结论..."
-                onChange={handleEditorChange}
-                editable={isEditing && (nodeData?.status || 'pending') !== 'running'}
-                className={`h-full ${isEditing ? 'p-4' : 'px-2 py-4'}`}
-                hideToolbar={!isEditing}
-                isEditing={isEditing}
-              />
+              {isEditing ? (
+                <EditorClient
+                  initContent={content}
+                  placeholder="请输入结论..."
+                  onChange={handleEditorChange}
+                  editable={(nodeData?.status || 'pending') !== 'running'}
+                  className="h-full p-4"
+                  hideToolbar={false}
+                  isEditing={true}
+                />
+              ) : (
+                <div className="h-full px-2 py-4">
+                  <MarkdownContent 
+                    id={`conclusion-${nodeID}`}
+                    content={content || ''}
+                    className="text-sm"
+                  />
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
@@ -572,7 +585,7 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
           ) : (
             <Button
               onClick={handleStartConclusion}
-              disabled={!nodeID}
+              disabled={!nodeID || (nodeData?.conclusion?.content && nodeData.conclusion.content.trim() !== '')}
               variant="default"
               className="flex-1 cursor-pointer"
               size="sm"

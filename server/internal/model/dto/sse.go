@@ -63,8 +63,8 @@ type NodeDeletedEvent struct {
 
 // NodeDependenciesUpdatedEvent represents the node dependencies update event
 type NodeDependenciesUpdatedEvent struct {
-	NodeID       string   `json:"nodeID"`
-	Op           string   `json:"op"`           // add or remove
+	NodeID string `json:"nodeID"`
+	// Op           string   `json:"op"`           // add or remove
 	Dependencies []string `json:"dependencies"` // 依赖节点ID列表
 }
 

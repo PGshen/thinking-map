@@ -36,13 +36,13 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
   const { actions } = useWorkspaceStore();
 
   // 使用useEffect来同步messages到workspace store，避免在渲染期间更新状态
-  useEffect(() => {
-    if (messages.length > 0) {
-      actions.updateNodeDecomposition(nodeID, {
-        messages: messages,
-      });
-    }
-  }, [messages, nodeID, actions]);
+  // useEffect(() => {
+  //   if (messages.length > 0) {
+  //     actions.updateNodeDecomposition(nodeID, {
+  //       messages: messages,
+  //     });
+  //   }
+  // }, [messages, nodeID, actions]);
 
   // 通用消息处理函数
   const handleMessageEvent = <T extends { messageID: string; timestamp: string }>(
@@ -216,7 +216,7 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
         return;
       }
       console.log("messages", nodeData.decomposition?.messages)
-      if (nodeData.decomposition?.messages === undefined) {
+      // if (nodeData.decomposition?.messages === undefined) {
         if (loading) {
           return;
         }
@@ -240,10 +240,10 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
         } finally {
           setLoading(false);
         }
-      } else {
-        setMessages(nodeData.decomposition.messages);
-        setIsDecomposed(nodeData.decomposition.isDecomposed);
-      }
+      // } else {
+      //   setMessages(nodeData.decomposition.messages);
+      //   setIsDecomposed(nodeData.decomposition.isDecomposed);
+      // }
     };
 
     initializeDecomposition();

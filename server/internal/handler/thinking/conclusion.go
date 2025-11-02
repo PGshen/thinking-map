@@ -11,11 +11,11 @@ import (
 
 // ConclusionHandler handles conclusion generation HTTP requests
 type ConclusionHandler struct {
-	conclusionService *service.ConclusionV3Service
+	conclusionService *service.ConclusionService
 }
 
 // NewConclusionHandler creates a new conclusion handler
-func NewConclusionHandler(conclusionService *service.ConclusionV3Service) *ConclusionHandler {
+func NewConclusionHandler(conclusionService *service.ConclusionService) *ConclusionHandler {
 	return &ConclusionHandler{
 		conclusionService: conclusionService,
 	}

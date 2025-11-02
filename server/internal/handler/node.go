@@ -15,10 +15,10 @@ import (
 // NodeHandler 节点相关接口
 type NodeHandler struct {
 	NodeService       *service.NodeService
-	ConclusionService *service.ConclusionV3Service
+	ConclusionService *service.ConclusionService
 }
 
-func NewNodeHandler(nodeService *service.NodeService, conclusionService *service.ConclusionV3Service) *NodeHandler {
+func NewNodeHandler(nodeService *service.NodeService, conclusionService *service.ConclusionService) *NodeHandler {
 	return &NodeHandler{
 		NodeService:       nodeService,
 		ConclusionService: conclusionService,
