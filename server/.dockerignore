@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Test files
+*_test.go
+testdata/
+
+# Build artifacts
+main
+*.exe
+
+# Dependencies (will be downloaded in container)
+vendor/
+
+# Temporary files
+tmp/
+temp/
+
+# Redis dump
+dump.rdb
