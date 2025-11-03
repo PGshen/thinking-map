@@ -7,7 +7,7 @@ require (
 	github.com/cloudwego/eino-ext/components/model/claude v0.1.8
 	github.com/cloudwego/eino-ext/components/model/openai v0.1.2
 	github.com/cloudwego/eino-ext/components/tool/duckduckgo v0.0.0-20251030100426-0019cd119fa9
-	github.com/cloudwego/eino-ext/components/tool/googlesearch v0.0.0-20251030100426-0019cd119fa9
+	github.com/cloudwego/eino-ext/components/tool/googlesearch v0.0.0-20251103074700-579ebc297766
 	github.com/cloudwego/eino-ext/libs/acl/openai v0.1.0
 	github.com/getkin/kin-openapi v0.120.0 // nosemgrep
 	github.com/gin-contrib/cors v1.7.6

@@ -47,12 +47,12 @@ func DuckDuckGoSearchFunc(ctx context.Context, req *SearchRequest) (*SearchRespo
 
 	// 创建DuckDuckGo搜索工具配置
 	config := &duckduckgo.Config{
-		ToolName:    "duckduckgo_search",
-		ToolDesc:    "search web for information by duckduckgo",
-		Region:      ddgsearch.RegionWT, // 全球搜索
-		MaxResults:  req.MaxResults,
-		SafeSearch:  ddgsearch.SafeSearchOff,
-		TimeRange:   ddgsearch.TimeRangeAll,
+		ToolName:   "duckduckgo_search",
+		ToolDesc:   "search web for information by duckduckgo",
+		Region:     ddgsearch.RegionWT, // 全球搜索
+		MaxResults: req.MaxResults,
+		SafeSearch: ddgsearch.SafeSearchOff,
+		TimeRange:  ddgsearch.TimeRangeAll,
 		DDGConfig: &ddgsearch.Config{
 			Timeout:    30 * time.Second, // 30秒超时
 			Cache:      true,             // 启用缓存
@@ -150,7 +150,7 @@ func GetAllToolInfos(ctx context.Context) ([]*schema.ToolInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	toolInfos := make([]*schema.ToolInfo, 0, len(tools))
 	for _, tool := range tools {
 		info, err := tool.Info(ctx)

@@ -31,7 +31,7 @@ func TestDuckDuckGoSearchFunc(t *testing.T) {
 			t.Skip("跳过网络相关测试")
 			return
 		}
-		
+
 		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Equal(t, req.Query, resp.Query)
@@ -59,7 +59,7 @@ func TestDuckDuckGoSearchFunc(t *testing.T) {
 			t.Skip("跳过网络相关测试")
 			return
 		}
-		
+
 		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Equal(t, 1, resp.Page, "默认页码应为1")
@@ -95,7 +95,7 @@ func TestDuckDuckGoSearchFunc(t *testing.T) {
 			t.Skip("跳过网络相关测试")
 			return
 		}
-		
+
 		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Equal(t, req.Query, resp.Query)
@@ -109,7 +109,7 @@ func TestCreateDuckDuckGoSearchTool(t *testing.T) {
 	assert.NotNil(t, tool)
 
 	ctx := context.Background()
-	
+
 	// 测试工具信息
 	info, err := tool.Info(ctx)
 	require.NoError(t, err)
@@ -122,7 +122,7 @@ func TestGetAllSearchTools(t *testing.T) {
 	tools, err := GetAllSearchTools()
 	require.NoError(t, err)
 	assert.NotEmpty(t, tools, "应该返回至少一个搜索工具")
-	
+
 	// 验证返回的是DuckDuckGo搜索工具
 	ctx := context.Background()
 	for _, tool := range tools {
@@ -135,11 +135,11 @@ func TestGetAllSearchTools(t *testing.T) {
 
 func TestGetAllToolInfos(t *testing.T) {
 	ctx := context.Background()
-	
+
 	toolInfos, err := GetAllToolInfos(ctx)
 	require.NoError(t, err)
 	assert.NotEmpty(t, toolInfos, "应该返回至少一个工具信息")
-	
+
 	// 验证工具信息的完整性
 	for _, info := range toolInfos {
 		assert.NotEmpty(t, info.Name, "工具名称不应为空")
@@ -163,11 +163,11 @@ func TestSearchToolIntegration(t *testing.T) {
 
 	// 模拟工具调用
 	reqJSON := `{"query":"CloudWeGo Eino framework","page":1,"maxResults":3}`
-	
+
 	resp, err := tool.InvokableRun(ctx, reqJSON)
 	require.NoError(t, err)
 	assert.NotEmpty(t, resp, "工具应该返回搜索结果")
-	
+
 	t.Logf("搜索结果: %s", resp)
 }
 

@@ -72,6 +72,8 @@ github.com/cloudwego/eino-ext/components/tool/duckduckgo v0.0.0-20251030100426-0
 github.com/cloudwego/eino-ext/components/tool/duckduckgo v0.0.0-20251030100426-0019cd119fa9/go.mod h1:RwtbhEnfY79+CoCdG8mVrn8p7WhgzmcgMWPtx2WrIf4=
 github.com/cloudwego/eino-ext/components/tool/googlesearch v0.0.0-20251030100426-0019cd119fa9 h1:thdh1t3iSkO1bQst5e4J5a8dOweZIA7PzI0qnpNK9qA=
 github.com/cloudwego/eino-ext/components/tool/googlesearch v0.0.0-20251030100426-0019cd119fa9/go.mod h1:DHRwLusPowaYAt3G0WqtYhzGAiaTr8FwROcXpTbUSOw=
+github.com/cloudwego/eino-ext/components/tool/googlesearch v0.0.0-20251103074700-579ebc297766 h1:1iwamEB8vCiBpDAPr155woeGl552MTErnbSuCwJs3+4=
+github.com/cloudwego/eino-ext/components/tool/googlesearch v0.0.0-20251103074700-579ebc297766/go.mod h1:DHRwLusPowaYAt3G0WqtYhzGAiaTr8FwROcXpTbUSOw=
 github.com/cloudwego/eino-ext/devops v0.1.8 h1:qBg5vjZSDnd9tHzCHG8YsjnGB5vKG2EoZuuQCI8qrGs=
 github.com/cloudwego/eino-ext/devops v0.1.8/go.mod h1:8yjvPNTaB5Ve4aJmJ0ysFgB10y3YbIuqMh0/Uwt5Fnw=
 github.com/cloudwego/eino-ext/libs/acl/openai v0.1.0 h1:3CXp90Yd4BZ/Izej45I7Bq03LnLwPC/tpDUWcEDiUdI=

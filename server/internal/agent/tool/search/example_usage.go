@@ -118,7 +118,7 @@ func ExampleMultipleTools() {
 		fmt.Printf("工具 %d:\n", i+1)
 		fmt.Printf("  名称: %s\n", info.Name)
 		fmt.Printf("  描述: %s\n", info.Desc)
-		
+
 		// 打印参数信息
 		fmt.Printf("  参数: 支持query(搜索关键词), page(页码), maxResults(最大结果数)\n")
 		fmt.Println()
@@ -193,7 +193,7 @@ func ExampleErrorHandling() {
 
 	for _, tc := range testCases {
 		fmt.Printf("测试用例: %s\n", tc.name)
-		
+
 		resp, err := DuckDuckGoSearchFunc(ctx, tc.req)
 		if err != nil {
 			fmt.Printf("  错误: %v\n", err)
