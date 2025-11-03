@@ -37,7 +37,7 @@ export function getUnmetDependenciesMessage(context: DependentContext): string {
 export function checkAllDependenciesMet(context: DependentContext): boolean {
   if (!context) return true;
   
-  const { ancestor, prevSibling, children } = context;
+  const {prevSibling, children } = context;
   const hasUnmetDependencies = [
     ...(prevSibling || []),
     ...(children || [])

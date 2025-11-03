@@ -42,12 +42,108 @@ interface SSEConnection {
   isConnected: boolean;
   callbacks: Map<string, SSECallbacks>;
   refCount: number;
+  reconnectAttempts: number; // 重连尝试次数
+  lastConnectedTime: number; // 最后连接成功时间
+  connectionState: 'connecting' | 'connected' | 'disconnected' | 'error'; // 连接状态
 }
 
 // 全局连接管理器
 class SSEConnectionManager {
   private connections = new Map<string, SSEConnection>();
   private callbackIdCounter = 0;
+  private isPageVisible = true;
+  private visibilityChangeHandler: (() => void) | null = null;
+  private healthCheckInterval: NodeJS.Timeout | null = null;
+
+  constructor() {
+    this.initializeVisibilityListener();
+    this.startHealthCheck();
+  }
+
+  // 启动连接健康检查
+  private startHealthCheck() {
+    // 每30秒检查一次连接健康状态
+    this.healthCheckInterval = setInterval(() => {
+      this.checkConnectionsHealth();
+    }, 30000);
+  }
+
+  // 检查所有连接的健康状态
+  private checkConnectionsHealth() {
+    if (!this.isPageVisible) {
+      return; // 页面不可见时不进行健康检查
+    }
+
+    this.connections.forEach((connection, mapID) => {
+      const now = Date.now();
+      const timeSinceLastConnection = now - connection.lastConnectedTime;
+      
+      // 如果连接超过5分钟没有活动且状态为错误，尝试重连
+      if (connection.connectionState === 'error' && 
+          timeSinceLastConnection > 300000 && // 5分钟
+          connection.reconnectAttempts < 3) { // 限制健康检查重连次数
+        
+        console.log(`Health check: Attempting to reconnect stale connection for mapID: ${mapID}`);
+        this.establishConnection(connection);
+      }
+    });
+  }
+
+  // 初始化页面可见性监听
+  private initializeVisibilityListener() {
+    if (typeof document !== 'undefined') {
+      this.isPageVisible = !document.hidden;
+      
+      this.visibilityChangeHandler = () => {
+        const wasVisible = this.isPageVisible;
+        this.isPageVisible = !document.hidden;
+        
+        console.log(`Page visibility changed: ${this.isPageVisible ? 'visible' : 'hidden'}`);
+        
+        if (!wasVisible && this.isPageVisible) {
+          // 页面从隐藏变为可见，检查并恢复连接
+          this.handlePageVisible();
+        } else if (wasVisible && !this.isPageVisible) {
+          // 页面从可见变为隐藏，标记连接状态但不立即断开
+          this.handlePageHidden();
+        }
+      };
+      
+      document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+    }
+  }
+
+  // 页面变为可见时的处理
+  private handlePageVisible() {
+    console.log('Page became visible, checking connections...');
+    this.connections.forEach((connection, mapID) => {
+      if (connection && !connection.isConnected && !connection.abortController.signal.aborted) {
+        // 重置重连计数，给页面切换回来一个新的机会
+        if (connection.connectionState === 'error') {
+          connection.reconnectAttempts = Math.max(0, connection.reconnectAttempts - 2);
+        }
+        console.log(`Reconnecting SSE for mapID: ${mapID}`);
+        this.establishConnection(connection);
+      }
+    });
+  }
+
+  // 页面变为隐藏时的处理
+  private handlePageHidden() {
+    console.log('Page became hidden, connections will be maintained');
+    // 不立即断开连接，让浏览器自然处理
+    // 只是标记页面状态，用于后续的重连判断
+  }
+
+  // 清理资源
+  destroy() {
+    if (this.visibilityChangeHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+    }
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+    }
+  }
 
   // 获取或创建连接
   getOrCreateConnection(mapID: string): { connection: SSEConnection; callbackId: string } {
@@ -70,6 +166,9 @@ class SSEConnectionManager {
       isConnected: false,
       callbacks: new Map(),
       refCount: 1,
+      reconnectAttempts: 0,
+      lastConnectedTime: 0,
+      connectionState: 'connecting',
     };
     
     this.connections.set(mapID, connection);
@@ -139,8 +238,9 @@ class SSEConnectionManager {
     const connection = this.connections.get(mapID);
     if (connection) {
       connection.abortController.abort();
+      connection.connectionState = 'disconnected';
       this.connections.delete(mapID);
-      // console.log(`SSE: Disconnected connection for mapID ${mapID}`);
+      console.log(`SSE: Disconnected connection for mapID ${mapID}`);
     }
   }
   
@@ -160,15 +260,22 @@ class SSEConnectionManager {
   private async establishConnection(connection: SSEConnection) {
     const { mapID, abortController } = connection;
     
+    // 更新连接状态
+    connection.connectionState = 'connecting';
+    
     // 获取token
     const token = getToken();
     if (!token) {
       console.error('No authentication token found');
+      connection.connectionState = 'error';
       return;
     }
     
     const url = API_ENDPOINTS.SSE.CONNECT.replace(':mapID', mapID);
-    console.log('SSE connecting to:', url);
+    console.log('SSE connecting to:', url, `(attempt ${connection.reconnectAttempts + 1})`);
+    
+    // 保存this引用以在回调中使用
+    const self = this;
     
     try {
       await fetchEventSource(url, {
@@ -178,11 +285,17 @@ class SSEConnectionManager {
           'Accept': 'text/event-stream',
           'Cache-Control': 'no-cache',
         },
+        // 添加连接保持配置
+        openWhenHidden: true, // 页面隐藏时保持连接
         async onopen(response) {
           console.log('SSE onopen called:', { status: response.status, contentType: response.headers.get('content-type') });
           if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
-            // console.log('SSE connection opened successfully');
+            // 连接成功
             connection.isConnected = true;
+            connection.connectionState = 'connected';
+            connection.reconnectAttempts = 0; // 重置重连计数
+            connection.lastConnectedTime = Date.now();
+            
             // 广播连接打开事件到所有注册的回调
             connection.callbacks.forEach((callbacks) => {
               if (callbacks.onOpen) {
@@ -222,6 +335,8 @@ class SSEConnectionManager {
          onerror(error) {
            console.error('SSE connection error:', error);
            connection.isConnected = false;
+           connection.connectionState = 'error';
+           connection.reconnectAttempts++;
            
            // 广播错误事件到所有注册的回调
            connection.callbacks.forEach((callbacks) => {
@@ -230,14 +345,15 @@ class SSEConnectionManager {
              }
            });
            
-           // 如果连接失败，尝试重连
-           if (!abortController.signal.aborted) {
-            //  console.log('SSE connection error, attempting to reconnect...');
+           // 智能重连逻辑：只在页面可见且连接未被主动取消时重连
+           if (!abortController.signal.aborted && self.shouldReconnect(connection)) {
+             const delay = self.getReconnectDelay(connection.reconnectAttempts);
+             console.log(`SSE connection error, attempting to reconnect in ${delay}ms (attempt ${connection.reconnectAttempts})`);
              setTimeout(() => {
-               if (!abortController.signal.aborted) {
-                 sseManager.establishConnection(connection);
+               if (!abortController.signal.aborted && self.shouldReconnect(connection)) {
+                 self.establishConnection(connection);
                }
-             }, 3000);
+             }, delay);
            }
            
            throw error;
@@ -246,8 +362,54 @@ class SSEConnectionManager {
     } catch (error) {
        if (error instanceof Error && error.name !== 'AbortError') {
          console.error('fetchEventSource error:', error);
+         connection.connectionState = 'error';
        }
      }
+  }
+
+  // 判断是否应该重连
+  private shouldReconnect(connection: SSEConnection): boolean {
+    // 页面可见时才重连，且重连次数不超过限制
+    const maxReconnectAttempts = 10;
+    const timeSinceLastConnection = Date.now() - connection.lastConnectedTime;
+    
+    // 如果最近刚连接过（30秒内），减少重连频率
+    if (timeSinceLastConnection < 30000 && connection.reconnectAttempts > 3) {
+      return false;
+    }
+    
+    return this.isPageVisible && connection.reconnectAttempts < maxReconnectAttempts;
+  }
+
+  // 获取重连延迟时间（指数退避策略）
+  private getReconnectDelay(attempts: number): number {
+    // 使用指数退避策略，最大延迟30秒
+    const baseDelay = this.isPageVisible ? 1000 : 5000;
+    const maxDelay = 30000;
+    
+    // 前3次重连使用较短延迟，之后使用指数退避
+    if (attempts <= 3) {
+      return baseDelay;
+    }
+    
+    const delay = Math.min(baseDelay * Math.pow(2, attempts - 3), maxDelay);
+    return delay;
+  }
+
+  // 获取连接详细状态（新增方法）
+  getConnectionDetails(mapID: string) {
+    const connection = this.connections.get(mapID);
+    if (!connection) {
+      return null;
+    }
+    
+    return {
+      isConnected: connection.isConnected,
+      connectionState: connection.connectionState,
+      reconnectAttempts: connection.reconnectAttempts,
+      lastConnectedTime: connection.lastConnectedTime,
+      refCount: connection.refCount,
+    };
   }
 }
 

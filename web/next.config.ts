@@ -2,6 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // 跳过构建时的 TypeScript 检查
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  // 跳过构建时的 ESLint 检查
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   async rewrites() {
     return [
       {

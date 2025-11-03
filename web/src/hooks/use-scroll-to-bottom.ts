@@ -120,5 +120,5 @@ export function useScrollToBottom<T extends HTMLElement>(): [
 		});
 	};
 
-	return [containerRef, showScrollButton, scrollToBottom];
+	return [containerRef as RefObject<T>, showScrollButton, scrollToBottom];
 }

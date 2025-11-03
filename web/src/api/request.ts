@@ -2,8 +2,6 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, In
 import { useGlobalStore } from '@/store/globalStore';
 import {
   getToken,
-  getRefreshToken,
-  setToken,
   removeToken,
   refreshTokenApi,
   refreshState,

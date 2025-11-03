@@ -15,7 +15,7 @@ interface WorkspaceLayoutProps {
 export default function WorkspaceLayout({ children, taskID }: WorkspaceLayoutProps) {
   // 如果提供了taskID，使用新的工作区布局
   if (taskID) {
-    return <NewWorkspaceLayout taskID={taskID} />;
+    return <NewWorkspaceLayout mapID={taskID} />;
   }
   
   // 否则保持原有的简单布局（向后兼容）

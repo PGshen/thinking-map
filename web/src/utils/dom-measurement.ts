@@ -94,7 +94,7 @@ export const measureMarkdownSize = (
   if (styles.className) measureElement.className = styles.className;
   
   // 简单的Markdown渲染（基础支持）
-  let htmlContent = content
+  const htmlContent = content
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // 粗体
     .replace(/\*(.*?)\*/g, '<em>$1</em>') // 斜体
     .replace(/`(.*?)`/g, '<code>$1</code>') // 行内代码

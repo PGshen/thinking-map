@@ -19,7 +19,7 @@ import type {
   ResetNodeContextResponse,
   ExecutableNodeResponse
 } from '@/types/node';
-import { MessageListResponse, MessageResponse } from '@/types/message';
+import { MessageResponse } from '@/types/message';
 import { ApiResponse } from '@/types/response';
 
 // 获取思维导图的所有节点
