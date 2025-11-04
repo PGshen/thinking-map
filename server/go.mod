@@ -28,7 +28,11 @@ require (
 	gorm.io/gorm v1.31.0
 )
 
-require github.com/cloudwego/eino-ext/devops v0.1.8
+require (
+	github.com/cloudwego/eino-ext/components/tool/mcp v0.0.5
+	github.com/cloudwego/eino-ext/devops v0.1.8
+	github.com/mark3labs/mcp-go v0.43.0
+)
 
 require (
 	cloud.google.com/go/auth v0.17.0 // indirect
@@ -71,6 +75,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.15.0 // indirect
 	github.com/goph/emperror v0.17.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
+	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/invopop/yaml v0.3.1 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -92,6 +97,7 @@ require (
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/yargevad/filepathx v1.0.0 // indirect
+	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0 // indirect
 	go.opentelemetry.io/otel v1.38.0 // indirect
