@@ -7,17 +7,13 @@ sequenceDiagram
     participant U as 用户
     participant F as 前端
     participant B as 后端
-    participant IA as Intent Agent
     participant AA as Analysis Agent
 
     Note over U,AA: 问题输入与初步分析
     U->>F: 输入问题文本和类型
     F->>F: 验证问题格式
-    F->>B: POST /api/v1/thinking/analyze
-    Note right of F: {question, question_type, user_id}
+    F->>B: POST /api/v1/thinking/understanding <br/> {question, question_type, user_id}
     
-    B->>IA: 调用用户意图识别
-    IA-->>B: 返回意图分析结果
     B->>AA: 调用问题初步分析
     AA-->>B: 返回问题理解结果
     
@@ -27,8 +23,7 @@ sequenceDiagram
 
     Note over U,AA: 问题澄清与确认
     U->>F: 回答澄清问题/提供补充信息
-    F->>B: POST /api/v1/thinking/clarify
-    Note right of F: {session_id, clarifications}
+    F->>B: POST /api/v1/thinking/understanding <br/> {session_id, clarifications}
     
     B->>AA: 更新问题理解
     AA-->>B: 返回更新后的理解
@@ -38,8 +33,7 @@ sequenceDiagram
     Note over U,AA: 重复澄清过程直到用户确认
     
     U->>F: 确认最终问题理解
-    F->>B: POST /api/v1/thinking/confirm
-    Note right of F: {session_id, final_understanding}
+    F->>B: POST /api/v1/thinking/confirm <br/> {session_id, final_understanding}
     
     B->>B: 创建thinking_map和根节点
     B-->>F: 返回map_id和根节点信息
@@ -54,57 +48,46 @@ sequenceDiagram
     participant F as 前端
     participant B as 后端
     participant SSE as SSE服务
-    participant DA as Decompose Agent
-    participant RA as Reasoning Agent
-    participant SA as Synthesis Agent
+    participant DA as Decomposition Agent
+    participant SA as Conclusion Agent
 
     Note over U,SA: 工作区初始化
-    F->>B: GET /api/v1/sse/connect\n{map_id, user_id}
+    F->>B: GET /api/v1/sse/connect<br/>{map_id, user_id}
     B->>SSE: 建立SSE连接
     SSE-->>F: 发送连接建立事件
-    F->>B: GET /api/v1/thinking/maps/{map_id}\nGET /api/v1/thinking/nodes?map_id={map_id}
+    F->>B: GET /api/v1/thinking/maps/{map_id}<br/>GET /api/v1/thinking/nodes?map_id={map_id}
     B-->>F: 返回思考图和所有节点数据
     F-->>U: 显示工作区界面
 
     Note over U,SA: 节点执行流程
-    F->>B: GET /api/v1/nodes/{node_id}
+    F->>B: GET /api/v1/map/{map_id}/nodes/{node_id}
     B-->>F: 返回节点详细信息
     F-->>U: 显示节点信息面板
 
     U->>F: 点击"开始执行"
-    F->>B: POST /api/v1/thinking/execute\n{node_id, action: "start"}
+    F->>B: POST /api/v1/thinking/execute<br/>{node_id, action: "start"}
     B->>B: 判断执行动作
-    B-->>F: 返回执行决策\n{action: "decompose|conclude", reason, next_tab}
+    B-->>F: 返回执行决策<br/>{action: "decompose|conclude", reason, next_tab}
 
     alt 选择拆解
         Note over U,SA: 问题拆解流程
-        F-->>U: 显示拆解确认对话框
+        F-->>U: 切换到拆解Tab
         U->>F: 确认拆解
-        F->>B: POST /api/v1/thinking/decompose
-        B->>DA: 调用问题拆解服务\n{node_id, question, context}
-        DA-->>B: 返回拆解结果\n{sub_problems, strategy}
+        F->>B: POST /api/v1/thinking/decomposition
+        B->>DA: 调用问题拆解服务<br/>{node_id, question, context}
+        DA-->>B: 返回拆解结果<br/>{sub_problems, strategy}
         B->>B: 创建子节点
         B->>SSE: 发送节点创建事件
         SSE-->>F: event: node_created
         F-->>U: 实时更新可视化工作区
 
         U->>F: 调整拆解结果（可选）
-        F->>B: POST /api/v1/thinking/adjust-decomposition
+        F->>B: POST /api/v1/thinking/decomposition
         B-->>F: 确认调整结果
 
     else 选择直接解答
         Note over U,SA: 问题解答流程
         F-->>U: 切换到结论生成Tab
-
-        B->>RA: 调用信息检索
-        B->>SSE: 发送思考进度事件
-        SSE-->>F: event: thinking_progress
-        F-->>U: 显示思考进度
-
-        B->>RA: 调用逻辑推理
-        B->>SSE: 发送推理进度
-        SSE-->>F: event: thinking_progress
-        F-->>U: 更新进度显示
 
         B->>SA: 调用结论生成
         SA-->>B: 返回初步结论
@@ -112,7 +95,7 @@ sequenceDiagram
         F-->>U: 显示生成的结论
 
         U->>F: 提供反馈或确认
-        F->>B: POST /api/v1/thinking/feedback\n{node_id, feedback, action}
+        F->>B: POST /api/v1/thinking/conclusion<br/>{node_id, feedback, action}
 
         alt 需要调整
             B->>SA: 根据反馈调整结论
@@ -166,42 +149,6 @@ sequenceDiagram
         F->>B: 重新发送请求
         B-->>F: 成功响应
         F-->>U: 显示成功结果
-    end
-
-    Note over U,A: Agent服务异常
-    B->>A: 调用Agent服务
-    alt 服务不可用
-        A-->>B: 服务错误响应
-        B-->>F: 返回服务状态提示
-        F-->>U: 显示服务不可用提示
-        F->>F: 保存当前进度
-        U->>F: 选择重试或等待
-        F->>B: 重试请求
-        B->>A: 重新调用服务
-        A-->>B: 服务恢复响应
-        B-->>F: 返回正常结果
-        F-->>U: 继续执行流程
-    end
-
-    Note over U,A: 执行超时处理
-    B->>A: 长时间执行请求
-    alt 执行超时
-        A-->>B: 超时响应
-        B-->>F: 返回超时提示
-        F-->>U: 显示超时选项
-        U->>F: 选择继续等待或取消
-        alt 继续等待
-            F->>B: 继续等待请求
-            B->>A: 继续执行
-            A-->>B: 最终完成
-            B-->>F: 返回完成结果
-            F-->>U: 显示完成结果
-        else 取消执行
-            F->>B: 取消执行请求
-            B->>B: 记录断点信息
-            B-->>F: 确认取消
-            F-->>U: 显示取消确认
-        end
     end
 ```
 
