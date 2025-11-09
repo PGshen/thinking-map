@@ -10,6 +10,10 @@
 - 用户痛点：答案过程不透明、难以理解和信任；多步骤思路难以清晰展示；过程难以随时干预与调整；缺乏结构化拆解与可视化。
 - 核心价值：透明化思考、用户控制、结构化思维、探索性思考。
 
+![首页](docs/image/index01.png)
+![工作区](docs/image/workspace01.png)
+![工作区](docs/image/workspace02.png)
+
 ## 技术栈
 
 **Frontend**
@@ -69,7 +73,7 @@ thinking-map/
 ```bash
 cd docker
 cp .env.example .env
-# 编辑 .env，填入你的 AI 服务密钥（如 OPENAI/DeepSeek/Claude）
+# 编辑 .env，填入你的 AI 服务密钥（如 OPENAI/DeepSeek/Claude）和 tavily API 密钥
 ```
 
 2) 构建并启动所有服务：
