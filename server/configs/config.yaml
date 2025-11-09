@@ -48,6 +48,6 @@ log:
   filename: logs/app.log
   maxSize: 100
   maxBackups: 10
-  maxAge: 30
+  maxAge: 1
   compress: true
   console: true

@@ -158,7 +158,7 @@ export function AppSidebar({ onLogout, ...props }: React.ComponentProps<typeof S
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={navUser} onLogout={onLogout} />

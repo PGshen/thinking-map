@@ -18,6 +18,7 @@ import { getMessages, decomposition, resetDecomposition } from '@/api/node';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
 import { MessageActionEvent, MessageNoticeEvent, MessagePlanEvent, MessageTextEvent, MessageThoughtEvent, MessageRagEvent } from '@/types/sse';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { useExecutableNodes } from '@/features/workspace/hooks/use-executable-nodes';
 import { RefreshCcw } from 'lucide-react';
 
@@ -379,16 +380,33 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
             >
               下一步
             </Button>
-            {/* 重置拆解按钮 */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleReset()}
-              className="rounded-full! cursor-pointer"
-            >
-              <RefreshCcw className="w-3 h-3" />
-              重置拆解
-            </Button>
+            {/* 重置拆解按钮（确认弹窗） */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full! cursor-pointer"
+                >
+                  <RefreshCcw className="w-3 h-3" />
+                  重置拆解
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>确认重置</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    确定要重置当前拆解吗？此操作将清空消息，且不可撤销。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => handleReset()}>
+                    确认
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             {/* 拆解识别按钮 */}
             <Button
               variant="outline"

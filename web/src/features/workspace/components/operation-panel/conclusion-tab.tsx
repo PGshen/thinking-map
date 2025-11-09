@@ -9,6 +9,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Save, RotateCcw, CheckCircle, FileText, ChevronDown, Edit, Eye, Square, Brain, ChevronRight, Sparkle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AlertDialogHeader, AlertDialogFooter, AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChatMessageArea } from '@/components/ui/chat-message-area';
@@ -547,15 +548,30 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
             {isEditing ? '预览' : '编辑'}
           </Button>
           
-          <Button
-            onClick={handleReset}
-            variant="outline"
-            className="flex-1 cursor-pointer"
-            size="sm"
-          >
-            <RotateCcw className="w-4 h-4 mr-2" />
-            重置
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="flex-1 cursor-pointer"
+                size="sm"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                重置
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>确认重置</AlertDialogTitle>
+                <AlertDialogDescription>
+                  确定要重置当前结论内容吗？此操作不可撤销，将清空已生成与编辑的内容。
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>取消</AlertDialogCancel>
+                <AlertDialogAction onClick={handleReset}>确认</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {isGenerating ? (
             <Button
