@@ -54,14 +54,6 @@ const data = {
           title: "Debug",
           url: "/tool/debug",
         },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
       ],
     },
     {
@@ -71,19 +63,11 @@ const data = {
       items: [
         {
           title: "Introduction",
-          url: "#",
+          url: "/docs/prd",
         },
         {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
+          title: "Blog",
+          url: "/docs/blog/blog-series-outline",
         },
       ],
     },
