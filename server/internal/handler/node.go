@@ -14,14 +14,16 @@ import (
 
 // NodeHandler 节点相关接口
 type NodeHandler struct {
-	NodeService       *service.NodeService
-	ConclusionService *service.ConclusionService
+	NodeService          *service.NodeService
+	ConclusionService    *service.ConclusionService
+	DecompositionService *service.DecompositionService
 }
 
-func NewNodeHandler(nodeService *service.NodeService, conclusionService *service.ConclusionService) *NodeHandler {
+func NewNodeHandler(nodeService *service.NodeService, conclusionService *service.ConclusionService, decompositionService *service.DecompositionService) *NodeHandler {
 	return &NodeHandler{
-		NodeService:       nodeService,
-		ConclusionService: conclusionService,
+		NodeService:          nodeService,
+		ConclusionService:    conclusionService,
+		DecompositionService: decompositionService,
 	}
 }
 
@@ -347,6 +349,41 @@ func (h *NodeHandler) ExecutableNodes(c *gin.Context) {
 		Code:      http.StatusOK,
 		Message:   "success",
 		Data:      resp,
+		Timestamp: time.Now(),
+		RequestID: uuid.New().String(),
+	})
+}
+
+// ResetDecomposition handles resetting a decomposition
+func (h *NodeHandler) ResetDecomposition(c *gin.Context) {
+	nodeID := c.Param("nodeID")
+	if nodeID == "" {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "node ID is required",
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+
+	err := h.DecompositionService.ResetDecomposition(c, nodeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.Response{
+			Code:      http.StatusInternalServerError,
+			Message:   err.Error(),
+			Data:      nil,
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
+		Message:   "success",
+		Data:      nil,
 		Timestamp: time.Now(),
 		RequestID: uuid.New().String(),
 	})

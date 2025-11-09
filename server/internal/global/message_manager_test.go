@@ -347,14 +347,14 @@ func TestMessageManager_ConvertToSchemaMsg(t *testing.T) {
 		{
 			ID:   uuid.NewString(),
 			Role: schema.User,
-			Content: model.MessageContent{
+			Content: dto.MessageContent{
 				Text: "用户消息",
 			},
 		},
 		{
 			ID:   uuid.NewString(),
 			Role: schema.Assistant,
-			Content: model.MessageContent{
+			Content: dto.MessageContent{
 				Text: "助手回复",
 			},
 		},
@@ -441,7 +441,7 @@ func TestMessageManager_SaveDecompositionMessage_Concurrent(t *testing.T) {
 	for i := 0; i < concurrentCount; i++ {
 		go func(index int) {
 			defer wg.Done()
-			
+
 			req := dto.CreateMessageRequest{
 				ID:          uuid.NewString(),
 				MessageType: comm.MessageTypeText,
@@ -450,12 +450,12 @@ func TestMessageManager_SaveDecompositionMessage_Concurrent(t *testing.T) {
 					Text: fmt.Sprintf("并发测试消息 %d", index),
 				},
 			}
-			
+
 			result, err := messageManager.SaveDecompositionMessage(ctx, nodeID, req)
 			results[index] = result
 			errors[index] = err
 		}(i)
-		}
+	}
 
 	// 等待所有goroutine完成
 	wg.Wait()
@@ -489,16 +489,16 @@ func TestMessageManager_SaveDecompositionMessage_Concurrent(t *testing.T) {
 				break
 			}
 		}
-		
+
 		if firstMessage != nil {
 			// 获取整个消息链
 			messageChain, err := messageManager.GetMessageChain(ctx, firstMessage.ID, firstMessage.ConversationID)
 			assert.NoError(t, err)
-			
+
 			// 验证消息链的长度应该等于成功创建的消息数量
 			// 注意：由于并发创建，消息链可能不是线性的，这里主要验证没有出现断链
 			assert.GreaterOrEqual(t, len(messageChain), 1, "消息链不应该为空")
-			
+
 			// 验证消息链中的每个消息都有正确的父子关系
 			for i := 1; i < len(messageChain); i++ {
 				assert.Equal(t, messageChain[i-1].ID, messageChain[i].ParentID, "消息链中的父子关系应该正确")

@@ -1,4 +1,4 @@
-import { Action, Notice, Plan } from './message';
+import { Action, Notice, Plan, RAGRecord } from './message';
 import { Position } from './node';
 
 // 与后端 dto/sse.go 对齐的 SSE 事件类型定义
@@ -70,6 +70,13 @@ export interface MessagePlanEvent {
   messageID: string;
   plan: Plan;
   isEnd: boolean;
+  timestamp: string;
+}
+
+export interface MessageRagEvent {
+  nodeID: string;
+  messageID: string;
+  ragRecord: RAGRecord;
   timestamp: string;
 }
 

@@ -112,7 +112,7 @@ func CreateNodeFunc(ctx context.Context, req *CreateNodeRequest) (*dto.NodeRespo
 		MessageType: model.MsgTypeNotice,
 		Role:        schema.Tool,
 		Content: model.MessageContent{
-			Notice: model.Notice{
+			Notice: &model.Notice{
 				Type:    model.NoticeTypeSuccess,
 				Name:    "节点创建",
 				Content: resp.Question,
@@ -191,7 +191,7 @@ func UpdateNodeFunc(ctx context.Context, req *UpdateNodeRequest) (*dto.NodeRespo
 		MessageType: model.MsgTypeNotice,
 		Role:        schema.Tool,
 		Content: model.MessageContent{
-			Notice: model.Notice{
+			Notice: &model.Notice{
 				Type:    model.NoticeTypeSuccess,
 				Name:    "节点更新",
 				Content: fmt.Sprintf("节点[%s]更新成功", resp.Question),
@@ -258,7 +258,7 @@ func DeleteNodeFunc(ctx context.Context, req *DeleteNodeRequest) (*DeleteNodeRes
 		MessageType: model.MsgTypeNotice,
 		Role:        schema.Tool,
 		Content: model.MessageContent{
-			Notice: model.Notice{
+			Notice: &model.Notice{
 				Type:    model.NoticeTypeWarning,
 				Name:    "节点删除",
 				Content: messageContent,
@@ -377,7 +377,7 @@ func SetNodeDependenciesFunc(ctx context.Context, req *SetNodeDependenciesReques
 		MessageType: model.MsgTypeNotice,
 		Role:        schema.Tool,
 		Content: model.MessageContent{
-			Notice: model.Notice{
+			Notice: &model.Notice{
 				Type:    model.NoticeTypeSuccess,
 				Name:    operationName,
 				Content: operationContent,

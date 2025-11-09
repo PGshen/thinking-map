@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/PGshen/thinking-map/server/internal/model"
@@ -28,15 +30,49 @@ type UpdateMessageRequest struct {
 
 // MessageResponse represents the message data in responses
 type MessageResponse struct {
-	ID             string               `json:"id"`
-	ParentID       string               `json:"parentID"`
-	ConversationID string               `json:"conversationID"`
-	MessageType    model.MsgType        `json:"messageType"`
-	Role           schema.RoleType      `json:"role"`
-	Content        model.MessageContent `json:"content"`
-	Metadata       interface{}          `json:"metadata"`
-	CreatedAt      time.Time            `json:"createdAt"`
-	UpdatedAt      time.Time            `json:"updatedAt"`
+	ID             string          `json:"id"`
+	ParentID       string          `json:"parentID"`
+	ConversationID string          `json:"conversationID"`
+	MessageType    model.MsgType   `json:"messageType"`
+	Role           schema.RoleType `json:"role"`
+	Content        MessageContent  `json:"content"`
+	Metadata       interface{}     `json:"metadata"`
+	CreatedAt      time.Time       `json:"createdAt"`
+	UpdatedAt      time.Time       `json:"updatedAt"`
+}
+
+type MessageContent struct {
+	Text      string           `json:"text,omitempty"`
+	Thought   string           `json:"thought,omitempty"`
+	RagRecord *model.RAGRecord `json:"rag,omitempty"`
+	Notice    *model.Notice    `json:"notice,omitempty"`
+	Action    []model.Action   `json:"action,omitempty"`
+	Plan      *model.Plan      `json:"plan,omitempty"`
+}
+
+// String()
+func (m MessageContent) String() string {
+	contentList := []string{}
+	if m.Text != "" {
+		contentList = append(contentList, m.Text)
+	}
+	if m.Thought != "" {
+		contentList = append(contentList, fmt.Sprintf("\n思考：%s", m.Thought))
+	}
+	if m.Notice != nil && m.Notice.Content != "" {
+		contentList = append(contentList, fmt.Sprintf("\n通知：%s：%s", m.Notice.Name, m.Notice.Content))
+	}
+	if m.Plan != nil && len(m.Plan.Steps) > 0 {
+		for _, step := range m.Plan.Steps {
+			if step.Status == "running" {
+				contentList = append(contentList, fmt.Sprintf("\n计划：%s, %s", step.Name, step.Description))
+			}
+		}
+	}
+	if m.RagRecord != nil {
+		contentList = append(contentList, fmt.Sprintf("\n检索结果：%s", m.RagRecord.Answer))
+	}
+	return strings.Join(contentList, "\n")
 }
 
 // MessageListResponse represents the paginated list of messages
@@ -57,14 +93,24 @@ type MessageStatus struct {
 }
 
 // ToMessageResponse 将 model.Message 转为 dto.MessageResponse
-func ToMessageResponse(m *model.Message) MessageResponse {
+func ToMessageResponse(m *model.Message, rag *model.RAGRecord) MessageResponse {
+	content := MessageContent{
+		Text:    m.Content.Text,
+		Thought: m.Content.Thought,
+		Notice:  m.Content.Notice,
+		Action:  m.Content.Action,
+		Plan:    m.Content.Plan,
+	}
+	if rag != nil {
+		content.RagRecord = rag
+	}
 	return MessageResponse{
 		ID:             m.ID,
 		ParentID:       m.ParentID,
 		ConversationID: m.ConversationID,
 		MessageType:    m.MessageType,
 		Role:           m.Role,
-		Content:        m.Content,
+		Content:        content,
 		Metadata:       m.Metadata,
 		CreatedAt:      m.CreatedAt,
 		UpdatedAt:      m.UpdatedAt,

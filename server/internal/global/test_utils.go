@@ -152,7 +152,7 @@ func SetupTestEnvironment() (*TestConfig, error) {
 	InitBroker(eventBus, connManager, serverID, 10*time.Second, 60*time.Second)
 
 	// 初始化全局消息管理器
-	InitMessageManager(repository.NewMessageRepository(db), repository.NewThinkingNodeRepository(db), db)
+	InitMessageManager(repository.NewMessageRepository(db), repository.NewThinkingNodeRepository(db), repository.NewRAGRecordRepository(db), db)
 
 	// 初始化全局节点操作器
 	InitNodeOperator(repository.NewThinkingNodeRepository(db), repository.NewThinkingMapRepository(db))

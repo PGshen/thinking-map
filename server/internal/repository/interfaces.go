@@ -50,6 +50,7 @@ type ThinkingNode interface {
 	UpdateStatus(ctx context.Context, id string, status int) error
 	UpdateIsDecomposed(ctx context.Context, id string, isDecomposed bool) error
 	UpdateInTx(ctx context.Context, tx *gorm.DB, node *model.ThinkingNode) error
+	DeleteByParentID(ctx context.Context, parentID string) error
 }
 
 // Message 消息仓储接口
@@ -70,5 +71,4 @@ type RAGRecord interface {
 	Update(ctx context.Context, record *model.RAGRecord) error
 	Delete(ctx context.Context, id string) error
 	FindByID(ctx context.Context, id string) (*model.RAGRecord, error)
-	FindByNodeID(ctx context.Context, nodeID string, offset, limit int) ([]*model.RAGRecord, int64, error)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/agent/base/react"
 	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model"
+	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
 	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
 	"github.com/PGshen/thinking-map/server/internal/pkg/utils"
@@ -95,6 +96,38 @@ func (s *DecompositionService) Decomposition(ctx *gin.Context, req dto.Decomposi
 	return s.Analyze(ctx, contextInfo, messages)
 }
 
+// ResetDecomposition resets the decomposition of a node.
+func (s *DecompositionService) ResetDecomposition(ctx context.Context, nodeID string) error {
+	// 1. 获取当前节点
+	node, err := s.nodeRepo.FindByID(ctx, nodeID)
+	if err != nil {
+		return fmt.Errorf("failed to find node by id %s: %w", nodeID, err)
+	}
+
+	// 2. 删除所有子节点
+	if err := s.nodeRepo.DeleteByParentID(ctx, nodeID); err != nil {
+		return fmt.Errorf("failed to delete child nodes: %w", err)
+	}
+
+	// 4. 重置当前节点的拆解信息
+	// 重置结论相关字段
+	node.Decomposition = model.Decomposition{
+		IsDecomposed:   false,
+		ConversationID: "",
+		LastMessageID:  "",
+	}
+	node.Status = comm.NodeStatusInDecomposition
+
+	// 更新数据库
+	if err := s.nodeRepo.Update(ctx, node); err != nil {
+		logger.Error("Failed to reset node decomposition", zap.String("nodeID", nodeID), zap.Error(err))
+		return fmt.Errorf("failed to reset node decomposition: %w", err)
+	}
+
+	logger.Info("Decomposition reset successfully", zap.String("nodeID", nodeID))
+	return nil
+}
+
 // Analyze performs intent analysis for a given node
 func (s *DecompositionService) Analyze(ctx *gin.Context, contextInfo *ContextInfo, messages []*schema.Message) (err error) {
 	userID := ctx.GetString("user_id")
@@ -148,7 +181,8 @@ func (m *analyzeMessageSender) OnMessage(ctx context.Context, message *schema.Me
 
 func (m *analyzeMessageSender) OnStreamMessage(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (context.Context, error) {
 	// 生成新的messageID
-	messageID := uuid.NewString()
+	throughMessageID := uuid.NewString()
+	finalMessageID := uuid.NewString()
 	sseBroker := global.GetBroker()
 	// 使用流式JSON解析器解析ReasoningOutput
 	matcher := utils.NewSimplePathMatcher()
@@ -166,7 +200,7 @@ func (m *analyzeMessageSender) OnStreamMessage(ctx context.Context, sr *schema.S
 				Type: dto.MessageThoughtEventType,
 				Data: dto.MessageThoughtEvent{
 					NodeID:    m.nodeID,
-					MessageID: messageID,
+					MessageID: throughMessageID,
 					Message:   str,
 					Mode:      "append",
 				},
@@ -182,7 +216,7 @@ func (m *analyzeMessageSender) OnStreamMessage(ctx context.Context, sr *schema.S
 				Type: dto.MessageTextEventType,
 				Data: dto.MessageTextEvent{
 					NodeID:    m.nodeID,
-					MessageID: messageID,
+					MessageID: finalMessageID,
 					Message:   str,
 					Mode:      "append",
 				},
@@ -194,7 +228,7 @@ func (m *analyzeMessageSender) OnStreamMessage(ctx context.Context, sr *schema.S
 		sr.Close()
 		if len(thought.String()) > 0 {
 			msgReq := dto.CreateMessageRequest{
-				ID:          messageID,
+				ID:          throughMessageID,
 				UserID:      m.userID,
 				MessageType: model.MsgTypeThought,
 				Role:        schema.Assistant,
@@ -210,7 +244,7 @@ func (m *analyzeMessageSender) OnStreamMessage(ctx context.Context, sr *schema.S
 		}
 		if len(finalAnswer.String()) > 0 {
 			msgReq := dto.CreateMessageRequest{
-				ID:          messageID,
+				ID:          finalMessageID,
 				UserID:      m.userID,
 				MessageType: model.MsgTypeText,
 				Role:        schema.Assistant,
@@ -672,7 +706,7 @@ func (p *planMessageHandler) savePlanMessage(ctx context.Context, plan multiagen
 		MessageType: model.MsgTypePlan,
 		Role:        schema.Assistant,
 		Content: model.MessageContent{
-			Plan: model.Plan{
+			Plan: &model.Plan{
 				Steps: planSteps,
 			},
 		},

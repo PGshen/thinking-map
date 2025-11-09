@@ -6,6 +6,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/agent/base"
 	"github.com/PGshen/thinking-map/server/internal/agent/base/react"
 	"github.com/PGshen/thinking-map/server/internal/agent/llmmodel"
+	"github.com/PGshen/thinking-map/server/internal/agent/tool/search"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
 )
@@ -15,8 +16,16 @@ func BuildGenerationAgent(ctx context.Context, option ...base.AgentOption) (r co
 	if err != nil {
 		return nil, err
 	}
+	// 添加搜索工具
+	searchTools, err := search.GetAllSearchTools()
+	if err != nil {
+		return nil, err
+	}
 	agent, err := react.NewAgent(ctx, react.ReactAgentConfig{
 		ToolCallingModel: cm,
+		ToolsConfig: compose.ToolsNodeConfig{
+			Tools: searchTools,
+		},
 	}, option...)
 	if err != nil {
 		return nil, err

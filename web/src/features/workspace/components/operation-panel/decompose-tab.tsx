@@ -8,17 +8,18 @@
 
 import React, { useState, useEffect } from 'react';
 import { GitBranch } from 'lucide-react';
-import { DecomposeArea } from './decompose-area';
+import { MessageArea } from './message-area';
 import { Action, MessageResponse, MessageType, MessageContent } from '@/types/message';
 import { CustomNodeModel } from '@/types/node';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { toast } from 'sonner';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
-import { getMessages, decomposition } from '@/api/node';
+import { getMessages, decomposition, resetDecomposition } from '@/api/node';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
-import { MessageActionEvent, MessageNoticeEvent, MessagePlanEvent, MessageTextEvent, MessageThoughtEvent } from '@/types/sse';
+import { MessageActionEvent, MessageNoticeEvent, MessagePlanEvent, MessageTextEvent, MessageThoughtEvent, MessageRagEvent } from '@/types/sse';
 import { Button } from '@/components/ui/button';
 import { useExecutableNodes } from '@/features/workspace/hooks/use-executable-nodes';
+import { RefreshCcw } from 'lucide-react';
 
 interface DecomposeTabProps {
   nodeID: string;
@@ -139,6 +140,13 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
     }));
   };
 
+  // 处理RAG消息事件
+  const handleMessageRagEvent = (data: MessageRagEvent) => {
+    handleMessageEvent(data, 'rag', (eventData) => ({
+      rag: eventData.ragRecord
+    }));
+  };
+
   // SSE连接处理 - 将useSSEConnection移到组件顶层
   const sseCallbacks = React.useMemo(() => {
     if (!mapID) return [];
@@ -196,6 +204,18 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
             handleMessagePlanEvent(data);
           } catch (error) {
             console.error('解析messagePlan事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'messageRag' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as MessageRagEvent;
+            console.log("rag data", data)
+            handleMessageRagEvent(data);
+          } catch (error) {
+            console.error('解析messageRag事件失败:', error, event.data);
           }
         }
       }
@@ -302,6 +322,27 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
     setInputValue('');
   };
 
+  const handleReset = async () => {
+    if (!mapID) return;
+    if (loading) return;
+    setLoading(true);
+    try {
+      const res = await resetDecomposition(mapID, nodeID);
+      if (res.code !== 200) {
+        toast.error(`重置失败: ${res.message}`);
+        return;
+      }
+      setMessages([]);
+      setIsDecomposed(false);
+      toast.success('重置成功');
+    } catch (error) {
+      toast.error('网络错误，请重试');
+      console.error('重置拆解失败', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   function clickAction(action: Action): void {
     if (action.name == '开始拆解') {
       setIsDecomposed(true);
@@ -316,7 +357,7 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 min-h-0 overflow-hidden">
-        <DecomposeArea loading={loading} messages={messages} clickAction={clickAction} />
+        <MessageArea loading={loading} messages={messages} clickAction={clickAction} />
       </div>
 
       {/* 固定在底部的输入区域 */}
@@ -338,10 +379,21 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
             >
               下一步
             </Button>
+            {/* 重置拆解按钮 */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleReset()}
+              className="rounded-full! cursor-pointer"
+            >
+              <RefreshCcw className="w-3 h-3" />
+              重置拆解
+            </Button>
             {/* 拆解识别按钮 */}
             <Button
               variant="outline"
               size="sm"
+              disabled={nodeData.decomposition?.isDecomposed}
               onClick={() => handleSubmit("")}
               className="rounded-full! cursor-pointer"
             >

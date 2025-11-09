@@ -111,6 +111,12 @@ type MessagePlanEvent struct {
 	IsEnd     bool                `json:"isEnd"`
 }
 
+type MessageRagEvent struct {
+	NodeID    string          `json:"nodeID"`
+	MessageID string          `json:"messageID"`
+	RagRecord model.RAGRecord `json:"ragRecord"`
+}
+
 // ErrorEvent represents the error event
 type ErrorEvent struct {
 	NodeID       string `json:"nodeID"`

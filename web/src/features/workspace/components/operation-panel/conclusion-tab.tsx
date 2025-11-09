@@ -21,11 +21,12 @@ import { getMessages, saveNodeConclusion, resetNodeConclusion } from '@/api/node
 // 导入新的Notion编辑器
 import EditorClient from '@/components/editor-client';
 import { MessageResponse, MessageType, MessageContent } from '@/types/message';
-import { MessageConclusionEvent, MessageThoughtEvent } from '@/types/sse';
+import { MessageConclusionEvent, MessageRagEvent, MessageThoughtEvent } from '@/types/sse';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
 import { CustomNodeModel } from '@/types/node';
 import { Node } from 'reactflow';
 import { MarkdownContent } from '@/components/ui/markdown-content';
+import { MessageArea } from './message-area';
 
 interface ConclusionTabProps {
   nodeID: string;
@@ -315,6 +316,13 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
       setContent((prevContent: string) => prevContent + "\n" + data.message)
     }
   }
+  
+  // 处理RAG消息事件
+  const handleMessageRagEvent = (data: MessageRagEvent) => {
+    handleMessageEvent(data, 'rag', (eventData) => ({
+      rag: eventData.ragRecord
+    }));
+  };
 
   const sseCallbacks =  React.useMemo(() => {
     if (!mapID) return [];
@@ -339,6 +347,17 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
             handleMessageThoughtEvent(data, 'thought');
           } catch (error) {
             console.error('解析messageThought事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'messageRag' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as MessageRagEvent;
+            handleMessageRagEvent(data);
+          } catch (error) {
+            console.error('解析messageRag事件失败:', error, event.data);
           }
         }
       },
@@ -453,6 +472,7 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
         setIsGenerating(false);
         setReference('')
         setInstruction('')
+        setHasChanges(true);
       })
     } catch (error) {
       console.error('启动结论生成失败:', error);
@@ -484,42 +504,7 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
           
           <TabsContent value="thinking" className="flex-1 ml-2 mt-0 data-[state=inactive]:hidden">
             <div className="h-full">
-              <ChatMessageArea scrollButtonAlignment="center" className="px-2 py-2 space-y-4 text-sm">
-                 {messages.map((message) => {
-                    if (message.content.thought === undefined) {
-                      return
-                    }
-                    const isCollapsed = collapsedStates[message.id] || false;
-
-                    return (
-                      <ChatMessage
-                        key={message.id}
-                        id={message.id}
-                        type="incoming"
-                      >
-                        {/* <ChatMessageAvatar /> */}
-                        <div className="flex-1">
-                          <Collapsible open={!isCollapsed} onOpenChange={() => toggleCollapse(message.id)}>
-                            <CollapsibleTrigger className="cursor-pointer flex items-center gap-2 text-left p-1 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200">
-                              <Sparkle className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                              <span className="text-sm font-medium text-blue-800 flex-1">思考过程</span>
-                              {isCollapsed ? (
-                                <ChevronRight className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                              )}
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="mt-2">
-                              <div className="pl-2 border-l-2 border-blue-200">
-                                <ChatMessageContent content={message.content.thought!} />
-                              </div>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        </div>
-                      </ChatMessage>
-                    );
-                 })}
-               </ChatMessageArea>
+               <MessageArea loading={loading} messages={messages} />
             </div>
           </TabsContent>
           

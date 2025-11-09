@@ -57,7 +57,7 @@ func main() {
 
 	// 检查PORT环境变量，如果存在则覆盖配置文件中的端口
 	if portEnv := os.Getenv("PORT"); portEnv != "" {
-		if port, err := strconv.Atoi(portEnv); err == nil {
+		if port, err2 := strconv.Atoi(portEnv); err2 == nil {
 			cfg.Server.Port = port
 		}
 	}
@@ -92,8 +92,11 @@ func main() {
 	// 初始化全局SSE broker（支持分布式）
 	global.InitBroker(eventBus, connManager, serverID, 10*time.Second, 60*time.Second)
 
+	// 初始化 RAG Record 仓库
+	global.InitRAGRecordRepository(repository.NewRAGRecordRepository(db))
+
 	// 初始化全局消息管理器
-	global.InitMessageManager(repository.NewMessageRepository(db), repository.NewThinkingNodeRepository(db), db)
+	global.InitMessageManager(repository.NewMessageRepository(db), repository.NewThinkingNodeRepository(db), repository.NewRAGRecordRepository(db), db)
 
 	// 初始化全局节点操作器
 	global.InitNodeOperator(repository.NewThinkingNodeRepository(db), repository.NewThinkingMapRepository(db))

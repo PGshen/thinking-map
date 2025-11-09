@@ -35,18 +35,20 @@ var (
 
 // MessageManager 消息管理器
 type MessageManager struct {
-	messageRepo repository.Message
-	nodeRepo    repository.ThinkingNode
-	db          *gorm.DB
+	messageRepo   repository.Message
+	nodeRepo      repository.ThinkingNode
+	ragRecordRepo repository.RAGRecord
+	db            *gorm.DB
 }
 
 // InitMessageManager 初始化全局消息管理器
-func InitMessageManager(messageRepo repository.Message, nodeRepo repository.ThinkingNode, db *gorm.DB) {
+func InitMessageManager(messageRepo repository.Message, nodeRepo repository.ThinkingNode, ragRecordRepo repository.RAGRecord, db *gorm.DB) {
 	messageManagerOnce.Do(func() {
 		GlobalMessageManager = &MessageManager{
-			messageRepo: messageRepo,
-			nodeRepo:    nodeRepo,
-			db:          db,
+			messageRepo:   messageRepo,
+			nodeRepo:      nodeRepo,
+			ragRecordRepo: ragRecordRepo,
+			db:            db,
 		}
 	})
 }
@@ -99,7 +101,16 @@ func (s *MessageManager) CreateMessage(ctx context.Context, userID string, req d
 	if err := s.messageRepo.Create(ctx, msg); err != nil {
 		return nil, err
 	}
-	resp := dto.ToMessageResponse(msg)
+	if req.Content.RagID != "" {
+		// 从RAGRecord中获取RAG记录
+		ragRecord, err := s.ragRecordRepo.FindByID(ctx, req.Content.RagID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get RAG record: %w", err)
+		}
+		resp := dto.ToMessageResponse(msg, ragRecord)
+		return &resp, nil
+	}
+	resp := dto.ToMessageResponse(msg, nil)
 	return &resp, nil
 }
 
@@ -143,7 +154,16 @@ func (s *MessageManager) CreateMessageInTx(ctx context.Context, tx *gorm.DB, use
 	if err := s.messageRepo.CreateInTx(ctx, tx, msg); err != nil {
 		return nil, err
 	}
-	resp := dto.ToMessageResponse(msg)
+	if req.Content.RagID != "" {
+		// 从RAGRecord中获取RAG记录
+		ragRecord, err := s.ragRecordRepo.FindByID(ctx, req.Content.RagID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get RAG record: %w", err)
+		}
+		resp := dto.ToMessageResponse(msg, ragRecord)
+		return &resp, nil
+	}
+	resp := dto.ToMessageResponse(msg, nil)
 	return &resp, nil
 }
 
@@ -311,7 +331,16 @@ func (s *MessageManager) UpdateMessage(ctx context.Context, req dto.UpdateMessag
 	if err != nil {
 		return nil, err
 	}
-	resp := dto.ToMessageResponse(updatedMsg)
+	if req.Content.RagID != "" {
+		// 从RAGRecord中获取RAG记录
+		ragRecord, err := s.ragRecordRepo.FindByID(ctx, req.Content.RagID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get RAG record: %w", err)
+		}
+		resp := dto.ToMessageResponse(updatedMsg, ragRecord)
+		return &resp, nil
+	}
+	resp := dto.ToMessageResponse(updatedMsg, nil)
 	return &resp, nil
 }
 
@@ -326,7 +355,16 @@ func (s *MessageManager) GetMessageByID(ctx context.Context, id string) (*dto.Me
 	if err != nil {
 		return nil, err
 	}
-	resp := dto.ToMessageResponse(msg)
+	if msg.Content.RagID != "" {
+		// 从RAGRecord中获取RAG记录
+		ragRecord, err := s.ragRecordRepo.FindByID(ctx, msg.Content.RagID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get RAG record: %w", err)
+		}
+		resp := dto.ToMessageResponse(msg, ragRecord)
+		return &resp, nil
+	}
+	resp := dto.ToMessageResponse(msg, nil)
 	return &resp, nil
 }
 
@@ -337,8 +375,18 @@ func (s *MessageManager) GetMessageByConversationID(ctx context.Context, convers
 	}
 	responses := make([]*dto.MessageResponse, 0, len(msgs))
 	for _, msg := range msgs {
-		resp := dto.ToMessageResponse(msg)
-		responses = append(responses, &resp)
+		if msg.Content.RagID != "" {
+			// 从RAGRecord中获取RAG记录
+			ragRecord, err := s.ragRecordRepo.FindByID(ctx, msg.Content.RagID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get RAG record: %w", err)
+			}
+			resp := dto.ToMessageResponse(msg, ragRecord)
+			responses = append(responses, &resp)
+		} else {
+			resp := dto.ToMessageResponse(msg, nil)
+			responses = append(responses, &resp)
+		}
 	}
 	return responses, nil
 }
@@ -416,8 +464,18 @@ func (s *MessageManager) GetConversationMessages(ctx context.Context, conversati
 
 	responses := make([]*dto.MessageResponse, 0, len(messages))
 	for _, msg := range messages {
-		resp := dto.ToMessageResponse(msg)
-		responses = append(responses, &resp)
+		if msg.Content.RagID != "" {
+			// 从RAGRecord中获取RAG记录
+			ragRecord, err := s.ragRecordRepo.FindByID(ctx, msg.Content.RagID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get RAG record: %w", err)
+			}
+			resp := dto.ToMessageResponse(msg, ragRecord)
+			responses = append(responses, &resp)
+		} else {
+			resp := dto.ToMessageResponse(msg, nil)
+			responses = append(responses, &resp)
+		}
 	}
 
 	return responses, nil
@@ -442,9 +500,18 @@ func (s *MessageManager) GetMessageChain(ctx context.Context, messageID string, 
 			}
 			return nil, fmt.Errorf("failed to get message: %w", err)
 		}
-
-		resp := dto.ToMessageResponse(msg)
-		result = append([]*dto.MessageResponse{&resp}, result...)
+		if msg.Content.RagID != "" {
+			// 从RAGRecord中获取RAG记录
+			ragRecord, err := s.ragRecordRepo.FindByID(ctx, msg.Content.RagID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get RAG record: %w", err)
+			}
+			resp := dto.ToMessageResponse(msg, ragRecord)
+			result = append([]*dto.MessageResponse{&resp}, result...)
+		} else {
+			resp := dto.ToMessageResponse(msg, nil)
+			result = append([]*dto.MessageResponse{&resp}, result...)
+		}
 		currentID = msg.ParentID
 	}
 
@@ -476,8 +543,18 @@ func (s *MessageManager) getMessageChainOptimized(ctx context.Context, messageID
 			break
 		}
 
-		resp := dto.ToMessageResponse(msg)
-		result = append([]*dto.MessageResponse{&resp}, result...)
+		if msg.Content.RagID != "" {
+			// 从RAGRecord中获取RAG记录
+			ragRecord, err := s.ragRecordRepo.FindByID(ctx, msg.Content.RagID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get RAG record: %w", err)
+			}
+			resp := dto.ToMessageResponse(msg, ragRecord)
+			result = append([]*dto.MessageResponse{&resp}, result...)
+		} else {
+			resp := dto.ToMessageResponse(msg, nil)
+			result = append([]*dto.MessageResponse{&resp}, result...)
+		}
 		currentID = msg.ParentID
 
 		// 如果ParentID是uuid.Nil.String()，说明到达根消息
@@ -666,5 +743,5 @@ func (s *MessageManager) GetNodeChildren(ctx context.Context, nodeID string) ([]
 
 // isZeroMessageContent 判断 MessageContent 是否为零值
 func isZeroMessageContent(mc model.MessageContent) bool {
-	return mc.Text == "" && len(mc.RAG) == 0
+	return mc.Text == "" && mc.Thought == "" && mc.Notice == nil && len(mc.Action) == 0 && len(mc.Plan.Steps) == 0
 }

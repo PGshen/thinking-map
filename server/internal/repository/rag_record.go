@@ -38,23 +38,6 @@ func (r *ragRecordRepository) FindByID(ctx context.Context, id string) (*model.R
 	return &record, nil
 }
 
-func (r *ragRecordRepository) FindByNodeID(ctx context.Context, nodeID string, offset, limit int) ([]*model.RAGRecord, int64, error) {
-	var records []*model.RAGRecord
-	var total int64
-
-	err := r.db.WithContext(ctx).Model(&model.RAGRecord{}).Where("node_id = ?", nodeID).Count(&total).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	err = r.db.WithContext(ctx).Where("node_id = ?", nodeID).Offset(offset).Limit(limit).Find(&records).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return records, total, nil
-}
-
 func (r *ragRecordRepository) List(ctx context.Context, offset, limit int) ([]*model.RAGRecord, int64, error) {
 	var records []*model.RAGRecord
 	var total int64

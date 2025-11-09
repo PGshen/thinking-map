@@ -86,6 +86,11 @@ export async function conclusion(nodeID: string, reference: string, instruction:
   });
 }
 
+// 重置拆解
+export async function resetDecomposition(mapID: string, nodeID: string): Promise<ApiResponse<any>> {
+  return put(API_ENDPOINTS.NODE.DECOMPOSITION_RESET.replace(':mapID', mapID).replace(':nodeID', nodeID));
+}
+
 // 保存结论
 export async function saveNodeConclusion(mapID: string, nodeID: string, content: string): Promise<ApiResponse<any>> {
   return put(API_ENDPOINTS.NODE.CONCLUSION_SAVE.replace(':mapID', mapID).replace(':nodeID', nodeID), {

@@ -9,14 +9,15 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Action, MessageResponse, NoticeType } from "@/types/message";
 import { ChevronDown, ChevronRight, Loader, Brain, Check, Clock, Pause, X, FileText, Waypoints, SquareActivity, MessageSquareMore, Sparkle, CirclePlay } from "lucide-react";
 import { useState } from "react";
+import { RAGRecordView } from "./rag-record-view";
 
-interface DecomposeAreaProps {
+interface MessageAreaProps {
   loading: boolean;
   messages: MessageResponse[];
-  clickAction: (action: Action) => void;
+  clickAction?: (action: Action) => void;
 }
 
-export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaProps) {
+export function MessageArea({ loading, messages, clickAction }: MessageAreaProps) {
   // 用于管理每个思考消息的折叠状态
   const [collapsedStates, setCollapsedStates] = useState<Record<string, boolean>>({});
   // 用于管理执行计划步骤的展开状态
@@ -309,7 +310,7 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                                 key={index}
                                 className={`cursor-pointer px-3 py-2 ${theme.bg} ${theme.hover} ${theme.text} text-sm rounded-md border ${theme.border} transition-colors duration-200 text-left flex-shrink-0`}
                                 onClick={() => {
-                                  clickAction(action);
+                                  clickAction?.(action);
                                 }}
                               >
                                 <div className="flex items-center gap-2">
@@ -478,6 +479,40 @@ export function DecomposeArea({ loading, messages, clickAction }: DecomposeAreaP
                             </div>
                           );
                         })}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              </ChatMessage>
+            );
+          }
+          // RAG消息
+          if (message.messageType === 'rag') {
+            if (message.content.rag === undefined) {
+              return
+            }
+            const isCollapsed = collapsedStates[message.id] || false;
+
+            return (
+              <ChatMessage
+                key={message.id}
+                id={message.id}
+                type="incoming"
+              >
+                <div className="flex-1">
+                  <Collapsible open={!isCollapsed} onOpenChange={() => toggleCollapse(message.id)}>
+                    <CollapsibleTrigger className="cursor-pointer flex items-center gap-2 text-left p-1 rounded-md bg-purple-50 hover:bg-purple-100 transition-colors border border-purple-200">
+                      <FileText className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                      <span className="text-sm font-medium text-purple-800 flex-1">检索结果</span>
+                      {isCollapsed ? (
+                        <ChevronRight className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                      )}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2">
+                      <div className="pl-2 border-l-2 border-purple-200 w-full">
+                        <RAGRecordView key={message.content.rag.id} ragRecord={message.content.rag} />
                       </div>
                     </CollapsibleContent>
                   </Collapsible>

@@ -36,11 +36,28 @@ export interface PlanStep {
   assignedSpecialist?: string;
 }
 
+export interface RAGResult {
+  title: string;
+  url?: string;
+  content?: string;
+  score?: number;
+  raw_content?: string;
+  favicon?: string;
+}
+
+export interface RAGRecord {
+  id: string;
+  query: string;
+  answer: string;
+  sources: string;
+  results: RAGResult[];
+}
+
 // 消息内容 - 与后端 model.MessageContent 对齐
 export interface MessageContent {
   text?: string;
   thought?: string;
-  rag?: string[];
+  rag?: RAGRecord;
   notice?: Notice;
   action?: Action[];
   plan?: Plan;

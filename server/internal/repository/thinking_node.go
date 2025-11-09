@@ -67,6 +67,10 @@ func (r *thinkingNodeRepository) FindByIDForUpdate(ctx context.Context, tx *gorm
 	return &node, nil
 }
 
+func (r *thinkingNodeRepository) DeleteByParentID(ctx context.Context, parentID string) error {
+	return r.db.WithContext(ctx).Where("parent_id = ?", parentID).Delete(&model.ThinkingNode{}).Error
+}
+
 // FindByIDs retrieves multiple ThinkingNode records by their IDs
 func (r *thinkingNodeRepository) FindByIDs(ctx context.Context, ids []string) ([]*model.ThinkingNode, error) {
 	var nodes []*model.ThinkingNode

@@ -52,7 +52,6 @@ export function PanelTabs({ nodeID }: PanelTabsProps) {
             </TabsTrigger>
             <TabsTrigger
               value="decompose"
-              disabled={!canDecompose}
               className="flex items-center gap-2 cursor-pointer"
             >
               <Bot className="w-4 h-4" />
@@ -60,7 +59,6 @@ export function PanelTabs({ nodeID }: PanelTabsProps) {
             </TabsTrigger>
             <TabsTrigger
               value="conclusion"
-              disabled={!canConclude}
               className="flex items-center gap-2 cursor-pointer"
             >
               <CheckCircle className="w-4 h-4" />

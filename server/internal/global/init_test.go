@@ -30,9 +30,10 @@ func TestMain(m *testing.M) {
 	// 初始化repository
 	messageRepo := repository.NewMessageRepository(testDB)
 	nodeRepo := repository.NewThinkingNodeRepository(testDB)
+	ragRecordRepo := repository.NewRAGRecordRepository(testDB)
 
 	// 初始化MessageManager
-	InitMessageManager(messageRepo, nodeRepo, testDB)
+	InitMessageManager(messageRepo, nodeRepo, ragRecordRepo, testDB)
 	messageManager = GetMessageManager()
 
 	code := m.Run()

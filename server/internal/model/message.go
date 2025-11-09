@@ -10,7 +10,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/cloudwego/eino/schema"
@@ -99,10 +98,10 @@ type PlanStep struct {
 type MessageContent struct {
 	Text    string   `json:"text,omitempty"`
 	Thought string   `json:"thought,omitempty"`
-	RAG     []string `json:"rag,omitempty"`
-	Notice  Notice   `json:"notice,omitempty"`
+	RagID   string   `json:"rag,omitempty"` // 外键
+	Notice  *Notice  `json:"notice,omitempty"`
 	Action  []Action `json:"action,omitempty"`
-	Plan    Plan     `json:"plan,omitempty"`
+	Plan    *Plan    `json:"plan,omitempty"`
 }
 
 // MessageContent 实现 Scanner 接口
@@ -121,26 +120,4 @@ func (m *MessageContent) Scan(value interface{}) error {
 // MessageContent 实现 Valuer 接口
 func (m MessageContent) Value() (driver.Value, error) {
 	return json.Marshal(m)
-}
-
-// String()
-func (m MessageContent) String() string {
-	contentList := []string{}
-	if m.Text != "" {
-		contentList = append(contentList, m.Text)
-	}
-	if m.Thought != "" {
-		contentList = append(contentList, fmt.Sprintf("\n思考：%s", m.Thought))
-	}
-	if m.Notice.Content != "" {
-		contentList = append(contentList, fmt.Sprintf("\n通知：%s：%s", m.Notice.Name, m.Notice.Content))
-	}
-	if len(m.Plan.Steps) > 0 {
-		for _, step := range m.Plan.Steps {
-			if step.Status == "running" {
-				contentList = append(contentList, fmt.Sprintf("\n计划：%s, %s", step.Name, step.Description))
-			}
-		}
-	}
-	return strings.Join(contentList, "\n")
 }

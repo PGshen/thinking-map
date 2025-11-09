@@ -25,13 +25,13 @@ func BuildDecompositionAgent(ctx context.Context, option ...base.AgentOption) (c
 	if err != nil {
 		return nil, err
 	}
-	cm, _ = cm.WithTools(toolInfos)
 	allTools := []tool.BaseTool{}
 	nodeTools, err := node.GetAllNodeTools()
 	if err != nil {
 		return nil, err
 	}
 	allTools = append(allTools, nodeTools...)
+	// 添加搜索工具
 	searchTools, err := search.GetAllSearchTools()
 	if err != nil {
 		return nil, err
@@ -42,7 +42,8 @@ func BuildDecompositionAgent(ctx context.Context, option ...base.AgentOption) (c
 	if err != nil {
 		return nil, err
 	}
-	cm, _ = cm.WithTools(searchToolInfos)
+	toolInfos = append(toolInfos, searchToolInfos...)
+	cm, _ = cm.WithTools(toolInfos)
 
 	// 创建拆解决策Agent specialist
 	decompositionDecisionAgent, err := buildDecompositionDecisionAgent(ctx, option...)

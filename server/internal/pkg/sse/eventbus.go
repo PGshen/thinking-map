@@ -131,23 +131,25 @@ func (bus *RedisEventBus) PublishToSession(ctx context.Context, sessionID string
 		localClients := localProvider.GetLocalSessionClients(sessionID)
 		if len(localClients) == 0 {
 			log.Printf("会话 %s 没有本地客户端", sessionID)
-		}
-		for _, localClient := range localClients {
-			select {
-			case localClient.EventChan <- event:
-				localDelivered++
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-				// EventChan满了，记录警告但继续
-				log.Printf("本地客户端 %s 的EventChan已满，跳过本地投递", localClient.ID)
+		} else {
+			for _, localClient := range localClients {
+				select {
+				case localClient.EventChan <- event:
+					localDelivered++
+				case <-ctx.Done():
+					return ctx.Err()
+				default:
+					// EventChan满了，记录警告但继续
+					log.Printf("本地客户端 %s 的EventChan已满，跳过本地投递", localClient.ID)
+				}
 			}
+			return nil
 		}
-		return nil
 	}
 
 	// 使用Redis pub/sub确保跨服务器分发
 	// 注意：本地客户端也会收到Redis消息，但由于已经直接投递，可以在handler中去重
+	log.Printf("使用Redis pub/sub分发会话 %s 的事件\n", sessionID)
 	channel := fmt.Sprintf("sse:session:%s", sessionID)
 	data, err := json.Marshal(event)
 	if err != nil {

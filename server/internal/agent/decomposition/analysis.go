@@ -7,6 +7,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/agent/base/react"
 	"github.com/PGshen/thinking-map/server/internal/agent/llmmodel"
 	"github.com/PGshen/thinking-map/server/internal/agent/tool/messaging"
+	"github.com/PGshen/thinking-map/server/internal/agent/tool/search"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
@@ -22,12 +23,18 @@ func BuildAnalysisAgent(ctx context.Context, option base.AgentOption) (r compose
 	if err != nil {
 		return nil, err
 	}
+	allTools := []tool.BaseTool{sendActionMsg}
+	// 添加搜索工具
+	searchTools, err := search.GetAllSearchTools()
+	if err != nil {
+		return nil, err
+	}
+	allTools = append(allTools, searchTools...)
+
 	agent, err := react.NewAgent(ctx, react.ReactAgentConfig{
 		ToolCallingModel: cm,
 		ToolsConfig: compose.ToolsNodeConfig{
-			Tools: []tool.BaseTool{
-				sendActionMsg,
-			},
+			Tools: allTools,
 		},
 		ToolReturnDirectly: map[string]bool{
 			"sendActionMsg": true,

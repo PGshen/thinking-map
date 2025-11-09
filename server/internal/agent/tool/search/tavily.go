@@ -12,12 +12,14 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/global"
 	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
+	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"
 	"github.com/cloudwego/eino/schema"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 const (
@@ -53,6 +55,7 @@ type SearchRequest struct {
 	MaxResults        int      `json:"max_results,omitempty"`
 	IncludeDomains    []string `json:"include_domains,omitempty"`
 	ExcludeDomains    []string `json:"exclude_domains,omitempty"`
+	IncludeFavicon    bool     `json:"include_favicon,omitempty"`
 }
 
 type SearchResult struct {
@@ -61,14 +64,14 @@ type SearchResult struct {
 	Content    string  `json:"content"`
 	Score      float64 `json:"score"`
 	RawContent string  `json:"raw_content,omitempty"`
+	Favicon    string  `json:"favicon,omitempty"`
 }
 
 type SearchResponse struct {
-	Answer            string         `json:"answer,omitempty"`
-	Query             string         `json:"query"`
-	ResponseTime      float64        `json:"response_time"`
-	Results           []SearchResult `json:"results"`
-	FollowUpQuestions []string       `json:"follow_up_questions,omitempty"`
+	Answer       string         `json:"answer,omitempty"`
+	Query        string         `json:"query"`
+	ResponseTime float64        `json:"response_time"`
+	Results      []SearchResult `json:"results"`
 }
 
 func (c *TavilyClient) Search(ctx context.Context, req *SearchRequest) (*SearchResponse, error) {
@@ -153,6 +156,7 @@ type SearchFuncRequest struct {
 	MaxResults        int      `json:"max_results,omitempty"`
 	IncludeDomains    []string `json:"include_domains,omitempty"`
 	ExcludeDomains    []string `json:"exclude_domains,omitempty"`
+	IncludeFavicon    bool     `json:"include_favicon,omitempty"`
 }
 
 func SearchFunc(ctx context.Context, req *SearchFuncRequest) (*SearchResponse, error) {
@@ -168,6 +172,7 @@ func SearchFunc(ctx context.Context, req *SearchFuncRequest) (*SearchResponse, e
 		MaxResults:        req.MaxResults,
 		IncludeDomains:    req.IncludeDomains,
 		ExcludeDomains:    req.ExcludeDomains,
+		IncludeFavicon:    true,
 	}
 	if searchReq.SearchDepth == "" {
 		searchReq.SearchDepth = DefaultSearchDepth
@@ -176,17 +181,13 @@ func SearchFunc(ctx context.Context, req *SearchFuncRequest) (*SearchResponse, e
 		searchReq.MaxResults = DefaultMaxResults
 	}
 
-	resp, err := client.Search(ctx, searchReq)
-	if err != nil {
-		return nil, err
-	}
-
 	notice := model.Notice{
-		Type:    model.NoticeTypeSuccess,
+		Type:    model.NoticeTypeInfo,
 		Name:    "网络检索",
-		Content: fmt.Sprintf("检索完成，共找到 %d 个结果", len(resp.Results)),
+		Content: fmt.Sprintf("关键词: %s", req.Query),
 	}
 
+	// 发送开始检索的消息给前端
 	global.GetBroker().PublishToSession(mapID, sse.Event{
 		ID:   uuid.NewString(),
 		Type: dto.MessageNoticeEventType,
@@ -200,8 +201,62 @@ func SearchFunc(ctx context.Context, req *SearchFuncRequest) (*SearchResponse, e
 	global.GetMessageManager().SaveDecompositionMessage(ctx, nodeID, dto.CreateMessageRequest{
 		ID:          uuid.NewString(),
 		MessageType: model.MsgTypeNotice,
+		Role:        schema.Assistant,
+		Content:     model.MessageContent{Notice: &notice},
+	})
+
+	resp, err := client.Search(ctx, searchReq)
+	if err != nil {
+		return nil, err
+	}
+
+	// 将搜索结果转换为ragRecord
+	ragRecord := model.RAGRecord{
+		ID:     uuid.NewString(),
+		Query:  resp.Query,
+		Answer: resp.Answer,
+	}
+
+	var results model.Results
+	for _, result := range resp.Results {
+		results = append(results, model.Result{
+			Title:      result.Title,
+			URL:        result.URL,
+			Content:    result.Content,
+			Score:      result.Score,
+			RawContent: result.RawContent,
+			Favicon:    result.Favicon,
+		})
+	}
+	ragRecord.Sources = model.RagTavily
+	ragRecord.Results = results
+
+	// 4. 保存 RAG 记录到数据库
+	if err := global.GetRAGRecordRepository().Create(ctx, &ragRecord); err != nil {
+		logger.Error("save rag record failed", zap.Error(err))
+		return nil, err
+	}
+
+	// 5. 发送 SSE 到前端
+	messageID := uuid.NewString()
+	global.GetBroker().PublishToSession(mapID, sse.Event{
+		ID:   uuid.NewString(),
+		Type: dto.MessageRagEventType,
+		Data: dto.MessageRagEvent{
+			NodeID:    nodeID,
+			MessageID: messageID,
+			RagRecord: ragRecord,
+		},
+	})
+
+	// 保存消息
+	global.GetMessageManager().SaveDecompositionMessage(ctx, nodeID, dto.CreateMessageRequest{
+		ID:          messageID,
+		MessageType: model.MsgTypeRAG,
 		Role:        schema.Tool,
-		Content:     model.MessageContent{Notice: notice},
+		Content: model.MessageContent{
+			RagID: ragRecord.ID,
+		},
 	})
 
 	return resp, nil
@@ -249,7 +304,7 @@ func ExtractFunc(ctx context.Context, req *ExtractFuncRequest) (*ExtractResponse
 		ID:          uuid.NewString(),
 		MessageType: model.MsgTypeNotice,
 		Role:        schema.Tool,
-		Content:     model.MessageContent{Notice: notice},
+		Content:     model.MessageContent{Notice: &notice},
 	})
 
 	return resp, nil
@@ -292,6 +347,10 @@ func SearchTool() (tool.InvokableTool, error) {
 					Type:     schema.Array,
 					ElemInfo: &schema.ParameterInfo{Type: schema.String},
 					Desc:     "排除这些域名",
+				},
+				"include_favicon": {
+					Type: schema.Boolean,
+					Desc: "是否在结果中包含网站图标",
 				},
 			},
 		),

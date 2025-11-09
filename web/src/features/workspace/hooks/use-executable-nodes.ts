@@ -25,7 +25,7 @@ export function useExecutableNodes() {
     
     try {
       const response = await executableNodes(mapID, nodeID);
-      if (response) {
+      if (response && response.data && response.data.nodeIDs) {
         actions.setExecutableNodes(response.data.nodeIDs, response.data.suggestedNodeID);
       }
     } catch (error) {

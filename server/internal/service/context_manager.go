@@ -255,7 +255,7 @@ func (cm *ContextManager) getRecentNodeConversation(ctx context.Context, parentM
 			break
 		}
 		// 只需要text类型的消息
-		if msg.MessageType != model.MsgTypeText {
+		if msg.MessageType != model.MsgTypeText && msg.MessageType != model.MsgTypeRAG {
 			continue
 		}
 		content := msg.Content.String()

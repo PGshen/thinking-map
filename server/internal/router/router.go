@@ -55,7 +55,7 @@ func SetupRouter(
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authService)
 	mapHandler := handler.NewMapHandler(mapService)
-	nodeHandler := handler.NewNodeHandler(nodeService, conclusionService)
+	nodeHandler := handler.NewNodeHandler(nodeService, conclusionService, decompositionService)
 	understandingHandler := thinkinghandler.NewUnderstandingHandler(understandingService)
 	decompositionHandler := thinkinghandler.NewDecompositionHandler(decompositionService)
 	conclusionHandler := thinkinghandler.NewConclusionHandler(conclusionService)
@@ -100,6 +100,7 @@ func SetupRouter(
 				nodes.DELETE("/:nodeID", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.DeleteNode)
 				nodes.PUT("/:nodeID/context", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.UpdateNodeContext)
 				nodes.PUT("/:nodeID/context/reset", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.ResetNodeContext)
+				nodes.PUT("/:nodeID/decomposition/reset", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.ResetDecomposition)
 				nodes.GET("/:nodeID/messages", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.GetNodeMessages)
 				nodes.PUT("/:nodeID/conclusion", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.SaveConclusion)
 				nodes.PUT("/:nodeID/conclusion/reset", middleware.NodeOwnershipMiddleware(nodeRepo, mapRepo), nodeHandler.ResetConclusion)

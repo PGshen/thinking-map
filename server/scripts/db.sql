@@ -1,8 +1,7 @@
-
 -- 数据库初始化脚本
 -- 注意：此脚本仅在 PostgreSQL 容器首次启动时执行
 
-CREATE TABLE IF NOT EXISTS users(
+CREATE TABLE IF NOT EXISTS users (
     serial_id SERIAL NOT NULL,
     id uuid NOT NULL,
     username varchar(32) NOT NULL,
@@ -13,15 +12,18 @@ CREATE TABLE IF NOT EXISTS users(
     created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at timestamp without time zone,
-    PRIMARY KEY(serial_id)
+    PRIMARY KEY (serial_id)
 );
+
 CREATE UNIQUE INDEX users_id_key ON public.users USING btree (id);
+
 CREATE UNIQUE INDEX users_username_key ON public.users USING btree (username);
+
 CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email);
+
 CREATE INDEX idx_users_deleted_at ON public.users USING btree (deleted_at);
 
-
-CREATE TABLE IF NOT EXISTS messages(
+CREATE TABLE IF NOT EXISTS messages (
     serial_id SERIAL NOT NULL,
     id uuid NOT NULL,
     parent_id uuid,
@@ -34,15 +36,18 @@ CREATE TABLE IF NOT EXISTS messages(
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     deleted_at timestamp without time zone,
-    PRIMARY KEY(serial_id)
+    PRIMARY KEY (serial_id)
 );
+
 CREATE UNIQUE INDEX messages_id_key ON public.messages USING btree (id);
+
 CREATE INDEX idx_messages_parent_id ON public.messages USING btree (parent_id);
+
 CREATE INDEX idx_messages_chat_id ON public.messages USING btree (conversation_id);
+
 CREATE INDEX idx_messages_deleted_at ON public.messages USING btree (deleted_at);
 
-
-CREATE TABLE IF NOT EXISTS thinking_maps(
+CREATE TABLE IF NOT EXISTS thinking_maps (
     serial_id SERIAL NOT NULL,
     id uuid NOT NULL,
     user_id uuid NOT NULL,
@@ -58,14 +63,16 @@ CREATE TABLE IF NOT EXISTS thinking_maps(
     created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at timestamp without time zone,
-    PRIMARY KEY(serial_id)
+    PRIMARY KEY (serial_id)
 );
+
 CREATE UNIQUE INDEX thinking_maps_id_key ON public.thinking_maps USING btree (id);
+
 CREATE INDEX idx_thinking_maps_user_id ON public.thinking_maps USING btree (user_id);
+
 CREATE INDEX idx_thinking_maps_deleted_at ON public.thinking_maps USING btree (deleted_at);
 
-
-CREATE TABLE IF NOT EXISTS thinking_nodes(
+CREATE TABLE IF NOT EXISTS thinking_nodes (
     serial_id SERIAL NOT NULL,
     id uuid NOT NULL,
     map_id uuid NOT NULL,
@@ -83,9 +90,35 @@ CREATE TABLE IF NOT EXISTS thinking_nodes(
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     deleted_at timestamp without time zone,
-    PRIMARY KEY(serial_id)
+    PRIMARY KEY (serial_id)
 );
+
 CREATE UNIQUE INDEX thinking_nodes_id_key ON public.thinking_nodes USING btree (id);
+
 CREATE INDEX idx_thinking_nodes_map_id ON public.thinking_nodes USING btree (map_id);
+
 CREATE INDEX idx_thinking_nodes_parent_id ON public.thinking_nodes USING btree (parent_id);
+
 CREATE INDEX idx_thinking_nodes_deleted_at ON public.thinking_nodes USING btree (deleted_at);
+
+-- ----------------------------
+-- Table structure for rag_records
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS rag_records (
+    serial_id SERIAL NOT NULL,
+    id uuid NOT NULL,
+    query text NOT NULL,
+    answer text NOT NULL,
+    sources varchar(128) NOT NULL,
+    results jsonb DEFAULT '[]'::jsonb,
+    follow_up_questions jsonb DEFAULT '[]'::jsonb,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    deleted_at timestamp without time zone,
+    PRIMARY KEY (serial_id)
+);
+
+CREATE UNIQUE INDEX rag_records_id_key ON public.rag_records USING btree (id);
+
+CREATE INDEX idx_rag_records_deleted_at ON public.rag_records USING btree (deleted_at);
