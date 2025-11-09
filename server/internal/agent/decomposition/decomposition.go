@@ -8,6 +8,7 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/agent/base/react"
 	"github.com/PGshen/thinking-map/server/internal/agent/llmmodel"
 	"github.com/PGshen/thinking-map/server/internal/agent/tool/node"
+	"github.com/PGshen/thinking-map/server/internal/agent/tool/search"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
@@ -31,6 +32,17 @@ func BuildDecompositionAgent(ctx context.Context, option ...base.AgentOption) (c
 		return nil, err
 	}
 	allTools = append(allTools, nodeTools...)
+	searchTools, err := search.GetAllSearchTools()
+	if err != nil {
+		return nil, err
+	}
+	allTools = append(allTools, searchTools...)
+
+	searchToolInfos, err := search.GetAllToolInfos(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cm, _ = cm.WithTools(searchToolInfos)
 
 	// 创建拆解决策Agent specialist
 	decompositionDecisionAgent, err := buildDecompositionDecisionAgent(ctx, option...)
@@ -132,6 +144,11 @@ func buildProblemDecompositionAgent(ctx context.Context, option ...base.AgentOpt
 		return nil, err
 	}
 	allTools = append(allTools, nodeTools...)
+	searchTools, err := search.GetAllSearchTools()
+	if err != nil {
+		return nil, err
+	}
+	allTools = append(allTools, searchTools...)
 
 	agent, err := react.NewAgent(ctx, react.ReactAgentConfig{
 		ToolCallingModel: cm,

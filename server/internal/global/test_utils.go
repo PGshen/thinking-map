@@ -10,6 +10,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
@@ -17,7 +19,29 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/PGshen/thinking-map/server/internal/config"
+	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
+	"github.com/PGshen/thinking-map/server/internal/repository"
 )
+
+// getProjectRoot finds the project root directory by searching for the go.mod file.
+func getProjectRoot() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir, nil
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("go.mod not found")
+		}
+		dir = parent
+	}
+}
 
 // TestConfig 测试配置结构体
 type TestConfig struct {
@@ -27,13 +51,21 @@ type TestConfig struct {
 
 // LoadTestConfig 加载测试配置
 func LoadTestConfig() (*config.Config, error) {
-	// 优先尝试加载测试配置文件
-	configPath := "../../configs/config.test.yaml"
-	if _, err := os.Stat(configPath); err != nil {
-		// 如果测试配置文件不存在，使用默认配置
-		configPath = "../../configs/config.yaml"
+	projectRoot, err := getProjectRoot()
+	if err != nil {
+		return nil, fmt.Errorf("failed to find project root: %w", err)
 	}
-	_ = godotenv.Load("../../.env")
+
+	// 优先尝试加载测试配置文件
+	configPath := filepath.Join(projectRoot, "configs", "config.test.yaml")
+	if _, err2 := os.Stat(configPath); err2 != nil {
+		// 如果测试配置文件不存在，使用默认配置
+		configPath = filepath.Join(projectRoot, "configs", "config.yaml")
+	}
+
+	envPath := filepath.Join(projectRoot, ".env")
+	_ = godotenv.Load(envPath)
+
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load test config: %w", err)
@@ -52,8 +84,8 @@ func LoadTestConfig() (*config.Config, error) {
 // InitTestDatabase 初始化测试数据库
 func InitTestDatabase(cfg *config.Config) (*gorm.DB, error) {
 	// 构建数据库 DSN
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=Asia/Shanghai",
-		cfg.Database.Host, cfg.Database.Port, cfg.Database.Username, cfg.Database.Password, cfg.Database.DBName, cfg.Database.SSLMode)
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		cfg.Database.Host, cfg.Database.Port, cfg.Database.Username, cfg.Database.Password, cfg.Database.DBName)
 
 	// 连接数据库
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -105,6 +137,25 @@ func SetupTestEnvironment() (*TestConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to init test redis: %w", err)
 	}
+
+	// 初始化分布式SSE组件
+	// 生成服务器ID
+	serverID := fmt.Sprintf("server-%d", time.Now().Unix())
+
+	// 创建Redis连接管理器
+	connManager := sse.NewRedisConnectionManager(redisClient, serverID)
+
+	// 创建Redis事件总线（支持本地优化）
+	eventBus := sse.NewRedisEventBus(redisClient, connManager, serverID)
+
+	// 初始化全局SSE broker（支持分布式）
+	InitBroker(eventBus, connManager, serverID, 10*time.Second, 60*time.Second)
+
+	// 初始化全局消息管理器
+	InitMessageManager(repository.NewMessageRepository(db), repository.NewThinkingNodeRepository(db), db)
+
+	// 初始化全局节点操作器
+	InitNodeOperator(repository.NewThinkingNodeRepository(db), repository.NewThinkingMapRepository(db))
 
 	return &TestConfig{
 		DB:    db,

@@ -7,8 +7,8 @@ database:
   driver: postgres
   host: ${DB_HOST:-localhost}
   port: ${DB_PORT:-5432}
-  username: ${DB_USER:-postgres}
-  password: ${DB_PASSWORD:-postgres}
+  username: ${DB_USER:-postgre}
+  password: ${DB_PASSWORD:-postgrepw}
   dbname: ${DB_NAME:-thinking_map_test}
   sslmode: disable
 
@@ -45,6 +45,11 @@ llm:
     model: ${CLAUDE_MODEL}
     timeout: 300s
 
+service:
+  tavily:
+    api_key: ${TAVILY_API_KEY}
+    timeout: 120s
+
 sse:
   ping_interval: 15s  # 心跳包间隔
-  client_timeout: 60s  # 客户端超时时间 
+  client_timeout: 60s  # 客户端超时时间
