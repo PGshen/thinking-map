@@ -1,10 +1,11 @@
 package react
 
 import (
-	"context"
-	"fmt"
+    "context"
+    "fmt"
+    "strings"
 
-	"github.com/cloudwego/eino/schema"
+    "github.com/cloudwego/eino/schema"
 )
 
 type InitHandler struct {
@@ -38,9 +39,21 @@ func NewReasoningHandler(config ReactAgentConfig) *ReasoningHandler {
 }
 
 func (h *ReasoningHandler) PreHandler(ctx context.Context, input []*schema.Message, state *AgentState) ([]*schema.Message, error) {
-	state.Iteration++
-	// Build system prompt
-	systemPrompt := buildReasoningSystemPrompt()
+    state.Iteration++
+    // Build system prompt
+    systemPrompt := buildReasoningSystemPrompt()
+    // If we are in the forced final iteration, append strict constraints
+    if state.ForceFinalAnswer {
+        systemPrompt = systemPrompt + `
+
+## Final Iteration Constraint
+You have reached or exceeded the maximum number of iterations. This is the last reasoning step.
+- You MUST set "action" to "final_answer".
+- You MUST provide "final_answer".
+- You MUST NOT return "tool_call" nor "continue".
+- You MUST strictly follow the JSON response format described above.
+If you fail to provide a final answer, the system will treat your latest content as the final answer.`
+    }
 
 	// Prepare messages with system prompt
 	messages := []*schema.Message{
@@ -57,11 +70,28 @@ func (h *ReasoningHandler) PreHandler(ctx context.Context, input []*schema.Messa
 }
 
 func (h *ReasoningHandler) PostHandler(ctx context.Context, output *schema.Message, state *AgentState) (*schema.Message, error) {
-	// Parse reasoning response
-	reasoning, err := parseReasoningResponse(output)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse reasoning response: %w", err)
-	}
+    // Parse reasoning response
+    reasoning, err := parseReasoningResponse(output)
+    if err != nil {
+        return nil, fmt.Errorf("failed to parse reasoning response: %w", err)
+    }
+    // Enforce final answer on forced final iteration
+    if state.ForceFinalAnswer {
+        if strings.ToLower(strings.TrimSpace(reasoning.Action)) != "final_answer" {
+            // Convert any non-final action to final_answer
+            reasoning.Action = "final_answer"
+            if strings.TrimSpace(reasoning.FinalAnswer) == "" {
+                // Prefer structured thought, otherwise fallback to raw content
+                if strings.TrimSpace(reasoning.Thought) != "" {
+                    reasoning.FinalAnswer = strings.TrimSpace(reasoning.Thought)
+                } else {
+                    reasoning.FinalAnswer = strings.TrimSpace(output.Content)
+                }
+            }
+            // Clear tool calls to avoid further execution
+            reasoning.ToolCalls = nil
+        }
+    }
 	// if len(reasoning.ToolCalls) > 0 {
 	// 	for _, toolCall := range reasoning.ToolCalls {
 	// 		fmt.Printf("ReasoningHandler: tool call %s %s\n", toolCall.Function.Name, toolCall.Function.Arguments)
@@ -71,8 +101,8 @@ func (h *ReasoningHandler) PostHandler(ctx context.Context, output *schema.Messa
 	fmt.Println(output.Content)
 	fmt.Printf("---END2---\n")
 
-	// Add to reasoning history
-	state.ReasoningHistory = append(state.ReasoningHistory, *reasoning)
+    // Add to reasoning history
+    state.ReasoningHistory = append(state.ReasoningHistory, *reasoning)
 
 	// Add output to messages
 	state.Messages = append(state.Messages, output)

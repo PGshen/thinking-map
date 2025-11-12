@@ -48,7 +48,8 @@ func NewAgent(ctx context.Context, config ReactAgentConfig, opts ...base.AgentOp
 	agent.Graph = graph
 
 	// Compile graph to runnable
-	runnable, err := graph.Compile(ctx, compose.WithMaxRunSteps(config.MaxStep))
+	// runnable, err := graph.Compile(ctx, compose.WithMaxRunSteps(config.MaxStep))
+	runnable, err := graph.Compile(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile graph: %w", err)
 	}
@@ -107,6 +108,7 @@ func (a *ReactAgent) buildGraph(ctx context.Context, chatModel model.BaseChatMod
 			Completed:                false,
 			FinalAnswer:              "",
 			ReturnDirectlyToolCallID: "",
+			ForceFinalAnswer:         false,
 		}
 	}))
 
@@ -273,25 +275,47 @@ func (a *ReactAgent) decisionBranchHandler(ctx context.Context, msgsStream *sche
 
 		reasoning := &state.ReasoningHistory[len(state.ReasoningHistory)-1]
 
-		// Check if max iterations reached
-		if state.Iteration > state.MaxIterations {
-			// Force final answer
-			state.FinalAnswer = "Maximum iterations reached. Unable to complete the task."
+		// If we already have a final answer, complete immediately
+		if reasoning.Action == "final_answer" {
+			state.FinalAnswer = reasoning.FinalAnswer
 			state.Completed = true
 			endNode = nodeKeyComplete
 			return nil
 		}
 
+		// Check if max iterations reached or exceeded. When reached, schedule a final forced reasoning step.
+		if state.Iteration >= state.MaxIterations && !state.ForceFinalAnswer {
+			// Mark that the next reasoning must produce a final answer and disallow tool calls.
+			state.ForceFinalAnswer = true
+			endNode = nodeKeyToReasoning
+			return nil
+		}
+
 		// Make decision based on reasoning result
+		// Make decision based on reasoning result (respecting forced final answer)
 		switch reasoning.Action {
 		case "tool_call":
-			// Validate tool calls exist
-			if len(reasoning.ToolCalls) > 0 {
-				// Route to tools node
-				endNode = nodeKeyTools
+			if state.ForceFinalAnswer {
+				// Disallow tool calls in forced final iteration; finalize using current content
+				if state.FinalAnswer == "" {
+					// Prefer reasoning.FinalAnswer if any, otherwise use last message content
+					if strings.TrimSpace(reasoning.FinalAnswer) != "" {
+						state.FinalAnswer = strings.TrimSpace(reasoning.FinalAnswer)
+					} else if len(state.Messages) > 0 {
+						state.FinalAnswer = strings.TrimSpace(state.Messages[len(state.Messages)-1].Content)
+					}
+				}
+				state.Completed = true
+				endNode = nodeKeyComplete
 			} else {
-				// No tool calls, continue reasoning
-				endNode = nodeKeyToReasoning
+				// Validate tool calls exist
+				if len(reasoning.ToolCalls) > 0 {
+					// Route to tools node
+					endNode = nodeKeyTools
+				} else {
+					// No tool calls, continue reasoning
+					endNode = nodeKeyToReasoning
+				}
 			}
 		case "final_answer":
 			// Set final answer and mark as completed
@@ -299,8 +323,21 @@ func (a *ReactAgent) decisionBranchHandler(ctx context.Context, msgsStream *sche
 			state.Completed = true
 			endNode = nodeKeyComplete
 		default:
-			// Route back to reasoning for retry
-			endNode = nodeKeyToReasoning
+			if state.ForceFinalAnswer {
+				// Must finalize now even if model suggested continue
+				if state.FinalAnswer == "" {
+					if strings.TrimSpace(reasoning.FinalAnswer) != "" {
+						state.FinalAnswer = strings.TrimSpace(reasoning.FinalAnswer)
+					} else if len(state.Messages) > 0 {
+						state.FinalAnswer = strings.TrimSpace(state.Messages[len(state.Messages)-1].Content)
+					}
+				}
+				state.Completed = true
+				endNode = nodeKeyComplete
+			} else {
+				// Route back to reasoning for retry
+				endNode = nodeKeyToReasoning
+			}
 		}
 
 		return nil
