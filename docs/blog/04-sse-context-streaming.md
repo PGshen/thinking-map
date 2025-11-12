@@ -145,7 +145,20 @@ graph TD
 ### 自定义一个有限状态机（FSM）解析器
 
 社区虽然有一些流式 JSON 解析的库，但大多较为庞大，或是不完全符合我们的需求（例如，我们需要增量解析，在value还未完成的情况下及时将结果推送出去）。因此，我们决定自定义一个轻量、高效的有限状态机（FSM）解析器。
-
+```mermaid
+flowchart LR
+    A[输入字符流 chunk] --> B{StreamingJsonParser}
+    B -->|processChar/handle*| C[状态机 VALUE/KEY/COMMA...]
+    C --> D[栈 stack: 对象/数组/根值]
+    C --> E[路径 path: 属性名/数组索引]
+    C --> F[增量缓存 lastSentPos]
+    D --> G[addValue]
+    E --> G
+    F --> G
+    G --> H{SimplePathMatcher}
+    H --> I[matchPath 精确/通配符匹配]
+    I --> J["Callback(value, path)"]
+```
 设计目标很明确：
 
 -   **轻量高效**：只包含核心功能，无任何多余依赖。
