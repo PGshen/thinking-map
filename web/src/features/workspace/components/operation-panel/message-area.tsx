@@ -23,6 +23,9 @@ export function MessageArea({ loading, messages, clickAction }: MessageAreaProps
   // 用于管理执行计划步骤的展开状态
   const [expandedSteps, setExpandedSteps] = useState<Record<string, Set<number>>>({});
 
+  // 当前最后一条消息的ID，用于控制动作按钮是否可点击
+  const lastMessageId = messages[messages.length - 1]?.id;
+
   // 切换指定消息的折叠状态
   const toggleCollapse = (messageId: string) => {
     setCollapsedStates(prev => ({
@@ -304,23 +307,30 @@ export function MessageArea({ loading, messages, clickAction }: MessageAreaProps
                           {message.content.action?.map((action, index) => {
 
                             const theme = getMethodTheme(action.method);
+                            const isLastMessage = message.id === lastMessageId;
+
+                            const enabledClasses = `cursor-pointer px-3 py-2 ${theme.bg} ${theme.hover} ${theme.text} text-sm rounded-md border ${theme.border} transition-colors duration-200 text-left flex-shrink-0`;
+                            const disabledClasses = `cursor-not-allowed px-3 py-2 bg-gray-100 text-gray-400 text-sm rounded-md border border-gray-200 transition-colors duration-200 text-left flex-shrink-0 opacity-60`;
 
                             return (
                               <button
                                 key={index}
-                                className={`cursor-pointer px-3 py-2 ${theme.bg} ${theme.hover} ${theme.text} text-sm rounded-md border ${theme.border} transition-colors duration-200 text-left flex-shrink-0`}
+                                className={isLastMessage ? enabledClasses : disabledClasses}
+                                disabled={!isLastMessage}
+                                aria-disabled={!isLastMessage}
                                 onClick={() => {
+                                  if (!isLastMessage) return;
                                   clickAction?.(action);
                                 }}
                               >
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium">{action.name}</span>
-                                  <span className={`text-xs ${theme.methodBg} ${theme.methodText} px-1.5 py-0.5 rounded uppercase font-mono`}>
+                                  <span className={`text-xs ${isLastMessage ? theme.methodBg : 'bg-gray-200'} ${isLastMessage ? theme.methodText : 'text-gray-500'} px-1.5 py-0.5 rounded uppercase font-mono`}>
                                     {action.method}
                                   </span>
                                 </div>
                                 {action.url && (
-                                  <div className={`text-xs ${theme.text} mt-1 opacity-75 font-mono`}>
+                                  <div className={`text-xs ${isLastMessage ? theme.text : 'text-gray-400'} mt-1 opacity-75 font-mono`}>
                                     {action.url}
                                   </div>
                                 )}

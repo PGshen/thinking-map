@@ -22,7 +22,7 @@ import { getMessages, saveNodeConclusion, resetNodeConclusion } from '@/api/node
 // 导入新的Notion编辑器
 import EditorClient from '@/components/editor-client';
 import { MessageResponse, MessageType, MessageContent } from '@/types/message';
-import { MessageConclusionEvent, MessageRagEvent, MessageThoughtEvent } from '@/types/sse';
+import { MessageConclusionEvent, MessageNoticeEvent, MessageRagEvent, MessageThoughtEvent } from '@/types/sse';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
 import { CustomNodeModel } from '@/types/node';
 import { Node } from 'reactflow';
@@ -318,6 +318,13 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
     }
   }
   
+  // 处理消息通知事件
+  const handleMessageNoticeEvent = (data: MessageNoticeEvent) => {
+    handleMessageEvent(data, 'notice', (eventData) => ({
+      notice: eventData.notice
+    }));
+  };
+  
   // 处理RAG消息事件
   const handleMessageRagEvent = (data: MessageRagEvent) => {
     handleMessageEvent(data, 'rag', (eventData) => ({
@@ -348,6 +355,17 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
             handleMessageThoughtEvent(data, 'thought');
           } catch (error) {
             console.error('解析messageThought事件失败:', error, event.data);
+          }
+        }
+      },
+      {
+        eventType: 'messageNotice' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as MessageNoticeEvent;
+            handleMessageNoticeEvent(data);
+          } catch (error) {
+            console.error('解析messageNotice事件失败:', error, event.data);
           }
         }
       },

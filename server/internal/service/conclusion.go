@@ -47,6 +47,7 @@ func (c *ConclusionService) Conclusion(ctx *gin.Context, req dto.ConclusionReque
 	}
 	ctx.Set("mapID", contextInfo.MapInfo.ID)
 	ctx.Set("nodeID", req.NodeID)
+	ctx.Set("operation", "conclusion")
 
 	// 2. 构建用户消息
 	//  2.1 上下文消息

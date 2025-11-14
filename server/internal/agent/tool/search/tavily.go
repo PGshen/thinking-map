@@ -162,6 +162,7 @@ type SearchFuncRequest struct {
 func SearchFunc(ctx context.Context, req *SearchFuncRequest) (*SearchResponse, error) {
 	mapID := ctx.Value("mapID").(string)
 	nodeID := ctx.Value("nodeID").(string)
+	operation := ctx.Value("operation").(string)
 	client := NewTavilyClient()
 
 	searchReq := &SearchRequest{
@@ -198,12 +199,22 @@ func SearchFunc(ctx context.Context, req *SearchFuncRequest) (*SearchResponse, e
 		},
 	})
 
-	global.GetMessageManager().SaveDecompositionMessage(ctx, nodeID, dto.CreateMessageRequest{
-		ID:          uuid.NewString(),
-		MessageType: model.MsgTypeNotice,
-		Role:        schema.Assistant,
-		Content:     model.MessageContent{Notice: &notice},
-	})
+	switch operation {
+	case "decomposition":
+		global.GetMessageManager().SaveDecompositionMessage(ctx, nodeID, dto.CreateMessageRequest{
+			ID:          uuid.NewString(),
+			MessageType: model.MsgTypeNotice,
+			Role:        schema.Assistant,
+			Content:     model.MessageContent{Notice: &notice},
+		})
+	case "conclusion":
+		global.GetMessageManager().SaveConclusionMessage(ctx, nodeID, dto.CreateMessageRequest{
+			ID:          uuid.NewString(),
+			MessageType: model.MsgTypeNotice,
+			Role:        schema.Assistant,
+			Content:     model.MessageContent{Notice: &notice},
+		})
+	}
 
 	resp, err := client.Search(ctx, searchReq)
 	if err != nil {
@@ -249,15 +260,26 @@ func SearchFunc(ctx context.Context, req *SearchFuncRequest) (*SearchResponse, e
 		},
 	})
 
-	// 保存消息
-	global.GetMessageManager().SaveDecompositionMessage(ctx, nodeID, dto.CreateMessageRequest{
-		ID:          messageID,
-		MessageType: model.MsgTypeRAG,
-		Role:        schema.Tool,
-		Content: model.MessageContent{
-			RagID: ragRecord.ID,
-		},
-	})
+	switch operation {
+	case "decomposition":
+		global.GetMessageManager().SaveDecompositionMessage(ctx, nodeID, dto.CreateMessageRequest{
+			ID:          messageID,
+			MessageType: model.MsgTypeRAG,
+			Role:        schema.Tool,
+			Content: model.MessageContent{
+				RagID: ragRecord.ID,
+			},
+		})
+	case "conclusion":
+		global.GetMessageManager().SaveConclusionMessage(ctx, nodeID, dto.CreateMessageRequest{
+			ID:          messageID,
+			MessageType: model.MsgTypeRAG,
+			Role:        schema.Tool,
+			Content: model.MessageContent{
+				RagID: ragRecord.ID,
+			},
+		})
+	}
 
 	return resp, nil
 }

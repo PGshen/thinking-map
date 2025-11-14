@@ -37,7 +37,7 @@ func SendActionMsg(ctx context.Context, msg *dto.ActionChoice) (*dto.ActionMsgRe
 			}
 		case ActionConclude:
 			msgAction = model.Action{
-				Name:   "开始总结",
+				Name:   "开始结论",
 				Method: "POST",
 				URL:    "/api/map/node/conclude",
 				Param: map[string]any{

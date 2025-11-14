@@ -14,7 +14,7 @@ import { CustomNodeModel } from '@/types/node';
 import { useWorkspaceStore } from '@/features/workspace/store/workspace-store';
 import { toast } from 'sonner';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
-import { getMessages, decomposition, resetDecomposition } from '@/api/node';
+import { getMessages, decomposition, resetDecomposition, conclusion } from '@/api/node';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
 import { MessageActionEvent, MessageNoticeEvent, MessagePlanEvent, MessageTextEvent, MessageThoughtEvent, MessageRagEvent } from '@/types/sse';
 import { Button } from '@/components/ui/button';
@@ -25,9 +25,10 @@ import { RefreshCcw } from 'lucide-react';
 interface DecomposeTabProps {
   nodeID: string;
   nodeData: CustomNodeModel;
+  onSwitchTab?: (tab: 'info' | 'decompose' | 'conclusion') => void;
 }
 
-export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
+export function DecomposeTab({ nodeID, nodeData, onSwitchTab }: DecomposeTabProps) {
   const { mapID } = useWorkspaceStore();
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [isDecomposed, setIsDecomposed] = useState(false);
@@ -349,7 +350,24 @@ export function DecomposeTab({ nodeID, nodeData }: DecomposeTabProps) {
       setIsDecomposed(true);
       handleSubmit('开始拆解', true);
     } else if (action.name == '开始结论') {
-      handleSubmit('开始结论');
+      // 切换到结论Tab
+      onSwitchTab && onSwitchTab('conclusion');
+      // 触发后端结论生成请求
+      if (loading) return;
+      setLoading(true);
+      try {
+        conclusion(nodeID, '', '').then(res => {
+          if (res.code !== 200) {
+            toast.error(`启动结论失败: ${res.message}`);
+          }
+        }).finally(() => {
+          setLoading(false);
+        });
+      } catch (error) {
+        toast.error('网络错误，请重试');
+        console.error('启动结论失败', error);
+        setLoading(false);
+      }
     } else {
       throw new Error('Function not implemented.');
     }

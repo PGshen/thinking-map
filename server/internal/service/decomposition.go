@@ -60,6 +60,7 @@ func (s *DecompositionService) Decomposition(ctx *gin.Context, req dto.Decomposi
 	// 将mapID, nodeID传入到ctx
 	ctx.Set("mapID", contextInfo.MapInfo.ID)
 	ctx.Set("nodeID", req.NodeID)
+	ctx.Set("operation", "decomposition")
 
 	// 2. 构建用户消息
 	//  2.1 上下文消息

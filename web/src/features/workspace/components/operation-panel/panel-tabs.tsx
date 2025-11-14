@@ -86,7 +86,11 @@ export function PanelTabs({ nodeID }: PanelTabsProps) {
 
           <TabsContent value="decompose" className="h-full m-0 p-0">
             <div className="h-full px-4 min-w-fit">
-              <DecomposeTab nodeID={nodeID} nodeData={nodeData} />
+              <DecomposeTab 
+                nodeID={nodeID} 
+                nodeData={nodeData} 
+                onSwitchTab={(tab) => setActiveTab(tab)}
+              />
             </div>
           </TabsContent>
 
