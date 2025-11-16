@@ -39,11 +39,11 @@ func NewConclusionV3Service(contextManager *ContextManager, nodeRepo repository.
 	}
 }
 
-func (c *ConclusionService) Conclusion(ctx *gin.Context, req dto.ConclusionRequest) (sr *schema.StreamReader[*schema.Message], err error) {
+func (c *ConclusionService) Conclusion(ctx *gin.Context, req dto.ConclusionRequest) error {
 	// 查询上下文
 	contextInfo, err := c.contextManager.GetNodeContextWithConversation(ctx, req.NodeID, "")
 	if err != nil {
-		return
+		return err
 	}
 	ctx.Set("mapID", contextInfo.MapInfo.ID)
 	ctx.Set("nodeID", req.NodeID)
@@ -57,7 +57,7 @@ func (c *ConclusionService) Conclusion(ctx *gin.Context, req dto.ConclusionReque
 	// 2.2 查询当前节点的和子节点列表。作为上下文消息，用于后续操作节点
 	childrenMessages, err := c.msgManager.GetNodeChildren(ctx, contextInfo.NodeInfo.ID)
 	if err != nil {
-		return
+		return err
 	}
 	messages = append(messages, childrenMessages...)
 	// 2.3 用户指令
@@ -70,15 +70,14 @@ func (c *ConclusionService) Conclusion(ctx *gin.Context, req dto.ConclusionReque
 	}
 	if contextInfo.NodeInfo.Conclusion.Content != "" {
 		// 有结论，优化结论
-		sr, err = c.Optimize(ctx, messages)
-		return sr, err
+		go c.Optimize(ctx, messages)
 	}
 	// 无结论，生成结论
-	sr, err = c.Generate(ctx, contextInfo, messages)
-	return sr, err
+	go c.Generate(ctx, contextInfo, messages)
+	return nil
 }
 
-func (c *ConclusionService) Generate(ctx *gin.Context, contextInfo *ContextInfo, messages []*schema.Message) (sr *schema.StreamReader[*schema.Message], err error) {
+func (c *ConclusionService) Generate(ctx *gin.Context, contextInfo *ContextInfo, messages []*schema.Message) error {
 	userID := ctx.GetString("user_id")
 	messageHandler := &messageHandler{
 		mapID:      contextInfo.MapInfo.ID,
@@ -88,25 +87,45 @@ func (c *ConclusionService) Generate(ctx *gin.Context, contextInfo *ContextInfo,
 	}
 	agent, err := conclusionv3.BuildGenerationAgent(ctx, react.WithMessageHandler(messageHandler))
 	if err != nil {
-		return nil, err
+		return err
 	}
-	sr, err = agent.Stream(ctx, messages, compose.WithCallbacks(callback.LogCbHandler))
+	sr, err := agent.Stream(ctx, messages, compose.WithCallbacks(callback.LogCbHandler))
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return
+	for {
+		chunk, err := sr.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
+		fmt.Printf("%s", chunk.Content)
+	}
+	return nil
 }
 
-func (c ConclusionService) Optimize(ctx *gin.Context, messages []*schema.Message) (sr *schema.StreamReader[*schema.Message], err error) {
+func (c ConclusionService) Optimize(ctx *gin.Context, messages []*schema.Message) error {
 	agent, err := conclusionv3.BuildOptimizationAgent(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	sr, err = agent.Stream(ctx, messages, compose.WithCallbacks(callback.LogCbHandler))
+	sr, err := agent.Stream(ctx, messages, compose.WithCallbacks(callback.LogCbHandler))
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return
+	for {
+		chunk, err := sr.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
+		fmt.Printf("%s", chunk.Content)
+	}
+	return nil
 }
 
 type messageHandler struct {

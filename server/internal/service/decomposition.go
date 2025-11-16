@@ -91,10 +91,11 @@ func (s *DecompositionService) Decomposition(ctx *gin.Context, req dto.Decomposi
 	}
 	// 拆解
 	if isDecompose {
-		return s.Decompose(ctx, contextInfo, messages)
+		go s.Decompose(ctx, contextInfo, messages)
 	}
 	// 分析
-	return s.Analyze(ctx, contextInfo, messages)
+	go s.Analyze(ctx, contextInfo, messages)
+	return nil
 }
 
 // ResetDecomposition resets the decomposition of a node.

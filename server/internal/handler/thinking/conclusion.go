@@ -1,10 +1,11 @@
 package thinking
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/PGshen/thinking-map/server/internal/model/dto"
-	"github.com/PGshen/thinking-map/server/internal/pkg/comm"
 	"github.com/PGshen/thinking-map/server/internal/service"
-	"github.com/cloudwego/eino/schema"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -21,13 +22,25 @@ func NewConclusionHandler(conclusionService *service.ConclusionService) *Conclus
 	}
 }
 
-func (h *ConclusionHandler) Handle(c *gin.Context) (msgID string, event string, sr *schema.StreamReader[*schema.Message], err error) {
+func (h *ConclusionHandler) Handle(c *gin.Context) {
 	var req dto.ConclusionRequest
-	if err = c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{
+			Code:      http.StatusBadRequest,
+			Message:   "invalid request parameters",
+			Data:      dto.ErrorData{Error: err.Error()},
+			Timestamp: time.Now(),
+			RequestID: uuid.New().String(),
+		})
 		return
 	}
-	msgID = uuid.New().String()
-	event = comm.EventText
-	sr, err = h.conclusionService.Conclusion(c, req)
-	return
+	h.conclusionService.Conclusion(c, req)
+	// 响应
+	c.JSON(http.StatusOK, dto.Response{
+		Code:      http.StatusOK,
+		Message:   "success",
+		Data:      nil,
+		Timestamp: time.Now(),
+		RequestID: uuid.NewString(),
+	})
 }

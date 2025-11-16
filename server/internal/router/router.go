@@ -112,7 +112,7 @@ func SetupRouter(
 				thinking.POST("/understanding", thinkinghandler.NewStreamReply(understandingHandler))
 				// thinking.POST("/decomposition", thinkinghandler.NewStreamReply(decompositionHandler))
 				thinking.POST("/decomposition", decompositionHandler.Handle)
-				thinking.POST("/conclusion", thinkinghandler.NewStreamReply(conclusionHandler))
+				thinking.POST("/conclusion", conclusionHandler.Handle)
 				thinking.POST("/repeat", thinkinghandler.NewStreamReply(repeaterHandler))
 			}
 

@@ -24,49 +24,42 @@ type LocalClientProvider interface {
 
 // EventBus 事件总线接口
 type EventBus interface {
-	// 发布事件到指定客户端
 	PublishToClient(ctx context.Context, clientID string, event Event) error
-	// 发布事件到会话中的所有客户端
 	PublishToSession(ctx context.Context, sessionID string, event Event) error
-	// 订阅会话事件，返回处理器ID
-	SubscribeSession(ctx context.Context, sessionID string, handler EventHandler) (string, error)
-	// 取消订阅会话事件
-	UnsubscribeSession(ctx context.Context, sessionID string) error
-	// 移除会话中的特定处理器
-	RemoveSessionHandler(ctx context.Context, sessionID string, handlerID string) error
-	// 设置本地客户端提供者（用于性能优化）
+	SubscribeClient(ctx context.Context, clientID string) error
+	SubscribeSession(ctx context.Context, sessionID string) error
+	UnsubscribeClient(ctx context.Context, clientID string) error
+	UnsubscribeSessionIfNoLocalClients(ctx context.Context, sessionID string) error
 	SetLocalClientProvider(provider LocalClientProvider)
-	// 关闭事件总线
 	Close() error
 }
-
-// EventHandler 事件处理器
-type EventHandler func(event Event) error
 
 // RedisEventBus Redis实现的分布式事件总线
 type RedisEventBus struct {
 	redis               *redis.Client
 	subscribers         map[string]*redis.PubSub
-	handlers            map[string]map[string]EventHandler // sessionKey -> handlerID -> handler
 	mutex               sync.RWMutex
 	ctx                 context.Context
 	cancel              context.CancelFunc
 	localClientProvider LocalClientProvider // 本地客户端提供者，用于性能优化
 	connManager         ConnectionManager   // 连接管理器，用于判断客户端位置
 	serverID            string              // 当前服务器ID
+	sessionRemote       map[string]bool
+	sessionServers      map[string]map[string]struct{}
 }
 
 // NewRedisEventBus 创建Redis事件总线
 func NewRedisEventBus(redisClient *redis.Client, connManager ConnectionManager, serverID string) *RedisEventBus {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &RedisEventBus{
-		redis:       redisClient,
-		subscribers: make(map[string]*redis.PubSub),
-		handlers:    make(map[string]map[string]EventHandler),
-		ctx:         ctx,
-		cancel:      cancel,
-		connManager: connManager,
-		serverID:    serverID,
+		redis:          redisClient,
+		subscribers:    make(map[string]*redis.PubSub),
+		ctx:            ctx,
+		cancel:         cancel,
+		connManager:    connManager,
+		serverID:       serverID,
+		sessionRemote:  make(map[string]bool),
+		sessionServers: make(map[string]map[string]struct{}),
 	}
 }
 
@@ -86,26 +79,14 @@ func (bus *RedisEventBus) PublishToClient(ctx context.Context, clientID string, 
 	// 优先尝试本地直接投递
 	if localProvider != nil {
 		if localClient := localProvider.GetLocalClient(clientID); localClient != nil {
-			// 直接发送到本地客户端的EventChan
-			select {
-			case localClient.EventChan <- event:
+			sent, err := bus.tryLocalSend(ctx, localClient, event)
+			if err != nil {
+				return err
+			}
+			if sent {
 				return nil
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-				// EventChan满了，记录警告但继续使用Redis作为备选
-				log.Printf("本地客户端 %s 的EventChan已满，回退到Redis分发", clientID)
 			}
-		}
-	}
-
-	// 检查客户端是否在本地服务器上
-	if bus.connManager != nil {
-		if conn, err := bus.connManager.GetConnection(ctx, clientID); err == nil && conn != nil {
-			if conn.ServerID == bus.serverID {
-				// 客户端在本地但LocalClient不可用，可能是连接刚建立或已断开
-				log.Printf("客户端 %s 在本地服务器但LocalClient不可用，使用Redis分发", clientID)
-			}
+			log.Printf("本地客户端 %s 的EventChan不可用或已满，回退到Redis分发", clientID)
 		}
 	}
 
@@ -118,37 +99,40 @@ func (bus *RedisEventBus) PublishToClient(ctx context.Context, clientID string, 
 	return bus.redis.Publish(ctx, channel, data).Err()
 }
 
+func (bus *RedisEventBus) tryLocalSend(ctx context.Context, lc *LocalClient, event Event) (bool, error) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	select {
+	case lc.EventChan <- event:
+		return true, nil
+	case <-ctx.Done():
+		return false, ctx.Err()
+	default:
+		return false, nil
+	}
+}
+
 // PublishToSession 发布事件到会话中的所有客户端
 func (bus *RedisEventBus) PublishToSession(ctx context.Context, sessionID string, event Event) error {
 	bus.mutex.RLock()
 	localProvider := bus.localClientProvider
+	hasRemote := bus.sessionRemote[sessionID]
 	bus.mutex.RUnlock()
 
-	// 优先向本地会话客户端直接投递
-	localDelivered := 0
 	if localProvider != nil {
 		localClients := localProvider.GetLocalSessionClients(sessionID)
-		if len(localClients) == 0 {
-			log.Printf("会话 %s 没有本地客户端", sessionID)
-		} else {
-			for _, localClient := range localClients {
-				select {
-				case localClient.EventChan <- event:
-					localDelivered++
-				case <-ctx.Done():
-					return ctx.Err()
-				default:
-					// EventChan满了，记录警告但继续
-					log.Printf("本地客户端 %s 的EventChan已满，跳过本地投递", localClient.ID)
-				}
-			}
-			return nil
+		for _, lc := range localClients {
+			bus.tryLocalSend(ctx, lc, event)
 		}
 	}
 
-	// 使用Redis pub/sub确保跨服务器分发
-	// 注意：本地客户端也会收到Redis消息，但由于已经直接投递，可以在handler中去重
-	log.Printf("使用Redis pub/sub分发会话 %s 的事件\n", sessionID)
+	if !hasRemote {
+		return nil
+	}
+
+	event.OriginServerID = bus.serverID
 	channel := fmt.Sprintf("sse:session:%s", sessionID)
 	data, err := json.Marshal(event)
 	if err != nil {
@@ -158,96 +142,118 @@ func (bus *RedisEventBus) PublishToSession(ctx context.Context, sessionID string
 }
 
 // SubscribeClient 订阅客户端事件
-func (bus *RedisEventBus) SubscribeClient(ctx context.Context, clientID string, handler EventHandler) error {
+func (bus *RedisEventBus) SubscribeClient(ctx context.Context, clientID string) error {
 	bus.mutex.Lock()
 	defer bus.mutex.Unlock()
 
+	subscriptionKey := "client:" + clientID
 	channel := fmt.Sprintf("sse:client:%s", clientID)
 
-	// 如果已经订阅，先取消订阅
-	if pubsub, exists := bus.subscribers[clientID]; exists {
+	if pubsub, exists := bus.subscribers[subscriptionKey]; exists {
 		pubsub.Close()
-		delete(bus.subscribers, clientID)
-		delete(bus.handlers, clientID)
+		delete(bus.subscribers, subscriptionKey)
 	}
 
-	// 创建新的订阅
 	pubsub := bus.redis.Subscribe(ctx, channel)
-	bus.subscribers[clientID] = pubsub
-	bus.handlers[clientID] = map[string]EventHandler{clientID: handler}
+	bus.subscribers[subscriptionKey] = pubsub
 
-	// 启动消息处理协程
-	go bus.handleMessages(clientID, pubsub)
+	go bus.handleClientMessages(clientID, pubsub)
 
 	return nil
 }
 
 // SubscribeSession 订阅会话事件
-func (bus *RedisEventBus) SubscribeSession(ctx context.Context, sessionID string, handler EventHandler) (string, error) {
+func (bus *RedisEventBus) SubscribeSession(ctx context.Context, sessionID string) error {
 	bus.mutex.Lock()
 	defer bus.mutex.Unlock()
 
+	subscriptionKey := "session:" + sessionID
 	channel := fmt.Sprintf("sse:session:%s", sessionID)
-	subscriptionKey := "session:" + sessionID
 
-	// 生成处理器ID并添加处理器
-	handlerID := fmt.Sprintf("%s-%d", sessionID, len(bus.handlers[subscriptionKey]))
-	// 如果还没有订阅，创建新的订阅
-	if _, exists := bus.subscribers[subscriptionKey]; !exists {
-		pubsub := bus.redis.Subscribe(ctx, channel)
-		bus.subscribers[subscriptionKey] = pubsub
-		bus.handlers[subscriptionKey] = make(map[string]EventHandler)
-		bus.handlers[subscriptionKey][handlerID] = handler
-		// 启动消息处理协程
-		go bus.handleMessages(subscriptionKey, pubsub)
-	} else {
-		bus.handlers[subscriptionKey][handlerID] = handler
-	}
-
-	return handlerID, nil
-}
-
-// UnsubscribeSession 取消订阅会话事件
-func (bus *RedisEventBus) UnsubscribeSession(ctx context.Context, sessionID string) error {
-	bus.mutex.Lock()
-	defer bus.mutex.Unlock()
-
-	subscriptionKey := "session:" + sessionID
 	if pubsub, exists := bus.subscribers[subscriptionKey]; exists {
 		pubsub.Close()
 		delete(bus.subscribers, subscriptionKey)
-		delete(bus.handlers, subscriptionKey)
 	}
 
+	pubsub := bus.redis.Subscribe(ctx, channel)
+	bus.subscribers[subscriptionKey] = pubsub
+
+	go bus.handleSessionMessages(sessionID, pubsub)
+
+	servers, err := bus.redis.SMembers(ctx, "sse:session_servers:"+sessionID).Result()
+	if err == nil {
+		ss := make(map[string]struct{})
+		remote := false
+		for _, s := range servers {
+			ss[s] = struct{}{}
+			if s != bus.serverID {
+				remote = true
+			}
+		}
+		bus.sessionServers[sessionID] = ss
+		bus.sessionRemote[sessionID] = remote
+	}
+
+	updatesKey := "session_servers_updates:" + sessionID
+	updatesChannel := "sse:session_servers_updates:" + sessionID
+	if pubsubUpdates, exists := bus.subscribers[updatesKey]; exists {
+		pubsubUpdates.Close()
+		delete(bus.subscribers, updatesKey)
+	}
+	pubsubUpdates := bus.redis.Subscribe(ctx, updatesChannel)
+	bus.subscribers[updatesKey] = pubsubUpdates
+	go bus.handleSessionServersUpdates(sessionID, pubsubUpdates)
+
+	return nil
+}
+
+// UnsubscribeSession 取消订阅会话事件
+func (bus *RedisEventBus) UnsubscribeClient(ctx context.Context, clientID string) error {
+	bus.mutex.Lock()
+	defer bus.mutex.Unlock()
+
+	subscriptionKey := "client:" + clientID
+	if pubsub, exists := bus.subscribers[subscriptionKey]; exists {
+		pubsub.Close()
+		delete(bus.subscribers, subscriptionKey)
+	}
+	return nil
+}
+
+func (bus *RedisEventBus) UnsubscribeSessionIfNoLocalClients(ctx context.Context, sessionID string) error {
+	bus.mutex.Lock()
+	defer func() {
+		bus.mutex.Unlock()
+	}()
+
+	subscriptionKey := "session:" + sessionID
+	if bus.localClientProvider != nil {
+		clients := bus.localClientProvider.GetLocalSessionClients(sessionID)
+		if len(clients) == 0 {
+			if pubsub, exists := bus.subscribers[subscriptionKey]; exists {
+				pubsub.Close()
+				delete(bus.subscribers, subscriptionKey)
+			}
+			delete(bus.sessionRemote, sessionID)
+			delete(bus.sessionServers, sessionID)
+			updatesKey := "session_servers_updates:" + sessionID
+			if pubsubUpdates, exists := bus.subscribers[updatesKey]; exists {
+				pubsubUpdates.Close()
+				delete(bus.subscribers, updatesKey)
+			}
+		}
+	}
 	return nil
 }
 
 // RemoveSessionHandler 移除会话中的特定处理器
-func (bus *RedisEventBus) RemoveSessionHandler(ctx context.Context, sessionID string, handlerID string) error {
-	bus.mutex.Lock()
-	defer bus.mutex.Unlock()
-
-	subscriptionKey := "session:" + sessionID
-	if handlers, exists := bus.handlers[subscriptionKey]; exists {
-		delete(handlers, handlerID)
-		// 如果没有处理器了，取消订阅
-		if len(handlers) == 0 {
-			if pubsub, exists := bus.subscribers[subscriptionKey]; exists {
-				pubsub.Close()
-				delete(bus.subscribers, subscriptionKey)
-				delete(bus.handlers, subscriptionKey)
-			}
-		}
-	}
-
-	return nil
-}
+// 处理器相关逻辑已移除
 
 // handleMessages 处理Redis订阅消息
-func (bus *RedisEventBus) handleMessages(subscriptionKey string, pubsub *redis.PubSub) {
+func (bus *RedisEventBus) handleClientMessages(clientID string, pubsub *redis.PubSub) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("handleMessages recovered from panic: %v", r)
+			log.Printf("handleClientMessages recovered from panic: %v", r)
 		}
 	}()
 	ch := pubsub.Channel()
@@ -263,17 +269,56 @@ func (bus *RedisEventBus) handleMessages(subscriptionKey string, pubsub *redis.P
 				log.Printf("解析事件失败: %v", err)
 				continue
 			}
-
 			bus.mutex.RLock()
-			handlers, exists := bus.handlers[subscriptionKey]
+			provider := bus.localClientProvider
 			bus.mutex.RUnlock()
+			if provider != nil {
+				lc := provider.GetLocalClient(clientID)
+				if lc != nil {
+					select {
+					case lc.EventChan <- event:
+					default:
+						log.Printf("客户端缓冲区已满，丢弃消息: %s", clientID)
+					}
+				}
+			}
+		case <-bus.ctx.Done():
+			return
+		}
+	}
+}
 
-			if exists {
-				for _, handler := range handlers {
-					if handler != nil {
-						if err := handler(event); err != nil {
-							log.Printf("处理事件失败: %v", err)
-						}
+func (bus *RedisEventBus) handleSessionMessages(sessionID string, pubsub *redis.PubSub) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("handleSessionMessages recovered from panic: %v", r)
+		}
+	}()
+	ch := pubsub.Channel()
+	for {
+		select {
+		case msg := <-ch:
+			if msg == nil {
+				return
+			}
+			var event Event
+			if err := json.Unmarshal([]byte(msg.Payload), &event); err != nil {
+				log.Printf("解析事件失败: %v", err)
+				continue
+			}
+			if event.OriginServerID == bus.serverID {
+				continue
+			}
+			bus.mutex.RLock()
+			provider := bus.localClientProvider
+			bus.mutex.RUnlock()
+			if provider != nil {
+				clients := provider.GetLocalSessionClients(sessionID)
+				for _, lc := range clients {
+					select {
+					case lc.EventChan <- event:
+					default:
+						log.Printf("客户端缓冲区已满，丢弃消息: %s", lc.ClientID)
 					}
 				}
 			}
@@ -295,7 +340,57 @@ func (bus *RedisEventBus) Close() error {
 	}
 
 	bus.subscribers = make(map[string]*redis.PubSub)
-	bus.handlers = make(map[string]map[string]EventHandler)
+	bus.sessionServers = make(map[string]map[string]struct{})
+	bus.sessionRemote = make(map[string]bool)
 
 	return nil
+}
+
+func (bus *RedisEventBus) handleSessionServersUpdates(sessionID string, pubsub *redis.PubSub) {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	ch := pubsub.Channel()
+	for {
+		select {
+		case msg := <-ch:
+			if msg == nil {
+				return
+			}
+			var upd struct {
+				SessionID string `json:"sessionID"`
+				ServerID  string `json:"serverID"`
+				Op        string `json:"op"`
+			}
+			if err := json.Unmarshal([]byte(msg.Payload), &upd); err != nil {
+				continue
+			}
+			if upd.SessionID != sessionID {
+				continue
+			}
+			bus.mutex.Lock()
+			ss := bus.sessionServers[sessionID]
+			if ss == nil {
+				ss = make(map[string]struct{})
+			}
+			if upd.Op == "add" {
+				ss[upd.ServerID] = struct{}{}
+			} else if upd.Op == "remove" {
+				delete(ss, upd.ServerID)
+			}
+			bus.sessionServers[sessionID] = ss
+			remote := false
+			for s := range ss {
+				if s != bus.serverID {
+					remote = true
+					break
+				}
+			}
+			bus.sessionRemote[sessionID] = remote
+			bus.mutex.Unlock()
+		case <-bus.ctx.Done():
+			return
+		}
+	}
 }

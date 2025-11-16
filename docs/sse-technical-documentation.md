@@ -2,7 +2,9 @@
 
 ## 概述
 
-SSE包是一个分布式的服务器推送事件系统，支持跨服务器实例的实时消息分发。该系统基于Redis实现分布式架构，支持会话级别的事件订阅和客户端级别的精确推送。
+SSE包实现一个分布式服务器推送事件系统，支持跨服务器实例的实时消息分发。系统以“本地优先、远程保障”的策略构建：
+- 客户端级事件优先本地直投，失败时回退到Redis分发
+- 会话级事件本地直投；仅当存在远程客户端时，按需通过Redis广播，并在订阅端根据来源进行去重
 
 ## 核心组件架构
 
@@ -72,27 +74,32 @@ func (b *Broker) PublishToClient(clientID string, event Event) error
 
 ### 2. EventBus (事件总线)
 
-**职责**: 实现分布式事件分发，支持跨服务器实例的消息传递。
+**职责**: 统一事件路由与跨实例分发。维护Redis订阅与会话远程状态缓存，利用本地客户端提供者进行投递，无需事件处理器回调。
 
 **核心特性**:
-- **本地优化**: 优先使用本地直接投递，提高性能
-- **Redis备选**: 当本地投递失败时，回退到Redis分发
-- **跨服务器支持**: 通过Redis Pub/Sub实现多实例间通信
-- **会话级订阅**: 支持会话级别的事件订阅管理
+- **客户端级事件**: 本地直投失败回退Redis；各实例订阅 `sse:client:<clientID>`，仅在本地存在该客户端时转发
+- **会话级事件（本地优先 + 按需远程）**: 先本地直投；若会话存在远程客户端，广播到 `sse:session:<sessionID>`；各实例订阅并将事件推送给本地同会话的客户端；对来自本机的事件进行去重
+- **订阅键统一**: 内部统一使用 `client:<clientID>` 与 `session:<sessionID>` 作为订阅键，映射到Redis频道
+- **远程存在缓存**: 订阅时获取 `sse:session_servers:<sessionID>` 初始化 `sessionRemote`
+- **远程状态实时更新**: 订阅 `sse:session_servers_updates:<sessionID>`，根据连接注册/注销的更新消息实时维护 `sessionRemote`
 
 **分发策略**:
 ```mermaid
 flowchart TD
-    A["事件发布请求"] --> B{"是否有本地客户端?"}
-    B -->|是| C["尝试本地直接投递"]
-    B -->|否| F["使用Redis分发"]
-    C --> D{"本地投递成功?"}
+    A["PublishToClient(clientID, event)"] --> B{"本地是否存在该客户端?"}
+    B -->|是| C["直接写入本地 EventChan"]
+    C --> D{"写入是否成功?"}
     D -->|是| E["完成"]
-    D -->|否| F
-    F --> G["Redis Pub/Sub分发"]
-    G --> H["跨服务器接收"]
-    H --> I["本地事件处理"]
-    I --> E
+    D -->|否| F["Publish 到 Redis sse:client:<clientID>"]
+    B -->|否| F
+    F --> G["各实例订阅并路由到本地客户端"]
+
+    H["PublishToSession(sessionID, event)"] --> I["本地直投"]
+    I --> J{"sessionRemote[sessionID] 为真?"}
+    J -->|是| K["附带 OriginServerID 后 Publish 到 Redis sse:session:<sessionID>"]
+    J -->|否| L["不发布 Redis"]
+    K --> M["各实例订阅并将事件推送给本地会话的所有客户端"]
+    M --> N["订阅端忽略本机来源事件，避免重复"]
 ```
 
 ### 3. ConnectionManager (连接管理器)
@@ -103,6 +110,8 @@ flowchart TD
 - `sse:connection:{clientID}`: 单个连接详细信息
 - `sse:session_conn:{sessionID}`: 会话中的所有连接ID集合
 - `sse:server_conn:{serverID}`: 服务器实例的所有连接ID集合
+ - `sse:session_servers:{sessionID}`: 会话活跃的服务器ID集合（初始化远程状态）
+ - `sse:session_servers_updates:{sessionID}`: 会话服务器集合更新发布频道（实时维护远程状态）
 
 **连接状态**:
 ```go
@@ -120,7 +129,7 @@ const (
 #### Client (客户端元数据)
 ```go
 type Client struct {
-    ID        string `json:"id"`         // 客户端唯一标识
+    ClientID  string `json:"client_id"`  // 客户端唯一标识
     SessionID string `json:"session_id"` // 会话ID
     UserID    string `json:"user_id"`    // 用户ID（可选）
     CreatedAt int64  `json:"created_at"` // 创建时间
@@ -134,7 +143,17 @@ type LocalClient struct {
     EventChan    chan Event // 事件通道（缓冲区大小：10240）
     Done         chan bool  // 完成信号通道
     LastActiveAt int64      // 最后活跃时间
-    HandlerID    string     // 事件处理器ID
+}
+```
+
+#### Event (事件结构)
+```go
+type Event struct {
+    ID    string      `json:"id"`
+    Type  string      `json:"type"`
+    Data  interface{} `json:"data"`
+    Retry uint64      `json:"retry,omitempty"`
+    OriginServerID string `json:"origin_server_id,omitempty"` // 发布源服务器ID，用于订阅端去重
 }
 ```
 
@@ -183,12 +202,12 @@ sequenceDiagram
     B->>EB: PublishToSession()
     
     alt 本地客户端存在
-        EB->>LC: 直接投递到EventChan
-        LC->>LC: 处理事件
+    EB->>LC: 本地直投到 EventChan
+    LC->>LC: 处理事件
     else 无本地客户端或投递失败
-        EB->>R: Redis Pub/Sub发布
+        EB->>R: Redis Pub/Sub 发布到 sse:client:<clientID>
         R->>RS: 分发到其他服务器
-        RS->>RS: 本地事件处理
+        RS->>EB: 订阅并路由到本地客户端
     end
 ```
 
@@ -205,7 +224,7 @@ flowchart TD
     G --> H["移除事件处理器"]
     H --> D
     
-    I["心跳定时器"] --> J["发送ping事件"]
+    I["心跳定时器"] --> J["发送 ping 事件"]
     J --> K["更新活跃时间"]
     K --> L{"客户端响应?"}
     L -->|是| I
@@ -216,9 +235,10 @@ flowchart TD
 ## 性能优化策略
 
 ### 1. 本地优先分发
-- **直接投递**: 对于本地客户端，直接写入EventChan，避免Redis网络开销
-- **智能回退**: 当本地投递失败时，自动回退到Redis分发
-- **缓冲区管理**: EventChan使用10240大小的缓冲区，平衡内存使用和性能
+- **客户端级事件**: 本地直投，失败时回退到Redis分发
+- **会话级事件**: 本地直投，按需广播Redis（基于 `sessionRemote` 缓存）
+- **远程状态维护**: 订阅期初始化远程状态，实时订阅 `sse:session_servers_updates` 更新，避免发布路径Redis查询
+- **缓冲区管理**: EventChan 使用 10240 缓冲，兼顾性能与内存
 
 ### 2. 连接池化
 - **Redis连接复用**: 使用Redis连接池减少连接建立开销
@@ -250,7 +270,7 @@ type RedisConfig struct {
 - **超时处理**: 自动清理超时连接，释放资源
 
 ### 2. 事件分发错误
-- **缓冲区满**: 当EventChan满时，记录警告并丢弃消息
+- **缓冲区满/通道关闭**: 客户端级本地直投失败时回退到 Redis（带安全发送与panic保护）
 - **序列化错误**: JSON序列化失败时记录错误并跳过
 
 ### 3. Redis错误
@@ -298,7 +318,7 @@ func setupSSERoutes(r *gin.Engine, broker *Broker) {
 ### 3. 发布事件
 
 ```go
-// 发布到会话
+// 发布到会话（本地直投 + 按需广播）
 event := Event{
     Type: "message",
     Data: map[string]interface{}{
@@ -312,7 +332,7 @@ if err != nil {
     log.Printf("发布事件失败: %v", err)
 }
 
-// 发布到特定客户端
+// 发布到特定客户端（本地直投，失败回退）
 err = broker.PublishToClient("client-456", event)
 if err != nil {
     log.Printf("发布事件失败: %v", err)

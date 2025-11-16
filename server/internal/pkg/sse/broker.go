@@ -17,15 +17,16 @@ import (
 
 // Event 表示一个SSE事件
 type Event struct {
-	ID    string      `json:"id"`
-	Type  string      `json:"type"`
-	Data  interface{} `json:"data"`
-	Retry uint64      `json:"retry,omitempty"`
+	ID             string      `json:"id"`
+	Type           string      `json:"type"`
+	Data           interface{} `json:"data"`
+	Retry          uint64      `json:"retry,omitempty"`
+	OriginServerID string      `json:"origin_server_id,omitempty"`
 }
 
 // Client 表示一个SSE客户端元数据
 type Client struct {
-	ID        string `json:"id"`
+	ClientID  string `json:"client_id"`
 	SessionID string `json:"session_id"`
 	UserID    string `json:"user_id,omitempty"`
 	CreatedAt int64  `json:"created_at"`
@@ -36,8 +37,7 @@ type LocalClient struct {
 	*Client
 	EventChan    chan Event
 	Done         chan bool
-	LastActiveAt int64  // 最后活跃时间
-	HandlerID    string // 事件处理器ID
+	LastActiveAt int64
 }
 
 // Broker 管理所有客户端连接和事件分发
@@ -75,7 +75,7 @@ func NewBroker(eventBus EventBus, connManager ConnectionManager, serverID string
 func (b *Broker) NewClient(clientID, sessionID string) *LocalClient {
 	now := time.Now().Unix()
 	clientMeta := &Client{
-		ID:        clientID,
+		ClientID:  clientID,
 		SessionID: sessionID,
 		CreatedAt: now,
 	}
@@ -86,24 +86,20 @@ func (b *Broker) NewClient(clientID, sessionID string) *LocalClient {
 		LastActiveAt: now,
 	}
 	b.mutex.Lock()
-	defer b.mutex.Unlock()
+	defer func() {
+		b.mutex.Unlock()
+	}()
 
 	// 检查是否已存在相同clientID的连接，如果存在则先移除旧连接
 	if existingClient, exists := b.localClients[clientID]; exists {
 		log.Printf("发现已存在的客户端连接，移除旧连接: %s", clientID)
 		// 关闭旧连接的事件通道
 		close(existingClient.EventChan)
-		// 移除旧的事件处理器
-		if existingClient.HandlerID != "" {
-			if err := b.eventBus.RemoveSessionHandler(context.Background(), sessionID, existingClient.HandlerID); err != nil {
-				log.Printf("移除旧会话事件处理器失败: %v", err)
-			}
-		}
 	}
 
 	// 注册连接到ConnectionManager
 	conn := &ClientConnection{
-		ID:        clientID,
+		ClientID:  clientID,
 		SessionID: sessionID,
 	}
 	if err := b.connManager.RegisterConnection(context.Background(), conn); err != nil {
@@ -127,7 +123,10 @@ func (b *Broker) RemoveClient(clientID, sessionID string) {
 // RemoveClientWithTimestamp 移除指定时间戳的客户端，避免并发问题
 func (b *Broker) RemoveClientWithTimestamp(clientID, sessionID string, createdAt int64) {
 	b.mutex.Lock()
-	defer b.mutex.Unlock()
+
+	defer func() {
+		b.mutex.Unlock()
+	}()
 
 	// 检查客户端是否存在
 	client, exists := b.localClients[clientID]
@@ -148,10 +147,11 @@ func (b *Broker) RemoveClientWithTimestamp(clientID, sessionID string, createdAt
 	}
 
 	// 移除会话事件处理器
-	if client.HandlerID != "" {
-		if err := b.eventBus.RemoveSessionHandler(context.Background(), sessionID, client.HandlerID); err != nil {
-			log.Printf("移除会话事件处理器失败: %v", err)
-		}
+	if err := b.eventBus.UnsubscribeClient(context.Background(), clientID); err != nil {
+		log.Printf("取消客户端订阅失败: %v", err)
+	}
+	if err := b.eventBus.UnsubscribeSessionIfNoLocalClients(context.Background(), sessionID); err != nil {
+		log.Printf("取消会话订阅失败: %v", err)
 	}
 
 	// 从本地客户端映射中移除
@@ -162,16 +162,11 @@ func (b *Broker) RemoveClientWithTimestamp(clientID, sessionID string, createdAt
 
 // GetLocalClient 获取本地客户端（实现LocalClientProvider接口）
 func (b *Broker) GetLocalClient(clientID string) *LocalClient {
-	b.mutex.RLock()
-	defer b.mutex.RUnlock()
 	return b.localClients[clientID]
 }
 
 // GetLocalSessionClients 获取会话中的本地客户端（实现LocalClientProvider接口）
 func (b *Broker) GetLocalSessionClients(sessionID string) []*LocalClient {
-	b.mutex.RLock()
-	defer b.mutex.RUnlock()
-
 	var clients []*LocalClient
 	for _, client := range b.localClients {
 		if client.SessionID == sessionID {
@@ -192,7 +187,7 @@ func (b *Broker) GetClients(sessionID string) []*Client {
 	var clients []*Client
 	for _, conn := range connections {
 		client := &Client{
-			ID:        conn.ID,
+			ClientID:  conn.ClientID,
 			SessionID: conn.SessionID,
 			CreatedAt: conn.CreatedAt.Unix(),
 		}
@@ -233,12 +228,11 @@ func (b *Broker) HandleSSE(c *gin.Context, sessionID, clientID string) {
 	c.Header("Connection", "keep-alive")
 	c.Header("Access-Control-Allow-Origin", "*")
 
-	// 订阅会话事件（如果还没有订阅）
-	handlerID, err := b.eventBus.SubscribeSession(c.Request.Context(), sessionID, b.createEventHandler(client))
-	if err != nil {
+	if err := b.eventBus.SubscribeSession(c.Request.Context(), sessionID); err != nil {
 		log.Printf("订阅会话事件失败: %v", err)
-	} else {
-		client.HandlerID = handlerID
+	}
+	if err := b.eventBus.SubscribeClient(c.Request.Context(), clientID); err != nil {
+		log.Printf("订阅客户端事件失败: %v", err)
 	}
 
 	// 发送连接建立事件
@@ -284,22 +278,6 @@ func (b *Broker) HandleSSE(c *gin.Context, sessionID, clientID string) {
 	})
 }
 
-// createEventHandler 创建事件处理器
-func (b *Broker) createEventHandler(localClient *LocalClient) EventHandler {
-	return func(event Event) error {
-		// 更新客户端活跃时间
-		b.updateClientActivity(localClient.ID)
-
-		select {
-		case localClient.EventChan <- event:
-			return nil
-		default:
-			log.Printf("客户端缓冲区已满，丢弃消息: %s", localClient.ID)
-			return fmt.Errorf("client buffer full")
-		}
-	}
-}
-
 // startConnectionMonitor 启动连接状态监控
 func (b *Broker) startConnectionMonitor() {
 	defer func() {
@@ -318,7 +296,9 @@ func (b *Broker) startConnectionMonitor() {
 // cleanupExpiredConnections 清理过期连接
 func (b *Broker) cleanupExpiredConnections() {
 	b.mutex.Lock()
-	defer b.mutex.Unlock()
+	defer func() {
+		b.mutex.Unlock()
+	}()
 
 	now := time.Now().Unix()
 	for clientID, client := range b.localClients {
@@ -339,7 +319,9 @@ func (b *Broker) cleanupExpiredConnections() {
 // updateClientActivity 更新客户端活跃时间
 func (b *Broker) updateClientActivity(clientID string) {
 	b.mutex.Lock()
-	defer b.mutex.Unlock()
+	defer func() {
+		b.mutex.Unlock()
+	}()
 
 	if client, exists := b.localClients[clientID]; exists {
 		client.LastActiveAt = time.Now().Unix()
@@ -359,7 +341,7 @@ func (b *Broker) ping(client *LocalClient) {
 		select {
 		case <-ticker.C:
 			// 更新客户端活跃时间
-			b.updateClientActivity(client.ID)
+			b.updateClientActivity(client.ClientID)
 			client.EventChan <- Event{
 				Type: "ping",
 				Data: time.Now().Unix(),

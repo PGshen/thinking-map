@@ -56,7 +56,8 @@ func (h *SSEHandler) Connect(c *gin.Context) {
 
 	// mapID作为sessionID
 	// 以 userID 作为 clientID，或可自定义
-	h.broker.HandleSSE(c, mapID, userIDStr)
+	clientID := uuid.NewString() // 随机一个
+	h.broker.HandleSSE(c, mapID, clientID)
 }
 
 // SendEvent handles SSE test event requests

@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"time"
-	"runtime/debug"
 
 	"github.com/cloudwego/eino-ext/devops"
 
@@ -87,7 +87,7 @@ func main() {
 
 	// 初始化分布式SSE组件
 	// 生成服务器ID
-	serverID := fmt.Sprintf("server-%d", time.Now().Unix())
+	serverID := fmt.Sprintf("server-%d", time.Now().UnixMicro())
 
 	// 创建Redis连接管理器
 	connManager := sse.NewRedisConnectionManager(redisClient, serverID)

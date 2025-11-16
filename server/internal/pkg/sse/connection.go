@@ -26,7 +26,7 @@ const (
 
 // ClientConnection 客户端连接信息
 type ClientConnection struct {
-	ID        string          `json:"id"`
+	ClientID  string          `json:"client_id"`
 	SessionID string          `json:"session_id"`
 	ServerID  string          `json:"server_id"` // 服务器实例ID
 	State     ConnectionState `json:"state"`
@@ -71,10 +71,12 @@ func NewRedisConnectionManager(redisClient *redis.Client, serverID string) *Redi
 
 // Redis key patterns
 const (
-	connectionPrefix = "sse:connection:"
-	sessionConnPrefix = "sse:session_conn:"
-	serverConnPrefix = "sse:server_conn:"
-	connectionTTL = 5 * time.Minute // 连接信息TTL
+    connectionPrefix  = "sse:connection:"
+    sessionConnPrefix = "sse:session_conn:"
+    serverConnPrefix  = "sse:server_conn:"
+    sessionServersPrefix = "sse:session_servers:"
+    sessionServersUpdatesPrefix = "sse:session_servers_updates:"
+    connectionTTL     = 5 * time.Minute // 连接信息TTL
 )
 
 // RegisterConnection 注册连接
@@ -93,20 +95,30 @@ func (cm *RedisConnectionManager) RegisterConnection(ctx context.Context, conn *
 	}
 
 	pipe := cm.redis.Pipeline()
-	
+
 	// 存储连接信息
-	pipe.Set(ctx, connectionPrefix+conn.ID, data, connectionTTL)
-	
-	// 添加到会话连接集合
-	pipe.SAdd(ctx, sessionConnPrefix+conn.SessionID, conn.ID)
-	pipe.Expire(ctx, sessionConnPrefix+conn.SessionID, connectionTTL)
-	
+	pipe.Set(ctx, connectionPrefix+conn.ClientID, data, connectionTTL)
+
+    // 添加到会话连接集合
+    pipe.SAdd(ctx, sessionConnPrefix+conn.SessionID, conn.ClientID)
+    pipe.Expire(ctx, sessionConnPrefix+conn.SessionID, connectionTTL)
+
+    // 标记会话关联的服务器集合
+    pipe.SAdd(ctx, sessionServersPrefix+conn.SessionID, cm.serverID)
+    pipe.Expire(ctx, sessionServersPrefix+conn.SessionID, connectionTTL)
+
 	// 添加到服务器连接集合
-	pipe.SAdd(ctx, serverConnPrefix+cm.serverID, conn.ID)
+	pipe.SAdd(ctx, serverConnPrefix+cm.serverID, conn.ClientID)
 	pipe.Expire(ctx, serverConnPrefix+cm.serverID, connectionTTL)
 
-	_, err = pipe.Exec(ctx)
-	return err
+    _, err = pipe.Exec(ctx)
+    if err != nil {
+        return err
+    }
+    upd := map[string]interface{}{"sessionID": conn.SessionID, "serverID": cm.serverID, "op": "add"}
+    b, _ := json.Marshal(upd)
+    _ = cm.redis.Publish(ctx, sessionServersUpdatesPrefix+conn.SessionID, b).Err()
+    return nil
 }
 
 // UnregisterConnection 注销连接
@@ -121,18 +133,24 @@ func (cm *RedisConnectionManager) UnregisterConnection(ctx context.Context, clie
 	}
 
 	pipe := cm.redis.Pipeline()
-	
+
 	// 删除连接信息
 	pipe.Del(ctx, connectionPrefix+clientID)
-	
+
 	// 从会话连接集合中移除
 	pipe.SRem(ctx, sessionConnPrefix+conn.SessionID, clientID)
-	
+
 	// 从服务器连接集合中移除
 	pipe.SRem(ctx, serverConnPrefix+cm.serverID, clientID)
 
-	_, err = pipe.Exec(ctx)
-	return err
+    _, err = pipe.Exec(ctx)
+    if err != nil {
+        return err
+    }
+    upd := map[string]interface{}{"sessionID": conn.SessionID, "serverID": cm.serverID, "op": "remove"}
+    b, _ := json.Marshal(upd)
+    _ = cm.redis.Publish(ctx, sessionServersUpdatesPrefix+conn.SessionID, b).Err()
+    return nil
 }
 
 // UpdateConnectionState 更新连接状态
@@ -236,9 +254,9 @@ func (cm *RedisConnectionManager) CleanupExpiredConnections(ctx context.Context,
 	now := time.Now()
 	for _, conn := range connections {
 		if now.Sub(conn.LastSeen) > timeout {
-			log.Printf("Cleaning up expired connection: %s", conn.ID)
-			if err := cm.UnregisterConnection(ctx, conn.ID); err != nil {
-				log.Printf("Failed to cleanup connection %s: %v", conn.ID, err)
+			log.Printf("Cleaning up expired connection: %s", conn.ClientID)
+			if err := cm.UnregisterConnection(ctx, conn.ClientID); err != nil {
+				log.Printf("Failed to cleanup connection %s: %v", conn.ClientID, err)
 			}
 		}
 	}
