@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
 import { getMessages, decomposition, resetDecomposition, conclusion } from '@/api/node';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
-import { MessageActionEvent, MessageNoticeEvent, MessagePlanEvent, MessageTextEvent, MessageThoughtEvent, MessageRagEvent } from '@/types/sse';
+import { MessageActionEvent, MessageNoticeEvent, MessagePlanEvent, MessageTextEvent, MessageThoughtEvent, MessageRagEvent, DecompositionCompletedEvent } from '@/types/sse';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { useExecutableNodes } from '@/features/workspace/hooks/use-executable-nodes';
@@ -220,6 +220,26 @@ export function DecomposeTab({ nodeID, nodeData, onSwitchTab }: DecomposeTabProp
             console.error('解析messageRag事件失败:', error, event.data);
           }
         }
+      },
+      {
+        eventType: 'decompositionCompleted' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as DecompositionCompletedEvent;
+            if (data.nodeID === nodeID) {
+              setLoading(false);
+              const nodeObj = { ...(nodeData as any) };
+              actions.updateNode(nodeID, {
+                data: {
+                  ...nodeObj,
+                  status: 'pending'
+                }
+              });
+            }
+          } catch (error) {
+            console.error('解析decompositionCompleted事件失败:', error, event.data);
+          }
+        }
       }
     ];
   }, [mapID]);
@@ -292,9 +312,15 @@ export function DecomposeTab({ nodeID, nodeData, onSwitchTab }: DecomposeTabProp
           toast.error(`加载失败: ${res.message}`);
           setLoading(false);
           return;
+        } else {
+          const nodeObj = { ...(nodeData as any) };
+          actions.updateNode(nodeID, {
+            data: {
+              ...nodeObj,
+              status: 'running'
+            }
+          });
         }
-      }).finally(() => {
-        setLoading(false);
       });
     } catch (error) {
       toast.error('网络错误，请重试');

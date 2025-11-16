@@ -165,6 +165,15 @@ func (s *DecompositionService) Analyze(ctx *gin.Context, contextInfo *ContextInf
 			return err
 		}
 	}
+	global.GetBroker().PublishToSession(contextInfo.MapInfo.ID, sse.Event{
+		ID:   contextInfo.NodeInfo.ID,
+		Type: dto.DecompositionCompletedEventType,
+		Data: dto.DecompositionCompletedEvent{
+			NodeID: contextInfo.NodeInfo.ID,
+			Mode:   "analyze",
+			Status: "completed",
+		},
+	})
 	return
 }
 
@@ -357,6 +366,15 @@ func (s *DecompositionService) Decompose(ctx *gin.Context, contextInfo *ContextI
 		}
 		fmt.Printf("%s", chunk.Content)
 	}
+	global.GetBroker().PublishToSession(contextInfo.MapInfo.ID, sse.Event{
+		ID:   contextInfo.NodeInfo.ID,
+		Type: dto.DecompositionCompletedEventType,
+		Data: dto.DecompositionCompletedEvent{
+			NodeID: contextInfo.NodeInfo.ID,
+			Mode:   "decompose",
+			Status: "completed",
+		},
+	})
 	return
 }
 

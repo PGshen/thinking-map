@@ -22,7 +22,7 @@ import { getMessages, saveNodeConclusion, resetNodeConclusion } from '@/api/node
 // 导入新的Notion编辑器
 import EditorClient from '@/components/editor-client';
 import { MessageResponse, MessageType, MessageContent } from '@/types/message';
-import { MessageConclusionEvent, MessageNoticeEvent, MessageRagEvent, MessageThoughtEvent } from '@/types/sse';
+import { MessageConclusionEvent, MessageNoticeEvent, MessageRagEvent, MessageThoughtEvent, ConclusionCompletedEvent } from '@/types/sse';
 import { useSSEConnection } from '@/hooks/use-sse-connection';
 import { CustomNodeModel } from '@/types/node';
 import { Node } from 'reactflow';
@@ -348,6 +348,29 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
         }
       },
       {
+        eventType: 'conclusionCompleted' as const,
+        callback: (event: any) => {
+          try {
+            const data = JSON.parse(event.data) as ConclusionCompletedEvent;
+            if (data.nodeID === nodeID) {
+              setIsGenerating(false);
+              setReference('');
+              setInstruction('');
+              setHasChanges(true);
+              const nodeData = node.data as any;
+              actions.updateNode(nodeID, {
+                data: {
+                  ...nodeData,
+                  status: 'pending'
+                }
+              });
+            }
+          } catch (error) {
+            console.error('解析conclusionCompleted事件失败:', error, event.data);
+          }
+        }
+      },
+      {
         eventType: 'messageThought' as const,
         callback: (event: any) => {
           try {
@@ -484,14 +507,16 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
         if (res.code !== 200) {
           console.error('启动结论生成失败:', res.message);
           toast.error('启动结论生成失败');
-          
           setIsGenerating(false);
+        } else {
+          const nodeData = node.data as any;
+          actions.updateNode(nodeID, {
+            data: {
+              ...nodeData,
+              status: 'running'
+            }
+          });
         }
-      }).finally(() => {
-        setIsGenerating(false);
-        setReference('')
-        setInstruction('')
-        setHasChanges(true);
       })
     } catch (error) {
       console.error('启动结论生成失败:', error);
@@ -523,7 +548,7 @@ export function ConclusionTab({ nodeID, node }: ConclusionTabProps) {
           
           <TabsContent value="thinking" className="flex-1 ml-2 mt-0 data-[state=inactive]:hidden">
             <div className="h-full">
-               <MessageArea loading={loading} messages={messages} />
+               <MessageArea loading={isGenerating} messages={messages} />
             </div>
           </TabsContent>
           

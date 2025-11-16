@@ -103,6 +103,15 @@ func (c *ConclusionService) Generate(ctx *gin.Context, contextInfo *ContextInfo,
 		}
 		fmt.Printf("%s", chunk.Content)
 	}
+	global.GetBroker().PublishToSession(contextInfo.MapInfo.ID, sse.Event{
+		ID:   contextInfo.NodeInfo.ID,
+		Type: dto.ConclusionCompletedEventType,
+		Data: dto.ConclusionCompletedEvent{
+			NodeID: contextInfo.NodeInfo.ID,
+			Mode:   "generate",
+			Status: "completed",
+		},
+	})
 	return nil
 }
 
@@ -125,6 +134,17 @@ func (c ConclusionService) Optimize(ctx *gin.Context, messages []*schema.Message
 		}
 		fmt.Printf("%s", chunk.Content)
 	}
+	mapID := ctx.GetString("mapID")
+	nodeID := ctx.GetString("nodeID")
+	global.GetBroker().PublishToSession(mapID, sse.Event{
+		ID:   nodeID,
+		Type: dto.ConclusionCompletedEventType,
+		Data: dto.ConclusionCompletedEvent{
+			NodeID: nodeID,
+			Mode:   "optimize",
+			Status: "completed",
+		},
+	})
 	return nil
 }
 

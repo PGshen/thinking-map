@@ -99,6 +99,20 @@ export interface ErrorEvent {
   timestamp: string;
 }
 
+export interface ConclusionCompletedEvent {
+  nodeID: string;
+  mode: 'generate' | 'optimize';
+  status: 'completed';
+  timestamp?: string;
+}
+
+export interface DecompositionCompletedEvent {
+  nodeID: string;
+  mode: 'analyze' | 'decompose';
+  status: 'completed';
+  timestamp?: string;
+}
+
 export interface TestEventRequest {
   eventType: 'node_created' | 'node_updated' | 'node_deleted' | 'node_dependencies_updated' | 'thinking_progress' | 'error' | 'custom';
   data: Record<string, any>;
@@ -112,4 +126,4 @@ export interface TestEventResponse {
   message: string;
 }
 
-export type SSEEvent = NodeCreatedEvent | NodeUpdatedEvent | NodeDeletedEvent | NodeDependenciesUpdatedEvent | ThinkingProgressEvent | ErrorEvent;
+export type SSEEvent = NodeCreatedEvent | NodeUpdatedEvent | NodeDeletedEvent | NodeDependenciesUpdatedEvent | ThinkingProgressEvent | ErrorEvent | ConclusionCompletedEvent | DecompositionCompletedEvent;

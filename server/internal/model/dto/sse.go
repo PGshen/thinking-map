@@ -27,9 +27,11 @@ const (
 	MessageNoticeEventType           = "messageNotice"
 	MessageActionEventType           = "messageAction"
 	MessagePlanEventType             = "messagePlan"
-	MessageRagEventType              = "messageRag"
-	ErrorEventType                   = "error"
-	CustomEventType                  = "custom"
+  MessageRagEventType              = "messageRag"
+  ErrorEventType                   = "error"
+  CustomEventType                  = "custom"
+  ConclusionCompletedEventType     = "conclusionCompleted"
+  DecompositionCompletedEventType  = "decompositionCompleted"
 )
 
 type ConnectionEstablishedEvent struct {
@@ -122,6 +124,18 @@ type ErrorEvent struct {
 	NodeID       string `json:"nodeID"`
 	ErrorCode    string `json:"errorCode"`
 	ErrorMessage string `json:"errorMessage"`
+}
+
+type ConclusionCompletedEvent struct {
+  NodeID string `json:"nodeID"`
+  Mode   string `json:"mode"`   // generate | optimize
+  Status string `json:"status"` // completed
+}
+
+type DecompositionCompletedEvent struct {
+  NodeID string `json:"nodeID"`
+  Mode   string `json:"mode"`   // analyze | decompose
+  Status string `json:"status"` // completed
 }
 
 // TestEventRequest represents the request for testing SSE events
