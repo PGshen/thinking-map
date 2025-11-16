@@ -72,7 +72,7 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_BASE_URL=/api
     ports:
-      - "6000:6000"
+      - "3030:3030"
     depends_on:
       - backend
     networks:

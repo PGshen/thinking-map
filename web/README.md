@@ -38,7 +38,7 @@
    ```sh
    pnpm dev
    ```
-3. 访问 http://localhost:6000
+3. 访问 http://localhost:3030
 
 ## 代码规范
 - 使用 Prettier 统一代码风格
