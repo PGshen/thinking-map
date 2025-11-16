@@ -85,7 +85,7 @@ docker-compose logs -f
 ```
 
 3) 访问应用：
-- 前端：http://localhost:3000
+- 前端：http://localhost:6000
 - 后端 API：http://localhost:8080
 - PostgreSQL：localhost:5432
 - Redis：localhost:6379

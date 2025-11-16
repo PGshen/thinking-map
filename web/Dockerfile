@@ -47,15 +47,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 
 # 暴露端口
-EXPOSE 3000
+EXPOSE 6000
 
 # 设置环境变量
-ENV PORT=3000
+ENV PORT=6000
 ENV HOSTNAME="0.0.0.0"
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:6000/api/health || exit 1
 
 # 启动应用
 CMD ["node", "server.js"]
