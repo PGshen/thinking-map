@@ -70,7 +70,7 @@ services:
     container_name: thinking-map-frontend
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_BASE_URL=http://backend:8080/api
+      - NEXT_PUBLIC_API_BASE_URL=/api
     ports:
       - "6000:6000"
     depends_on:
