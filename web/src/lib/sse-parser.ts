@@ -1,5 +1,10 @@
 import { EventSourceMessage, EventStreamContentType, fetchEventSource } from '@microsoft/fetch-event-source'
 import { getToken } from "./auth"
+import { toast } from 'sonner'
+import { useGlobalStore } from '@/store/globalStore'
+
+class RetriableError extends Error {}
+class FatalError extends Error {}
 
 /**
  * 路径匹配器的回调函数类型
@@ -629,6 +634,8 @@ export class SseJsonStreamParser {
 
     const token = getToken();
     this.abortController = new AbortController();
+    let retryCount = 0;
+    const maxRetries = 3;
     const parser = this.parser;
 
     // 处理 GET 请求的参数
@@ -660,8 +667,18 @@ export class SseJsonStreamParser {
         if (config.message) config.message(ev);
       },
       async onopen(response) {
-        if (!response.ok || response.headers.get('content-type')?.indexOf("text/event-stream") !== 0) {
-          throw new Error('SSE connection failed');
+        if (response.status === 401) {
+          const { setError } = useGlobalStore.getState();
+          setError('登录已过期，请重新登录');
+          toast.error('登录已过期，请重新登录');
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+          throw new FatalError('Unauthorized');
+        }
+        const ct = response.headers.get('content-type');
+        if (!response.ok || !ct || ct.indexOf('text/event-stream') !== 0) {
+          throw new RetriableError('SSE connection failed');
         }
       },
       onclose() {
@@ -669,7 +686,16 @@ export class SseJsonStreamParser {
         if (config.close) config.close();
       },
       onerror(err) {
-        console.error('SSE Error:', err);
+        if (err instanceof FatalError) {
+          throw err;
+        }
+        retryCount++;
+        if (retryCount > maxRetries) {
+          const { setError } = useGlobalStore.getState();
+          setError('服务异常，请稍后再试');
+          toast.error('服务异常，请稍后再试');
+          throw new FatalError('Max retries exceeded');
+        }
         if (config.error) config.error(err);
       }
     });
@@ -733,6 +759,8 @@ export class SseMarkdownStreamParser {
 
     const token = getToken();
     this.abortController = new AbortController();
+    let retryCount = 0;
+    const maxRetries = 3;
 
     // 处理 GET 请求的参数
     const finalUrl = config.method === 'GET' && config.param
@@ -760,15 +788,34 @@ export class SseMarkdownStreamParser {
         if (config.message) config.message(ev);
       },
       async onopen(response) {
-        if (!response.ok || response.headers.get('content-type') !== EventStreamContentType) {
-          throw new Error('SSE connection failed');
+        if (response.status === 401) {
+          const { setError } = useGlobalStore.getState();
+          setError('登录已过期，请重新登录');
+          toast.error('登录已过期，请重新登录');
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+          throw new FatalError('Unauthorized');
+        }
+        const ct = response.headers.get('content-type');
+        if (!response.ok || ct !== EventStreamContentType) {
+          throw new RetriableError('SSE connection failed');
         }
       },
       onclose() {
         if (config.close) config.close();
       },
       onerror(err) {
-        console.error('SSE Error:', err);
+        if (err instanceof FatalError) {
+          throw err;
+        }
+        retryCount++;
+        if (retryCount > maxRetries) {
+          const { setError } = useGlobalStore.getState();
+          setError('服务异常，请稍后再试');
+          toast.error('服务异常，请稍后再试');
+          throw new FatalError('Max retries exceeded');
+        }
         if (config.error) config.error(err);
       }
     });
@@ -845,7 +892,9 @@ export class SseTextStreamParser {
 
     const token = getToken();
     this.abortController = new AbortController();
-    this.fullText = ''; // 重置累积文本
+    this.fullText = '';
+    let retryCount = 0;
+    const maxRetries = 3;
 
     // 处理 GET 请求的参数
     const finalUrl = config.method === 'GET' && config.param
@@ -887,8 +936,18 @@ export class SseTextStreamParser {
         }
       },
       async onopen(response) {
-        if (!response.ok || response.headers.get('content-type') !== EventStreamContentType) {
-          throw new Error('SSE connection failed');
+        if (response.status === 401) {
+          const { setError } = useGlobalStore.getState();
+          setError('登录已过期，请重新登录');
+          toast.error('登录已过期，请重新登录');
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+          throw new FatalError('Unauthorized');
+        }
+        const ct = response.headers.get('content-type');
+        if (!response.ok || ct !== EventStreamContentType) {
+          throw new RetriableError('SSE connection failed');
         }
       },
       onclose: () => {
@@ -901,7 +960,16 @@ export class SseTextStreamParser {
         }
       },
       onerror: (err) => {
-        console.error('SSE Error:', err);
+        if (err instanceof FatalError) {
+          throw err;
+        }
+        retryCount++;
+        if (retryCount > maxRetries) {
+          const { setError } = useGlobalStore.getState();
+          setError('服务异常，请稍后再试');
+          toast.error('服务异常，请稍后再试');
+          throw new FatalError('Max retries exceeded');
+        }
         if (config.error) {
           config.error(err);
         }

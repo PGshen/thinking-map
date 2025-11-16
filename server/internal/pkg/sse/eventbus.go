@@ -96,7 +96,6 @@ func (bus *RedisEventBus) PublishToClient(ctx context.Context, clientID string, 
 				// EventChan满了，记录警告但继续使用Redis作为备选
 				log.Printf("本地客户端 %s 的EventChan已满，回退到Redis分发", clientID)
 			}
-			return nil
 		}
 	}
 
@@ -246,6 +245,11 @@ func (bus *RedisEventBus) RemoveSessionHandler(ctx context.Context, sessionID st
 
 // handleMessages 处理Redis订阅消息
 func (bus *RedisEventBus) handleMessages(subscriptionKey string, pubsub *redis.PubSub) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("handleMessages recovered from panic: %v", r)
+		}
+	}()
 	ch := pubsub.Channel()
 	for {
 		select {

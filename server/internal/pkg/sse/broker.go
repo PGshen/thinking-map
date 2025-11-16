@@ -302,6 +302,11 @@ func (b *Broker) createEventHandler(localClient *LocalClient) EventHandler {
 
 // startConnectionMonitor 启动连接状态监控
 func (b *Broker) startConnectionMonitor() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("startConnectionMonitor recovered from panic: %v", r)
+		}
+	}()
 	ticker := time.NewTicker(b.clientTimeout / 2) // 每半个超时时间检查一次
 	defer ticker.Stop()
 

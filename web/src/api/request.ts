@@ -22,6 +22,7 @@ const instance: AxiosInstance = axios.create({
 // 扩展 InternalAxiosRequestConfig 以支持 _retry
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
+  _retryCount?: number;
 }
 
 // 泛型请求方法
@@ -70,7 +71,7 @@ instance.interceptors.request.use(
 
 // 响应拦截器：统一处理后端响应格式、全局loading/error
 instance.interceptors.response.use(
-  (response: AxiosResponse<ApiResponse<any>>) => {
+  async (response: AxiosResponse<ApiResponse<any>>) => {
     if (typeof window !== 'undefined') {
       const { setLoading } = useGlobalStore.getState();
       setLoading(false);
@@ -86,6 +87,19 @@ instance.interceptors.response.use(
         // 重定向到登录页
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
+        }
+      } else {
+        const originalRequest = response.config as CustomAxiosRequestConfig;
+        originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
+        if (originalRequest._retryCount <= 3) {
+          await new Promise((r) => setTimeout(r, 500));
+          return instance(originalRequest);
+        } else {
+          if (typeof window !== 'undefined') {
+            const { setError } = useGlobalStore.getState();
+            setError('服务异常，请稍后再试');
+            toast.error('服务异常，请稍后再试');
+          }
         }
       }
       return Promise.reject(new Error(message || '请求错误'));
@@ -138,6 +152,22 @@ instance.interceptors.response.use(
         return Promise.reject(refreshErr);
       }
     }
+    if (
+      originalRequest &&
+      (!error.response || (error.response && error.response.status !== 401))
+    ) {
+      originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
+      if (originalRequest._retryCount <= 3) {
+        await new Promise((r) => setTimeout(r, 500));
+        return instance(originalRequest);
+      } else {
+        if (typeof window !== 'undefined') {
+          const { setError } = useGlobalStore.getState();
+          setError('服务异常，请稍后再试');
+          toast.error('服务异常，请稍后再试');
+        }
+      }
+    }
     if (typeof window !== 'undefined') {
       const { setLoading, setError } = useGlobalStore.getState();
       setLoading(false);
@@ -155,4 +185,4 @@ instance.interceptors.response.use(
   }
 );
 
-export default instance; 
+export default instance;

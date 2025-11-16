@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"runtime/debug"
 
 	"github.com/cloudwego/eino-ext/devops"
 
@@ -30,6 +31,11 @@ import (
 )
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error("panic recovered", zap.Any("error", r), zap.String("stack", string(debug.Stack())))
+		}
+	}()
 	// Init eino devops server (only if not disabled)
 	if os.Getenv("EINO_DEVOPS_DISABLE") != "true" {
 		err := devops.Init(context.Background())
