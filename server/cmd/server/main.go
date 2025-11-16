@@ -19,6 +19,7 @@ import (
 
 	"github.com/PGshen/thinking-map/server/internal/config"
 	"github.com/PGshen/thinking-map/server/internal/global"
+	"github.com/PGshen/thinking-map/server/internal/model"
 	"github.com/PGshen/thinking-map/server/internal/pkg/database"
 	"github.com/PGshen/thinking-map/server/internal/pkg/logger"
 	"github.com/PGshen/thinking-map/server/internal/pkg/sse"
@@ -76,6 +77,16 @@ func main() {
 	db, err := database.NewPostgresDB(&cfg.Database)
 	if err != nil {
 		logger.Fatal("Failed to connect to database", zap.Error(err))
+	}
+
+	if err := db.AutoMigrate(
+		&model.User{},
+		&model.Message{},
+		&model.ThinkingMap{},
+		&model.ThinkingNode{},
+		&model.RAGRecord{},
+	); err != nil {
+		logger.Fatal("Failed to migrate database", zap.Error(err))
 	}
 
 	// 初始化 Redis

@@ -26,10 +26,10 @@ type ThinkingNode struct {
 	NodeType      string           `gorm:"type:varchar(50);not null"` // root, analysis, conclusion, custom
 	Question      string           `gorm:"type:text;not null"`
 	Target        string           `gorm:"type:text"`
-	Context       DependentContext `gorm:"type:text;default:'{}'"` // 上下文
+	Context       DependentContext `gorm:"type:jsonb;default:'{}'"` // 上下文
 	Decomposition Decomposition    `gorm:"type:jsonb;default:'{}'"`
 	Conclusion    Conclusion       `gorm:"type:jsonb;default:'{}'"`
-	Status        string           `gorm:"type:varchar(50);default:'initial'"` // initial, pending, running, completed, error
+	Status        string           `gorm:"type:varchar(16);default:'initial'"` // initial, pending, running, completed, error
 	Position      Position         `gorm:"type:jsonb;default:'{\"x\":0,\"y\":0}'"`
 	Metadata      datatypes.JSON   `gorm:"type:jsonb;default:'{}'"`
 	Dependencies  Dependencies     `gorm:"type:jsonb;default:'[]'"`

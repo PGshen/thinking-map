@@ -17,7 +17,7 @@ RUN go mod download
 COPY . .
 
 # 构建应用
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/server
 
 # 使用轻量级的 alpine 镜像作为运行环境
 FROM alpine:latest
@@ -36,7 +36,7 @@ RUN addgroup -g 1001 -S appgroup && \
 WORKDIR /app
 
 # 从构建阶段复制二进制文件
-COPY --from=builder /app/main .
+COPY --from=builder /app/server .
 
 # 复制配置文件
 COPY --from=builder /app/configs ./configs
@@ -47,6 +47,8 @@ RUN mkdir -p logs && chown -R appuser:appgroup /app
 # 切换到非 root 用户
 USER appuser
 
+ENV PORT=8080
+ENV EINO_DEVOPS_DISABLE=true
 # 暴露端口
 EXPOSE 8080
 
@@ -55,4 +57,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # 启动应用
-CMD ["./main"]
+CMD ["./server"]

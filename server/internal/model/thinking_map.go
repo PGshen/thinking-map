@@ -22,14 +22,14 @@ type ThinkingMap struct {
 	SerialID    int64          `gorm:"primaryKey;autoIncrement;column:serial_id" json:"-"`
 	ID          string         `gorm:"type:uuid;uniqueIndex" json:"id"`
 	UserID      string         `json:"user_id" gorm:"type:uuid;not null"`
-	Title       string         `json:"title" gorm:"type:varchar;not null"`
+	Title       string         `json:"title" gorm:"type:varchar(255);not null"`
 	Problem     string         `json:"problem" gorm:"type:text;not null"`
 	ProblemType string         `json:"problem_type" gorm:"type:varchar(50)"`
 	Target      string         `json:"target" gorm:"type:text"`
 	KeyPoints   KeyPoints      `json:"key_points" gorm:"type:jsonb"`
 	Constraints Constraints    `json:"constraints" gorm:"type:jsonb"`
 	Conclusion  string         `json:"conclusion" gorm:"type:text"`
-	Status      string         `json:"status" gorm:"type:varchar(50);not null;default:'initial'"` // initial, running, completed, deleted
+	Status      string         `json:"status" gorm:"type:varchar(16);not null;default:'initial'"` // initial, running, completed, deleted
 	Metadata    datatypes.JSON `json:"metadata" gorm:"type:jsonb"`
 	CreatedAt   time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
 	UpdatedAt   time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP"`
