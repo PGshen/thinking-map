@@ -1,4 +1,5 @@
 services:
+  # PostgreSQL 数据库
   postgres:
     image: postgres:15-alpine
     container_name: thinking-map-postgres
@@ -6,8 +7,8 @@ services:
       POSTGRES_DB: thinking_map
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: pwss
-    # ports:
-    #   - "5432:5432"
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -18,12 +19,13 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis 缓存
   redis:
     image: redis:7-alpine
     container_name: thinking-map-redis
     command: redis-server --requirepass redispass
-    # ports:
-    #   - "6379:6379"
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -34,8 +36,11 @@ services:
       timeout: 3s
       retries: 5
 
+  # 后端服务
   backend:
-    image: pipiya/thinkingmap-server:latest
+    build:
+      context: ../server
+      dockerfile: Dockerfile
     container_name: thinking-map-backend
     environment:
       - DB_HOST=postgres
@@ -65,8 +70,11 @@ services:
       - ../server/logs:/app/logs
     restart: unless-stopped
 
+  # 前端服务
   frontend:
-    image: pipiya/thinkingmap-web:latest
+    build:
+      context: ../web
+      dockerfile: Dockerfile
     container_name: thinking-map-frontend
     environment:
       - NODE_ENV=production

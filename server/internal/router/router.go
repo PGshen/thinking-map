@@ -14,8 +14,6 @@ import (
 	"github.com/PGshen/thinking-map/server/internal/repository"
 	"github.com/PGshen/thinking-map/server/internal/service"
 
-	"os"
-	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -31,18 +29,8 @@ func SetupRouter(
 	jwtConfig service.JWTConfig,
 ) *gin.Engine {
 	r := gin.Default()
-	allowedOrigins := []string{"http://localhost:3030", "http://127.0.0.1:3030", "http://frontend:3030"}
-	if env := os.Getenv("CORS_ALLOWED_ORIGINS"); env != "" {
-		parts := strings.Split(env, ",")
-		for _, p := range parts {
-			o := strings.TrimSpace(p)
-			if o != "" {
-				allowedOrigins = append(allowedOrigins, o)
-			}
-		}
-	}
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     allowedOrigins,
+		AllowOriginFunc:  func(origin string) bool { return true },
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-REFRESH-TOKEN", "Cache-Control"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -75,6 +63,10 @@ func SetupRouter(
 
 	// 使用全局 broker
 	sseHandler := handler.NewSSEHandler(global.GetBroker(), mapRepo)
+
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "healthy"})
+	})
 
 	// API v1 group
 	v1 := r.Group("/api/v1")
