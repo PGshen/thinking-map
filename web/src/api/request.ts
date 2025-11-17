@@ -11,10 +11,7 @@ import {
 import { toast } from 'sonner';
 import { ApiResponse } from '@/types/response';
 
-const apiBaseURL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
-
 const instance: AxiosInstance = axios.create({
-  baseURL: apiBaseURL,
   timeout: 15000,
   withCredentials: true,
 });

@@ -11,7 +11,7 @@ import axios from "axios";
 const TOKEN_KEY = 'token';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 const USER_KEY = 'user';
-const apiBaseURL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+import { API_ENDPOINTS } from "@/api/endpoints";
 
 export function setToken(token: string, refreshToken: string): void {
   if (typeof window !== 'undefined') {
@@ -102,7 +102,7 @@ export async function refreshTokenApi(): Promise<string> {
   if (!refreshToken) throw new Error('No refresh token');
   const token = getToken();
   if (!token) throw new Error('No token');
-  const res = await axios.post<RefreshTokenResponse>(`${apiBaseURL}/v1/auth/refresh`, null, {
+  const res = await axios.post<RefreshTokenResponse>(API_ENDPOINTS.AUTH.REFRESH, null, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'X-Refresh-Token': refreshToken,

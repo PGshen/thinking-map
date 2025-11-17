@@ -38,10 +38,9 @@ services:
 
   # 后端服务
   backend:
-    build:
-      context: ../server
-      dockerfile: Dockerfile
+    image: golang:1.24
     container_name: thinking-map-backend
+    working_dir: /app
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -67,24 +66,29 @@ services:
     networks:
       - thinking-map-network
     volumes:
-      - ../server/logs:/app/logs
+      - ../server:/app
+    command: sh -c "go mod download && go run cmd/server/main.go"
     restart: unless-stopped
 
   # 前端服务
   frontend:
-    build:
-      context: ../web
-      dockerfile: Dockerfile
+    image: node:20-alpine
     container_name: thinking-map-frontend
+    working_dir: /app
     environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_BASE_URL=/api
+      - NODE_ENV=development
+      - HOSTNAME=0.0.0.0
+      - API_BASE_URL=http://backend:8080/api
     ports:
       - "3030:3030"
     depends_on:
       - backend
     networks:
       - thinking-map-network
+    volumes:
+      - ../web:/app
+      - /app/node_modules
+    command: sh -c "npm i -g pnpm && pnpm install && HOSTNAME=0.0.0.0 pnpm dev"
     restart: unless-stopped
 
 volumes:
