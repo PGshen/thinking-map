@@ -73,8 +73,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	authData, err := h.authService.Login(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, dto.Response{
-			Code:      http.StatusUnauthorized,
+		c.JSON(http.StatusOK, dto.Response{
+			Code:      http.StatusBadRequest,
 			Message:   "invalid email or password",
 			Data:      dto.ErrorData{Error: err.Error()},
 			Timestamp: time.Now(),

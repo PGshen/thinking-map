@@ -11,18 +11,36 @@ import { AuthData, RefreshTokenData } from "@/types/auth";
 import { getRefreshToken } from "@/lib/auth";
 import { API_ENDPOINTS } from "@/api/endpoints";
 
+async function hashPassword(password: string): Promise<string> {
+  if (typeof window !== "undefined" && (window as any).crypto?.subtle) {
+    const data = new TextEncoder().encode(password);
+    const digest = await (window as any).crypto.subtle.digest("SHA-256", data);
+    const bytes = new Uint8Array(digest);
+    let hex = "";
+    for (let i = 0; i < bytes.length; i++) {
+      hex += bytes[i].toString(16).padStart(2, "0");
+    }
+    return hex;
+  } else {
+    const { createHash } = await import("crypto");
+    return createHash("sha256").update(password).digest("hex");
+  }
+}
+
 // 注册
 export async function registerUser(
   params: RegisterParams
 ): Promise<RegisterResponse> {
-  return await post<AuthData>(API_ENDPOINTS.AUTH.REGISTER, params);
+  const hashed = await hashPassword(params.password);
+  return await post<AuthData>(API_ENDPOINTS.AUTH.REGISTER, { ...params, password: hashed });
 }
 
 // 登录
 export async function loginUser(
   params: LoginParams
 ): Promise<LoginResponse> {
-  return await post<AuthData>(API_ENDPOINTS.AUTH.LOGIN, params);
+  const hashed = await hashPassword(params.password);
+  return await post<AuthData>(API_ENDPOINTS.AUTH.LOGIN, { ...params, password: hashed });
 }
 
 // 刷新Token
@@ -49,4 +67,4 @@ export async function logout(): Promise<ApiResponse<null>> {
       }
     }
   );
-} 
+}
