@@ -1,7 +1,7 @@
 // 统一管理后端 API 地址
 // 可根据实际后端路由结构进行分组
 
-const API_BASE = process.env.API_BASE_URL || 'http://127.0.0.1:8080/api';
+const API_BASE = (typeof window !== 'undefined' && (globalThis as any).__ENV__?.API_BASE_URL) || process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8080/api';
 
 export const API_ENDPOINTS = {
   AUTH: {

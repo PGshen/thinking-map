@@ -43,3 +43,5 @@ __debug_bin*
 .idea/vcs.xml
 .idea/inspectionProfiles/Project_Default.xml
 .vercel/project.json
+
+web/.pnpm-store/*

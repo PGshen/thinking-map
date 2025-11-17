@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Toaster } from "@/components/ui/sonner"
 
+export const dynamic = 'force-dynamic'
+
 
 export const metadata: Metadata = {
   title: 'ThinkingMap',
@@ -14,6 +16,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="zh-CN">
       <head>
+        <Script id="runtime-env" strategy="beforeInteractive">
+          {`(function(){
+            var api = ${JSON.stringify(process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8080/api')};
+            window.__ENV__ = Object.assign({}, window.__ENV__, { API_BASE_URL: api });
+          })();`}
+        </Script>
         {/* 修复 markdown-it 在 Next.js 15 + Turbopack 环境下的 isSpace 函数未定义问题 */}
         <Script id="markdown-it-isSpace-fix" strategy="beforeInteractive">
           {`

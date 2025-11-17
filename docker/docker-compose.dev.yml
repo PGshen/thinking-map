@@ -56,6 +56,8 @@ services:
       - CLAUDE_API_KEY=${CLAUDE_API_KEY}
       - CLAUDE_MODEL=${CLAUDE_MODEL}
       - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - GOPROXY=https://goproxy.cn,direct
+      - GOSUMDB=off
     ports:
       - "8080:8080"
     depends_on:
@@ -79,6 +81,8 @@ services:
       - NODE_ENV=development
       - HOSTNAME=0.0.0.0
       - API_BASE_URL=http://backend:8080/api
+      # - NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
+      # - PNPM_REGISTRY=https://registry.npmmirror.com
     ports:
       - "3030:3030"
     depends_on:
@@ -88,7 +92,7 @@ services:
     volumes:
       - ../web:/app
       - /app/node_modules
-    command: sh -c "npm i -g pnpm && pnpm install && HOSTNAME=0.0.0.0 pnpm dev"
+    command: sh -c "npm i -g pnpm && pnpm config set registry https://registry.npmmirror.com && pnpm install && HOSTNAME=0.0.0.0 pnpm dev"
     restart: unless-stopped
 
 volumes:
