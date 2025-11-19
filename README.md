@@ -1,4 +1,5 @@
 # Thinking Map
+[简体中文](README.md) | [English](README.en.md)
 
 一个基于思维导图的智能思考辅助系统，用结构化可视化与 AI 代理协作，帮助你更清晰地梳理问题、探索方案与记录知识。
 
@@ -12,7 +13,7 @@
 
 ![首页](docs/image/index01.png)
 ![工作区](docs/image/workspace01.png)
-![工作区](docs/image/workspace02.png)
+![工作区](docs/image/workspace03.png)
 
 ## 技术栈
 
