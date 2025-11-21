@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useState } from "react";
-import { Command, Loader } from "lucide-react";
+import { Command, Loader, Github } from "lucide-react";
 import { useGlobalStore } from "@/store/globalStore";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EditableTextarea } from "@/components/ui/editable-textarea";
@@ -29,6 +29,7 @@ const PROBLEM_EXAMPLES = {
   分析型: '分析全球供应链中断对电子产品市场的影响',
   规划型: 'python入门学习规划'
 };
+const GITHUB_URL = "https://github.com/PGshen/thinking-map";
 
 export default function HomePage() {
   const [problem, setProblem] = useState('');
@@ -137,6 +138,16 @@ export default function HomePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 flex flex-col items-center justify-center min-h-screen">
+      <a
+        href={GITHUB_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="打开 GitHub 仓库"
+        className="fixed top-3 right-3 inline-flex items-center gap-1 rounded-full bg-black text-white px-2 py-2 shadow hover:bg-gray-900"
+      >
+        <Github className="h-4 w-4" />
+        <span className="text-xs font-medium">GitHub</span>
+      </a>
       {/* 品牌展示区 */}
       <div className="text-center mb-8">
         <div className="flex mb-2 items-end ">
@@ -364,4 +375,4 @@ export default function HomePage() {
         </Dialog>
     </div>
   );
-} 
+}
