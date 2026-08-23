@@ -117,6 +117,7 @@ func TestOpenRouterModelGenerate(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	setOpenRouterTestConfig(t, map[string]any{
+		"llm.provider":            ProviderOpenRouter,
 		"llm.openrouter.api_key":  "test-api-key",
 		"llm.openrouter.base_url": server.URL + "/api/v1",
 		"llm.openrouter.model":    "openai/gpt-4o-mini",
@@ -126,7 +127,7 @@ func TestOpenRouterModelGenerate(t *testing.T) {
 		Type: openai2.ChatCompletionResponseFormatTypeJSONObject,
 	}
 
-	chatModel, err := NewOpenRouterModel(context.Background(), responseFormat)
+	chatModel, err := NewModel(context.Background(), responseFormat)
 	require.NoError(t, err)
 
 	response, err := chatModel.Generate(context.Background(), []*schema.Message{

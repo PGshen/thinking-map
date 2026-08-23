@@ -36,7 +36,7 @@ func BuildUnderstandingAgent(ctx context.Context) (r compose.Runnable[[]*schema.
 			Schema:      understandingSchema.Value,
 		},
 	}
-	cm, err := llmmodel.NewOpenAIModel(ctx, responseFormat)
+	cm, err := llmmodel.NewModel(ctx, responseFormat)
 	if err != nil {
 		return nil, err
 	}

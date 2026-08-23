@@ -15,7 +15,7 @@ import (
 
 // 分析Agent
 func BuildAnalysisAgent(ctx context.Context, option base.AgentOption) (r compose.Runnable[[]*schema.Message, *schema.Message], err error) {
-	cm, err := llmmodel.NewOpenAIModel(ctx, nil)
+	cm, err := llmmodel.NewModel(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

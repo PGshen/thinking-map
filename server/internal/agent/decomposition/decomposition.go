@@ -16,7 +16,7 @@ import (
 
 func BuildDecompositionAgent(ctx context.Context, option ...base.AgentOption) (compose.Runnable[[]*schema.Message, *schema.Message], error) {
 	// 创建主模型
-	cm, err := llmmodel.NewOpenAIModel(ctx, nil)
+	cm, err := llmmodel.NewModel(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func BuildDecompositionAgent(ctx context.Context, option ...base.AgentOption) (c
 // buildDecompositionDecisionAgent 创建拆解决策Agent specialist
 func buildDecompositionDecisionAgent(ctx context.Context, option ...base.AgentOption) (*multiagent.Specialist, error) {
 	// 创建模型
-	cm, err := llmmodel.NewOpenAIModel(ctx, nil)
+	cm, err := llmmodel.NewModel(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func buildDecompositionDecisionAgent(ctx context.Context, option ...base.AgentOp
 // buildProblemDecompositionAgent 创建问题拆解Agent specialist
 func buildProblemDecompositionAgent(ctx context.Context, option ...base.AgentOption) (*multiagent.Specialist, error) {
 	// 创建模型
-	cm, err := llmmodel.NewOpenAIModel(ctx, nil)
+	cm, err := llmmodel.NewModel(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
