@@ -36,6 +36,11 @@ llm:
     base_url: ${OPENAI_BASE_URL}
     model: ${OPENAI_MODEL}
     timeout: 300s
+  openrouter:
+    api_key: ${OPENROUTER_API_KEY}
+    base_url: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+    model: ${OPENROUTER_MODEL}
+    timeout: 300s
   deepseek:
     api_key: ${DEEPSEEK_API_KEY}
     model: ${DEEPSEEK_MODEL}
